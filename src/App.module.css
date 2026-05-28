@@ -1,0 +1,5 @@
+.stub {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; font-size: 18px; font-weight: 600; color: #073b4c; opacity: 0.4;
+  background: #fafbfc;
+}

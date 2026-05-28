@@ -1,0 +1,14 @@
+.card {
+  position: absolute;
+  padding: 14px 16px;
+  max-width: 260px;
+  z-index: 200;
+}
+.dismiss {
+  position: absolute;
+  top: 8px; right: 10px;
+  background: none; border: none;
+  color: #9ca3af; font-size: 18px;
+  cursor: pointer; line-height: 1; padding: 0;
+}
+.dismiss:hover { color: #374151; }

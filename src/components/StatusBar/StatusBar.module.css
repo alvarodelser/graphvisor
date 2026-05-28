@@ -1,0 +1,11 @@
+.bar {
+  height: 28px;
+  background: #073b4c;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.chip { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.7); letter-spacing: 0.04em; }
+.dot  { color: rgba(255,255,255,0.3); font-size: 9px; }
