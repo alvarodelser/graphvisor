@@ -10,7 +10,7 @@ interface Props {
 export function detailRailSections({ detail, visibleGroups, onToggleGroup }: Props) {
   return [
     {
-      id: 'focus', icon: '◎', label: 'Focus',
+      id: 'focus', label: 'Focus',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div className="sl">Argument</div>
@@ -23,7 +23,7 @@ export function detailRailSections({ detail, visibleGroups, onToggleGroup }: Pro
       ),
     },
     {
-      id: 'relations', icon: '↔', label: 'Relation filter',
+      id: 'relations', label: 'Filter',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(['positive', 'negative', 'causal'] as const).map(group => (

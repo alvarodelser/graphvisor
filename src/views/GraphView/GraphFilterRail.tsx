@@ -13,7 +13,7 @@ interface Props {
 export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChange, onReheat, onFreeze }: Props) {
   return [
     {
-      id: 'nodes', icon: '◻', label: 'Node types',
+      id: 'nodes', label: 'Node Types',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(['Argument', 'Entity', 'Concept'] as const).map(type => (
@@ -31,7 +31,7 @@ export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChan
       ),
     },
     {
-      id: 'confidence', icon: '~', label: 'Confidence',
+      id: 'confidence', label: 'Confidence',
       content: (
         <div>
           <input
@@ -47,7 +47,7 @@ export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChan
       ),
     },
     {
-      id: 'relations', icon: '↔', label: 'Relations',
+      id: 'relations', label: 'Relations',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(['positive', 'negative', 'causal', 'structural'] as const).map(group => (
@@ -66,7 +66,7 @@ export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChan
       ),
     },
     {
-      id: 'layout', icon: '⟳', label: 'Layout',
+      id: 'layout', label: 'Layout',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button onClick={onReheat} style={btnS}>Reheat simulation</button>

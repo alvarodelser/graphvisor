@@ -3,7 +3,7 @@ import styles from './FilterRail.module.css'
 
 export interface RailSection {
   id: string
-  icon: ReactNode
+  icon?: ReactNode
   label: string
   content: ReactNode
 }
@@ -21,9 +21,8 @@ export function FilterRail({ sections }: { sections: RailSection[] }) {
             key={s.id}
             className={`${styles.iconBtn} ${openId === s.id ? styles.active : ''}`}
             onClick={() => toggle(s.id)}
-            title={s.label}
           >
-            {s.icon}
+            {s.label}
           </button>
         ))}
       </div>
