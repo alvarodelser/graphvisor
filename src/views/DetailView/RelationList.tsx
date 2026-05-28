@@ -6,35 +6,81 @@ interface Props {
   visibleGroups: Record<string, boolean>
 }
 
+const GROUP_TEXT_COLOR: Record<string, string> = {
+  positive: '#fff',
+  negative: '#fff',
+  causal: '#073b4c',
+  structural: '#073b4c',
+}
+
 export function RelationList({ detail, visibleGroups }: Props) {
   const visible = detail.relations.filter(r => visibleGroups[r.group])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1 }}>
-      {visible.map((rel, i) => (
-        <div key={i} className="card-mid" style={{ padding: '10px 12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      {/* Sticky header */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '90px 36px 1fr',
+        gap: '0 8px',
+        padding: '4px 12px',
+        background: '#fff',
+        borderBottom: '1px solid rgba(7,59,76,0.1)',
+        flexShrink: 0,
+      }}>
+        <span className="sl" style={{ margin: 0 }}>Relation</span>
+        <span className="sl" style={{ margin: 0 }}>Conf</span>
+        <span className="sl" style={{ margin: 0 }}>Source · Predicate</span>
+      </div>
+
+      {/* Rows */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {visible.map((rel, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '90px 36px 1fr',
+              gap: '0 8px',
+              padding: '8px 12px',
+              borderBottom: '1px solid rgba(7,59,76,0.06)',
+              alignItems: 'start',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f4f7fa')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}
+          >
             <span style={{
-              background: RELATION_COLORS[rel.group], color: rel.group === 'causal' ? '#073b4c' : '#fff',
-              borderRadius: 20, padding: '2px 8px', fontSize: 9, fontWeight: 700,
+              background: RELATION_COLORS[rel.group],
+              color: GROUP_TEXT_COLOR[rel.group] ?? '#fff',
+              borderRadius: 20, padding: '2px 7px',
+              fontSize: 9, fontWeight: 700,
+              display: 'inline-block',
             }}>
               {rel.relation_type}
             </span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#F4A124' }}>{rel.confidence.toFixed(2)}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124', paddingTop: 1 }}>
+              {rel.confidence.toFixed(2)}
+            </span>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#073b4c', marginBottom: 2 }}>
+                {rel.source_document_title.split(' — ')[0]} · p.{rel.page_reference}
+              </div>
+              <div style={{
+                fontSize: 10, color: '#374151', lineHeight: 1.4,
+                overflow: 'hidden', display: '-webkit-box',
+                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              }}>
+                "{rel.full_predicate.length > 80 ? rel.full_predicate.slice(0, 80) + '…' : rel.full_predicate}"
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: '#073b4c', marginBottom: 2 }}>
-            {rel.source_document_title} · p.{rel.page_reference}
+        ))}
+        {visible.length === 0 && (
+          <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: 24 }}>
+            No relations match current filters.
           </div>
-          <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
-            "{rel.full_predicate}"
-          </div>
-        </div>
-      ))}
-      {visible.length === 0 && (
-        <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: 24 }}>
-          No relations match current filters.
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
