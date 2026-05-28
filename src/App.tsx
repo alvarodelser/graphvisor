@@ -1,11 +1,16 @@
-import './App.css'
+import { Shell } from './components/Shell/Shell'
+import styles from './App.module.css'
 
-function App() {
-  return (
-    <>
-      <h1>GraphVisor</h1>
-    </>
-  )
+function StubView({ label }: { label: string }) {
+  return <div className={styles.stub}>{label}</div>
 }
 
-export default App
+export function App() {
+  return (
+    <Shell>
+      <StubView label="Corpus View" />
+      <StubView label="Graph View" />
+      <StubView label="Detail View" />
+    </Shell>
+  )
+}
