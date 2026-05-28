@@ -79,6 +79,7 @@ export function CorpusView() {
       <FilterRail sections={railSections} />
       <div className={styles.canvas}>
         <svg ref={svgRef} className={styles.svg} />
+        <div className={styles.lassoChip}>LASSO</div>
         <div className={styles.toolbar}>
           <button className={styles.toolBtn} onClick={zoomToFit}>Fit</button>
           <button className={styles.toolBtn} onClick={resetZoom}>Reset</button>
