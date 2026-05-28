@@ -1,4 +1,5 @@
 import { Shell } from './components/Shell/Shell'
+import { CorpusView } from './views/CorpusView/CorpusView'
 import styles from './App.module.css'
 
 function StubView({ label }: { label: string }) {
@@ -8,7 +9,7 @@ function StubView({ label }: { label: string }) {
 export function App() {
   return (
     <Shell>
-      <StubView label="Corpus View" />
+      <CorpusView />
       <StubView label="Graph View" />
       <StubView label="Detail View" />
     </Shell>

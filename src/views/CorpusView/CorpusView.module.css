@@ -1,0 +1,13 @@
+.view   { display: flex; height: 100%; overflow: hidden; }
+.canvas { flex: 1; position: relative; background: #fafbfc; }
+.svg    { width: 100%; height: 100%; display: block; }
+.toolbar {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; background: #fff; border-radius: 8px; padding: 4px;
+  box-shadow: 0 0 0 1px rgba(17,138,178,0.22), 0 2px 6px rgba(7,59,76,0.08);
+}
+.toolBtn {
+  background: none; border: none; padding: 4px 10px; font-size: 10px;
+  font-weight: 600; color: #073b4c; cursor: pointer; border-radius: 5px;
+}
+.toolBtn:hover { background: #f4f7fa; }
