@@ -8,7 +8,7 @@
 
 GraphVisor is a single-page React + D3.js web application for exploring a corpus of ~200 scientific documents (20–30 pages each). The backend extracts arguments, entities, and concepts from each document and stores them in a Neo4j graph database. The frontend lets researchers:
 
-1. Visualise the document corpus by embedding (UMAP/PCA scatter)
+1. Visualise the document corpus by embedding (UMAP)
 2. Select a subset of documents and explore their extracted knowledge graph
 3. Drill into a single argument to see its reach across the whole corpus
 
@@ -212,6 +212,9 @@ D3 force simulation (Barnes-Hut / `forceManyBody`). Nodes: Arguments (rounded sq
 - `forceLink` (edge attraction) — strength proportional to confidence
 - `forceCollide` — prevents node overlap (no edge routing needed at this scale)
 - `forceCenter` — anchors graph centroid to canvas centre
+- `forceRadial` — applied to **Argument nodes only**; pulls each toward a target radius determined by its degree-centrality tier (tier 1 = highest degree → r≈0, tier 2 → r≈120px, tier 3 → r≈240px, tier 4+ → r≈360px). Entities and Concepts float freely under the other forces. This surfaces the most-connected arguments at the centre without imposing a rigid layout.
+
+**Background:** Faint concentric rings drawn as SVG `<circle>` elements inside the zoom `<g>`, spaced 120px apart (6–7 rings), `stroke: rgba(7,59,76,0.05)`, no fill. Because they live inside the zoom transform they scale and translate with pan/zoom, giving the user passive spatial feedback.
 
 **Node size:** Arguments sized by degree (edge count). Entities and Concepts uniform.
 
