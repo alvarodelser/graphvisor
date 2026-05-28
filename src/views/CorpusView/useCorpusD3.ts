@@ -41,12 +41,13 @@ export function useCorpusD3(
     const yScale = d3.scaleLinear()
       .domain(d3.extent(docs, getY) as [number, number]).range([height - pad, pad])
 
+    const sizeVals = docs.map(dd => opts.sizeBy === 'argument_count' ? dd.argument_count : dd.page_count)
+    const sizeExt = d3.extent(sizeVals) as [number, number]
+    const sizeScale = opts.sizeBy === 'uniform' ? null : d3.scaleLinear().domain(sizeExt).range([4, 9])
     const getRadius = (d: DocNode) => {
-      if (opts.sizeBy === 'uniform') return 6
-      const vals = docs.map(dd => opts.sizeBy === 'argument_count' ? dd.argument_count : dd.page_count)
-      const ext = d3.extent(vals) as [number, number]
+      if (!sizeScale) return 6
       const val = opts.sizeBy === 'argument_count' ? d.argument_count : d.page_count
-      return d3.scaleLinear().domain(ext).range([4, 9])(val)
+      return sizeScale(val)
     }
 
     const simNodes = docs.map(d => ({
@@ -131,8 +132,8 @@ export function useCorpusD3(
   useEffect(() => {
     if (!svgRef.current) return
     d3.select(svgRef.current).selectAll<SVGCircleElement, DocNode>('.corpus-dot')
-      .attr('fill', d => opts.selectedIds.has(d.id) ? '#F4A124' : '#ef476f')
-      .attr('stroke', d => opts.selectedIds.has(d.id) ? '#F4A124' : 'none')
+      .attr('fill', d => optsRef.current.selectedIds.has(d.id) ? '#F4A124' : '#ef476f')
+      .attr('stroke', d => optsRef.current.selectedIds.has(d.id) ? '#F4A124' : 'none')
   }, [opts.selectedIds])
 
   const zoomToFit = () => {
