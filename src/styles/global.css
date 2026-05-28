@@ -47,3 +47,24 @@ body {
 .zoom-group.titles-visible .doc-title {
   opacity: 0.7;
 }
+
+/* Graph edge animations */
+@keyframes dash-flow {
+  from { stroke-dashoffset: 12; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes dash-flow-reverse {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 12; }
+}
+.edge-semantic-forward {
+  stroke-dasharray: 8 4;
+  animation: dash-flow 1.5s linear infinite;
+}
+.edge-semantic-reverse {
+  stroke-dasharray: 8 4;
+  animation: dash-flow-reverse 1.5s linear infinite;
+}
+.edge-structural {
+  stroke-dasharray: 3 3;
+}
