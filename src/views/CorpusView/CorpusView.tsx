@@ -35,7 +35,7 @@ export function CorpusView() {
 
   const railSections = [
     {
-      id: 'selection', icon: '◻', label: 'Selection',
+      id: 'selection', label: 'Selection',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#073b4c' }}>
@@ -47,7 +47,7 @@ export function CorpusView() {
       ),
     },
     {
-      id: 'projection', icon: '⊕', label: 'Projection',
+      id: 'projection', label: 'Projection',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(['umap', 'pca'] as const).map(p => (
@@ -60,7 +60,7 @@ export function CorpusView() {
       ),
     },
     {
-      id: 'size', icon: '◉', label: 'Size nodes by',
+      id: 'size', label: 'Size by',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {([['argument_count', 'Arg count'], ['uniform', 'Uniform'], ['page_count', 'Page count']] as const).map(([val, lbl]) => (
