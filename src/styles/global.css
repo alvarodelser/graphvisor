@@ -1,0 +1,40 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  background: #e8edf2;
+  color: #374151;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 1px  rgba(17, 138, 178, 0.28),
+    0 0 4px 0px rgba(17, 138, 178, 0.18),
+    0 2px 6px   rgba(7, 59, 76, 0.07),
+    0 10px 28px rgba(7, 59, 76, 0.09);
+}
+
+.card-mid {
+  border-radius: 12px;
+  background: #f4f7fa;
+  box-shadow:
+    0 0 0 1px  rgba(17, 138, 178, 0.22),
+    0 0 4px 0px rgba(17, 138, 178, 0.13),
+    0 2px 6px   rgba(7, 59, 76, 0.06),
+    0 10px 28px rgba(7, 59, 76, 0.08);
+}
+
+.sl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #073b4c;
+  opacity: 0.55;
+  margin-bottom: 6px;
+}
