@@ -46,6 +46,7 @@ export interface ArgumentRelation {
   source_document_title: string
   page_reference: number
   full_predicate: string
+  target_argument_id: string
 }
 
 export interface ArgumentDetail {
