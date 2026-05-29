@@ -13,7 +13,7 @@ export function CorpusView() {
   const [tooltip, setTooltip] = useState<{ doc: DocNode; x: number; y: number } | null>(null)
   const {
     selectedDocumentIds, setSelectedDocuments, toggleDocumentSelection,
-    clearSelection, selectAll, setSizeBy, sizeBy, projection,
+    clearSelection, selectAll, setSizeBy, sizeBy,
   } = useStore()
 
   const selectedIds = useMemo(() => new Set(selectedDocumentIds), [selectedDocumentIds])
@@ -22,7 +22,6 @@ export function CorpusView() {
 
   useCorpusD3(svgRef, docs, {
     selectedIds,
-    projection,
     sizeBy,
     onLassoSelect: (ids) =>
       setSelectedDocuments([...new Set([...selectedDocumentIds, ...ids])]),
