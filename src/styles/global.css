@@ -50,7 +50,7 @@ body {
 
 
 /* GraphVisor v3: Chevron edge animations (replace v2 dash animations) */
-@keyframes march-forward { from { transform: translateX(0); } to { transform: translateX(28px); } }
-@keyframes march-reverse { from { transform: translateX(0); } to { transform: translateX(-28px); } }
+@keyframes march-forward { from { transform: translateX(0); } to { transform: translateX(20px); } }
+@keyframes march-reverse { from { transform: translateX(0); } to { transform: translateX(-20px); } }
 .chevrons-forward { animation: march-forward 0.8s linear infinite; }
 .chevrons-reverse { animation: march-reverse 0.8s linear infinite; }
