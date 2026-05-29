@@ -11,27 +11,24 @@ export interface RailSection {
 export function FilterRail({ sections }: { sections: RailSection[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id))
-  const open = sections.find((s) => s.id === openId)
 
   return (
     <div className={styles.rail}>
-      <div className={styles.strip}>
-        {sections.map((s) => (
+      {sections.map((s) => (
+        <div key={s.id} className={styles.section}>
           <button
-            key={s.id}
-            className={`${styles.iconBtn} ${openId === s.id ? styles.active : ''}`}
+            className={`${styles.btn} ${openId === s.id ? styles.active : ''}`}
             onClick={() => toggle(s.id)}
           >
             {s.label}
           </button>
-        ))}
-      </div>
-      {open && (
-        <div className={styles.panel}>
-          <div className={styles.panelTitle}>{open.label}</div>
-          <div className={styles.panelContent}>{open.content}</div>
+          {openId === s.id && (
+            <div className={styles.content}>
+              {s.content}
+            </div>
+          )}
         </div>
-      )}
+      ))}
     </div>
   )
 }

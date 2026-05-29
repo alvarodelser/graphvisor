@@ -38,7 +38,7 @@ export function DetailView() {
 
   return (
     <div className={styles.view}>
-      <FilterRail sections={detailRailSections({ detail, visibleGroups, onToggleGroup: toggleGroup })} />
+      <FilterRail sections={detailRailSections({ visibleGroups, onToggleGroup: toggleGroup })} />
       <div className={styles.content}>
         <div className={styles.header}>
           <div className="sl">Argument</div>

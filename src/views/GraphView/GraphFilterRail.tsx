@@ -10,67 +10,58 @@ interface Props {
   onFreeze: () => void
 }
 
-export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChange, onReheat, onFreeze }: Props) {
+export function graphRailSections({ filters, onFilterChange, nodeCount: _n, onReheat, onFreeze }: Props) {
   return [
     {
-      id: 'nodes', label: 'Node Types',
+      id: 'nodes', label: 'Types',
       content: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {(['Argument', 'Entity', 'Concept'] as const).map(type => (
-            <label key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={filters.nodeTypes[type]}
+            <label key={type} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: 'rgba(255,255,255,0.8)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={filters.nodeTypes[type]}
                 onChange={e => onFilterChange({ nodeTypes: { ...filters.nodeTypes, [type]: e.target.checked } })}
-                style={{ accentColor: '#073b4c' }}
-              />
-              {type}
+                style={{ accentColor: '#F4A124', width: 10, height: 10 }} />
+              {type.slice(0,3)}
             </label>
           ))}
         </div>
       ),
     },
     {
-      id: 'confidence', label: 'Confidence',
+      id: 'confidence', label: 'Conf',
       content: (
-        <div>
-          <input
-            type="range" min={0} max={1} step={0.05}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <input type="range" min={0} max={1} step={0.05}
             value={filters.minConfidence}
             onChange={e => onFilterChange({ minConfidence: Number(e.target.value) })}
-            style={{ width: '100%', accentColor: '#F4A124' }}
-          />
-          <div style={{ fontSize: 10, color: '#F4A124', fontWeight: 700, textAlign: 'right' }}>
-            ≥ {filters.minConfidence.toFixed(2)}
+            style={{ width: '100%', accentColor: '#F4A124' }} />
+          <div style={{ fontSize: 9, color: '#F4A124', fontWeight: 700, textAlign: 'center' }}>
+            ≥{filters.minConfidence.toFixed(2)}
           </div>
         </div>
       ),
     },
     {
-      id: 'relations', label: 'Relations',
+      id: 'relations', label: 'Rels',
       content: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {(['positive', 'negative', 'causal', 'structural'] as const).map(group => (
-            <label key={group} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={filters.relationGroups[group]}
+            <label key={group} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, cursor: 'pointer' }}>
+              <input type="checkbox" checked={filters.relationGroups[group]}
                 onChange={e => onFilterChange({ relationGroups: { ...filters.relationGroups, [group]: e.target.checked } })}
-                style={{ accentColor: '#073b4c' }}
-              />
-              <span style={{ width: 14, height: 2, background: RELATION_COLORS[group], display: 'inline-block', borderRadius: 1 }} />
-              {group.charAt(0).toUpperCase() + group.slice(1)}
+                style={{ accentColor: '#F4A124', width: 10, height: 10 }} />
+              <span style={{ width: 8, height: 8, background: RELATION_COLORS[group], display: 'inline-block', borderRadius: 2, flexShrink: 0 }} />
             </label>
           ))}
         </div>
       ),
     },
     {
-      id: 'layout', label: 'Layout',
+      id: 'layout', label: 'Lay',
       content: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={onReheat} style={btnS}>Reheat simulation</button>
-          <button onClick={onFreeze} style={{ ...btnS, background: '#f4f7fa', color: '#073b4c', border: '1px solid rgba(7,59,76,0.15)' }}>Freeze</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button onClick={onReheat} style={btnS}>Heat</button>
+          <button onClick={onFreeze} style={{ ...btnS, background: 'rgba(255,255,255,0.15)' }}>Freeze</button>
         </div>
       ),
     },
@@ -78,6 +69,6 @@ export function graphRailSections({ filters, nodeCount: _nodeCount, onFilterChan
 }
 
 const btnS: React.CSSProperties = {
-  background: '#073b4c', color: '#fff', border: 'none', borderRadius: 6,
-  padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+  background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: 4,
+  padding: '3px 0', fontSize: 9, fontWeight: 700, cursor: 'pointer', width: '100%',
 }
