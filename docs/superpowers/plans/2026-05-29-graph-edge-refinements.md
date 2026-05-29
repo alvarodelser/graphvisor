@@ -1,0 +1,526 @@
+# Graph Edge Refinements Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Slim down chevron edges, convert structural edges to plain lines, make CONTRADICTS/INHIBITS converge with opposing half-chevrons, and increase node repulsion.
+
+**Architecture:** Two files only — `src/styles/global.css` (animation stride 28→20 px) and `src/views/GraphView/useGraphD3.ts` (constants, helpers, edge construction, tick, force strength). The 14 existing tests are regression guards; D3 rendering is verified via TypeScript check. Public API (`useGraphD3`, `HoverItem`) is unchanged.
+
+**Key insight for converging edges:** Pre-place left-pointing chevrons at the same `CHEV_START + i*CHEV_SPACING` positions as the standard left half. The right-half clip polygon restricts visibility to [mid, len]; because spacing equals animation stride (20 px), the loop is seamless with no extra tick transform required.
+
+**Tech Stack:** React 18, TypeScript (strict), D3 v7, CSS keyframe animations
+
+---
+
+## File Map
+
+**Modified:**
+- `src/styles/global.css` — update `march-forward`/`march-reverse` translateX from 28 px → 20 px
+- `src/views/GraphView/useGraphD3.ts` — geometry constants, three helper functions, edge construction, tick, force charge
+
+---
+
+### Task 1: Update CSS animation stride
+
+**Files:**
+- Modify: `src/styles/global.css`
+
+- [ ] **Step 1: Update animation keyframes**
+
+Find the chevron animation block near the bottom of `src/styles/global.css` and replace it with:
+
+```css
+/* GraphVisor v3: Chevron edge animations (replace v2 dash animations) */
+@keyframes march-forward { from { transform: translateX(0); } to { transform: translateX(20px); } }
+@keyframes march-reverse { from { transform: translateX(0); } to { transform: translateX(-20px); } }
+.chevrons-forward { animation: march-forward 0.8s linear infinite; }
+.chevrons-reverse { animation: march-reverse 0.8s linear infinite; }
+```
+
+The only change from the current file is `28px` → `20px` in both keyframes. Class names stay the same.
+
+- [ ] **Step 2: TypeScript check + tests**
+
+```bash
+cd /Users/alvarodelser/Projects/GraphVisor && npx tsc --noEmit && npm run test:run
+```
+
+Expected: no errors, 14 tests pass.
+
+- [ ] **Step 3: Commit**
+
+```bash
+cd /Users/alvarodelser/Projects/GraphVisor && git add src/styles/global.css && git commit -m "fix: chevron animation stride 28→20px to match new CHEV_SPACING"
+```
+
+---
+
+### Task 2: Rewrite useGraphD3.ts
+
+**Files:**
+- Modify: `src/views/GraphView/useGraphD3.ts`
+
+Read the current file first (`cat src/views/GraphView/useGraphD3.ts`), then replace it entirely with the content below.
+
+- [ ] **Step 1: Write the new file**
+
+Replace `src/views/GraphView/useGraphD3.ts` with:
+
+```typescript
+import { useEffect, useRef } from 'react'
+import * as d3 from 'd3'
+import type { RefObject } from 'react'
+import type { GraphNode, GraphEdge, FilterState } from '../../types'
+import { computeRadialTiers, RELATION_COLORS } from '../../utils/geometry'
+
+const RADIAL_RADII = [0, 120, 240, 360]
+
+// ── Chevron geometry constants ────────────────────────────────────────────────
+const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
+const CHEV_TIP_OFFSET = 8    // tip projection past body end (was 25)
+const CHEV_SPACING    = 20   // px between inner chevron backs — must equal CSS animation stride
+const CHEV_TIP_REACH  = 8    // inner chevron tip projection
+const CHEV_COUNT      = 28   // pre-created chevrons per direction (covers ~560 px)
+const CHEV_START      = -28  // first chevron starts before x=0 for seamless left entry
+
+interface HoverPayload {
+  type: 'node'
+  node: GraphNode
+  x: number
+  y: number
+}
+
+interface EdgeHoverPayload {
+  type: 'edge'
+  edge: GraphEdge
+  sourceNode: GraphNode
+  targetNode: GraphNode
+  x: number
+  y: number
+}
+
+export type HoverItem = HoverPayload | EdgeHoverPayload | null
+
+interface Options {
+  filters: FilterState
+  selectedNodeId: string | null
+  onNodeClick: (node: GraphNode) => void
+  onHover?: (item: HoverItem) => void
+  onCanvasClick?: () => void
+}
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+
+// Full pentagon for standard semantic edges → (tip points right)
+function chevronOuterPoints(len: number): string {
+  const bodyEnd = Math.max(0, len - CHEV_TIP_OFFSET)
+  return `0,${-CHEV_HALF_H} ${bodyEnd},${-CHEV_HALF_H} ${len},0 ${bodyEnd},${CHEV_HALF_H} 0,${CHEV_HALF_H}`
+}
+
+// Left half-pentagon for converging edges → (tip at midpoint, opens toward source)
+function halfChevronLeftPoints(len: number): string {
+  const mid = len / 2
+  const bodyEnd = Math.max(0, mid - CHEV_TIP_OFFSET)
+  return `0,${-CHEV_HALF_H} ${bodyEnd},${-CHEV_HALF_H} ${mid},0 ${bodyEnd},${CHEV_HALF_H} 0,${CHEV_HALF_H}`
+}
+
+// Right half-pentagon for converging edges ← (tip at midpoint, opens toward target)
+function halfChevronRightPoints(len: number): string {
+  const mid = len / 2
+  const bodyStart = Math.min(len, mid + CHEV_TIP_OFFSET)
+  return `${len},${-CHEV_HALF_H} ${bodyStart},${-CHEV_HALF_H} ${mid},0 ${bodyStart},${CHEV_HALF_H} ${len},${CHEV_HALF_H}`
+}
+
+// ── Styling helpers ───────────────────────────────────────────────────────────
+function edgeStroke(group: string): string {
+  return group === 'structural' ? '#64748b' : RELATION_COLORS[group]
+}
+function edgeFill(group: string): string {
+  return group === 'structural' ? 'none' : `${RELATION_COLORS[group]}0f`
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+export function useGraphD3(
+  svgRef: RefObject<SVGSVGElement | null>,
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  opts: Options
+) {
+  const simRef = useRef<d3.Simulation<GraphNode, GraphEdge>>()
+  const optsRef = useRef(opts)
+  optsRef.current = opts
+
+  useEffect(() => {
+    if (!svgRef.current || nodes.length === 0) return
+    const svgEl = svgRef.current
+    const { width, height } = svgEl.getBoundingClientRect()
+    const svg = d3.select(svgEl)
+    svg.selectAll('*').remove()
+    svg.style('background', '#fafbfc')
+
+    svg.on('click', () => optsRef.current.onCanvasClick?.())
+
+    const zoomG = svg.append('g').attr('class', 'zoom-group')
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.15, 4])
+      .on('zoom', (e) => zoomG.attr('transform', e.transform))
+    svg.call(zoom)
+
+    const ringG = zoomG.append('g').attr('class', 'rings')
+    for (let i = 1; i <= 7; i++) {
+      ringG.append('circle')
+        .attr('cx', width / 2).attr('cy', height / 2)
+        .attr('r', i * 120)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(7,59,76,0.05)')
+        .attr('stroke-width', 1)
+    }
+
+    const { minConfidence, relationGroups, nodeTypes } = optsRef.current.filters
+    const filteredEdges = edges.filter(e => e.confidence >= minConfidence && relationGroups[e.group])
+
+    const visibleNodes = nodes.filter(n => nodeTypes[n.type])
+    const visibleNodeIdSet = new Set(visibleNodes.map(n => n.id))
+    const tiers = computeRadialTiers(visibleNodes, filteredEdges)
+
+    const simNodes: GraphNode[] = visibleNodes.map(n => ({ ...n }))
+    const simEdges: GraphEdge[] = filteredEdges
+      .filter(e => {
+        const sid = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
+        const tid = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id
+        return visibleNodeIdSet.has(sid) && visibleNodeIdSet.has(tid)
+      })
+      .map(e => ({ ...e }))
+
+    const adjNodes = new Map<string, Set<string>>()
+    const adjEdges = new Map<string, Set<string>>()
+    simNodes.forEach(n => { adjNodes.set(n.id, new Set()); adjEdges.set(n.id, new Set()) })
+    simEdges.forEach(e => {
+      const sn = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
+      const tn = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id
+      adjNodes.get(sn)?.add(tn)
+      adjNodes.get(tn)?.add(sn)
+      adjEdges.get(sn)?.add(e.id)
+      adjEdges.get(tn)?.add(e.id)
+    })
+
+    const degree = new Map<string, number>()
+    simNodes.forEach(n => degree.set(n.id, 0))
+    simEdges.forEach(e => {
+      const sid = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
+      const tid = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id
+      degree.set(sid, (degree.get(sid) ?? 0) + 1)
+      degree.set(tid, (degree.get(tid) ?? 0) + 1)
+    })
+
+    const defs = svg.append('defs')
+    const edgeG = zoomG.append('g').attr('class', 'edges')
+    const nodeG = zoomG.append('g').attr('class', 'nodes')
+
+    // ── Build edge groups ─────────────────────────────────────────────────────
+    const edgeGroups = edgeG.selectAll<SVGGElement, GraphEdge>('g.edge-group')
+      .data(simEdges, d => d.id)
+      .join('g')
+      .attr('class', 'edge-group')
+      .style('cursor', 'pointer')
+
+    edgeGroups.each(function(d) {
+      const g = d3.select(this)
+      const isStructural = d.group === 'structural'
+      const isConverging = d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS'
+
+      if (isStructural) {
+        // Plain line — no clip, no animation
+        g.append('line')
+          .attr('class', 'struct-line')
+          .attr('x1', 0).attr('y1', 0)
+          .attr('x2', 0).attr('y2', 0)
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2)
+          .attr('opacity', 0.75)
+
+      } else if (isConverging) {
+        // Two opposing half-chevrons; inner chevrons converge toward midpoint.
+        // Both inner groups use the same CHEV_START + i*CHEV_SPACING positions —
+        // the respective clip polygons restrict visibility to each half.
+        // Because CHEV_SPACING equals the CSS animation stride (20 px), the loop
+        // is seamless with no additional tick transform on the inner groups.
+        defs.append('clipPath')
+          .attr('id', `edgeclip-L-${d.id}`)
+          .attr('clipPathUnits', 'userSpaceOnUse')
+          .append('polygon')
+          .attr('points', halfChevronLeftPoints(0))
+
+        defs.append('clipPath')
+          .attr('id', `edgeclip-R-${d.id}`)
+          .attr('clipPathUnits', 'userSpaceOnUse')
+          .append('polygon')
+          .attr('points', halfChevronRightPoints(0))
+
+        // Outer half-shapes
+        g.append('polygon')
+          .attr('class', 'chevron-L')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('opacity', 0.85)
+
+        g.append('polygon')
+          .attr('class', 'chevron-R')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('opacity', 0.85)
+
+        // Left inner: right-pointing chevrons marching forward (→ toward midpoint)
+        const leftWrap = g.append('g').attr('clip-path', `url(#edgeclip-L-${d.id})`)
+        const leftInner = leftWrap.append('g').attr('class', 'chevrons-forward')
+        for (let i = 0; i < CHEV_COUNT; i++) {
+          const bx = CHEV_START + i * CHEV_SPACING
+          leftInner.append('polyline')
+            .attr('points', `${bx},${-CHEV_HALF_H} ${bx + CHEV_TIP_REACH},0 ${bx},${CHEV_HALF_H}`)
+            .attr('fill', 'none')
+            .attr('stroke', RELATION_COLORS[d.group])
+            .attr('stroke-width', 3)
+            .attr('stroke-linejoin', 'miter')
+            .attr('stroke-linecap', 'butt')
+            .attr('opacity', 0.65)
+        }
+
+        // Right inner: left-pointing chevrons marching reverse (← toward midpoint)
+        const rightWrap = g.append('g').attr('clip-path', `url(#edgeclip-R-${d.id})`)
+        const rightInner = rightWrap.append('g').attr('class', 'chevrons-reverse')
+        for (let i = 0; i < CHEV_COUNT; i++) {
+          const bx = CHEV_START + i * CHEV_SPACING
+          // Left-pointing: back (widest) at bx+reach, tip (point) at bx
+          rightInner.append('polyline')
+            .attr('points', `${bx + CHEV_TIP_REACH},${-CHEV_HALF_H} ${bx},0 ${bx + CHEV_TIP_REACH},${CHEV_HALF_H}`)
+            .attr('fill', 'none')
+            .attr('stroke', RELATION_COLORS[d.group])
+            .attr('stroke-width', 3)
+            .attr('stroke-linejoin', 'miter')
+            .attr('stroke-linecap', 'butt')
+            .attr('opacity', 0.65)
+        }
+
+      } else {
+        // Standard semantic edge: single pentagon + forward marching chevrons
+        defs.append('clipPath')
+          .attr('id', `edgeclip-${d.id}`)
+          .attr('clipPathUnits', 'userSpaceOnUse')
+          .append('polygon')
+          .attr('points', chevronOuterPoints(0))
+
+        g.append('polyline')
+          .attr('class', 'chevron-outer')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('stroke-linecap', 'butt')
+          .attr('opacity', 0.85)
+
+        const clipWrap = g.append('g').attr('clip-path', `url(#edgeclip-${d.id})`)
+        const innerG = clipWrap.append('g').attr('class', 'chevrons-forward')
+        for (let i = 0; i < CHEV_COUNT; i++) {
+          const bx = CHEV_START + i * CHEV_SPACING
+          innerG.append('polyline')
+            .attr('points', `${bx},${-CHEV_HALF_H} ${bx + CHEV_TIP_REACH},0 ${bx},${CHEV_HALF_H}`)
+            .attr('fill', 'none')
+            .attr('stroke', RELATION_COLORS[d.group])
+            .attr('stroke-width', 3)
+            .attr('stroke-linejoin', 'miter')
+            .attr('stroke-linecap', 'butt')
+            .attr('opacity', 0.65)
+        }
+      }
+
+      g.append('title').text(`${d.relation_type} · ${d.confidence.toFixed(2)}`)
+    })
+
+    // ── Edge hover ────────────────────────────────────────────────────────────
+    edgeGroups
+      .on('mouseenter', (event, d) => {
+        const [mx, my] = d3.pointer(event, svgEl)
+        const src = d.source as GraphNode
+        const tgt = d.target as GraphNode
+        optsRef.current.onHover?.({ type: 'edge', edge: d, sourceNode: src, targetNode: tgt, x: mx, y: my })
+      })
+      .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('mouseenter.mute', (_, d) => {
+        const sn = (d.source as GraphNode).id
+        const tn = (d.target as GraphNode).id
+        const involvedNodes = new Set([sn, tn])
+        const involvedEdges = new Set<string>([d.id])
+        ;(adjEdges.get(sn) ?? new Set()).forEach(id => involvedEdges.add(id))
+        ;(adjEdges.get(tn) ?? new Set()).forEach(id => involvedEdges.add(id))
+        nodeGroups.attr('opacity', (nd: GraphNode) => involvedNodes.has(nd.id) ? 1 : 0.06)
+        edgeGroups.attr('opacity', (ed: GraphEdge) => involvedEdges.has(ed.id) ? 1 : 0.04)
+      })
+      .on('mouseleave.mute', () => {
+        nodeGroups.attr('opacity', null)
+        edgeGroups.attr('opacity', null)
+      })
+
+    // ── Node groups ───────────────────────────────────────────────────────────
+    const nodeGroups = nodeG.selectAll<SVGGElement, GraphNode>('g')
+      .data(simNodes, d => d.id)
+      .join('g')
+      .style('cursor', 'pointer')
+      .call(
+        d3.drag<SVGGElement, GraphNode>()
+          .on('start', (event, d) => {
+            if (!event.active) sim.alphaTarget(0.3).restart()
+            d.fx = d.x; d.fy = d.y
+          })
+          .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y })
+          .on('end', (event, _d) => { if (!event.active) sim.alphaTarget(0) })
+      )
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        optsRef.current.onNodeClick(d)
+      })
+      .on('mouseenter', (event, d) => {
+        const [mx, my] = d3.pointer(event, svgEl)
+        optsRef.current.onHover?.({ type: 'node', node: d, x: mx, y: my })
+      })
+      .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('mouseenter.mute', (_, d) => {
+        const neighbours = adjNodes.get(d.id) ?? new Set()
+        const neighbourEdges = adjEdges.get(d.id) ?? new Set()
+        nodeGroups.attr('opacity', (nd: GraphNode) => nd.id === d.id || neighbours.has(nd.id) ? 1 : 0.06)
+        edgeGroups.attr('opacity', (ed: GraphEdge) => neighbourEdges.has(ed.id) ? 1 : 0.04)
+      })
+      .on('mouseleave.mute', () => {
+        nodeGroups.attr('opacity', null)
+        edgeGroups.attr('opacity', null)
+      })
+
+    nodeGroups.each(function(d) {
+      const g = d3.select(this)
+      const deg = degree.get(d.id) ?? 0
+      if (d.type === 'Argument') {
+        const size = 16 + Math.min(deg, 10) * 1.5
+        g.append('rect').attr('x', -size / 2).attr('y', -size / 2)
+          .attr('width', size).attr('height', size).attr('rx', 4).attr('fill', '#073b4c')
+        g.append('title').text(d.full_text ?? d.label)
+      } else if (d.type === 'Entity') {
+        g.append('circle').attr('r', 8).attr('fill', '#118ab2')
+        g.append('title').text(d.label)
+      } else {
+        g.append('polygon').attr('points', '0,-10 10,0 0,10 -10,0').attr('fill', '#74b9d6')
+        g.append('title').text(d.label)
+      }
+    })
+
+    // ── Force simulation (charge -320, was -180) ──────────────────────────────
+    const sim = d3.forceSimulation<GraphNode>(simNodes)
+      .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges)
+        .id(d => d.id)
+        .strength(d => d.group === 'structural' ? 0.2 : d.confidence * 0.4))
+      .force('charge', d3.forceManyBody<GraphNode>().strength(-320).theta(0.9))
+      .force('collide', d3.forceCollide<GraphNode>(d => d.type === 'Argument' ? 22 : 14).strength(0.7))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('radial',
+        d3.forceRadial<GraphNode>(
+          d => d.type === 'Argument' ? RADIAL_RADII[tiers.get(d.id) ?? 3] : 0,
+          width / 2, height / 2
+        ).strength(d => d.type === 'Argument' ? 0.4 : 0)
+      )
+
+    // ── Tick ──────────────────────────────────────────────────────────────────
+    sim.on('tick', () => {
+      edgeGroups.each(function(d) {
+        const src = d.source as GraphNode
+        const tgt = d.target as GraphNode
+        if (src.x == null || tgt.x == null) return
+
+        const dx = tgt.x! - src.x!
+        const dy = tgt.y! - src.y!
+        const len = Math.sqrt(dx * dx + dy * dy)
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+        const sel = d3.select(this)
+
+        sel.attr('transform', `translate(${src.x},${src.y}) rotate(${angle})`)
+
+        if (d.group === 'structural') {
+          sel.select('.struct-line').attr('x2', len)
+
+        } else if (d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS') {
+          const ptsL = halfChevronLeftPoints(len)
+          const ptsR = halfChevronRightPoints(len)
+          sel.select('.chevron-L').attr('points', ptsL)
+          sel.select('.chevron-R').attr('points', ptsR)
+          d3.select(`#edgeclip-L-${d.id} polygon`).attr('points', ptsL)
+          d3.select(`#edgeclip-R-${d.id} polygon`).attr('points', ptsR)
+
+        } else {
+          const pts = chevronOuterPoints(len)
+          sel.select('.chevron-outer').attr('points', pts)
+          d3.select(`#edgeclip-${d.id} polygon`).attr('points', pts)
+        }
+      })
+
+      nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
+    })
+
+    // ── Resize ────────────────────────────────────────────────────────────────
+    const observer = new ResizeObserver(() => {
+      const { width: w, height: h } = svgEl.getBoundingClientRect()
+      if (w < 10 || h < 10) return
+      ;(sim.force('center') as d3.ForceCenter<GraphNode>).x(w / 2).y(h / 2)
+      sim.alpha(0.1).restart()
+      d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
+    })
+    observer.observe(svgEl.parentElement ?? svgEl)
+
+    simRef.current = sim
+    return () => { sim.stop(); observer.disconnect() }
+  }, [nodes, edges, opts.filters])
+
+  // ── Selection halo ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!svgRef.current) return
+    d3.select(svgRef.current).selectAll<SVGGElement, GraphNode>('.nodes g')
+      .each(function(d) {
+        const g = d3.select(this)
+        g.select('.selection-halo').remove()
+        if (d.id === optsRef.current.selectedNodeId) {
+          g.insert('circle', ':first-child')
+            .attr('class', 'selection-halo')
+            .attr('r', 18).attr('fill', 'none')
+            .attr('stroke', '#F4A124').attr('stroke-width', 2.5)
+        }
+      })
+  }, [opts.selectedNodeId])
+
+  const reheat = () => simRef.current?.alpha(0.5).restart()
+  const freeze = () => simRef.current?.stop()
+
+  return { reheat, freeze }
+}
+```
+
+- [ ] **Step 2: TypeScript check**
+
+```bash
+cd /Users/alvarodelser/Projects/GraphVisor && npx tsc --noEmit
+```
+
+Expected: no errors. Fix any TypeScript errors before continuing.
+
+- [ ] **Step 3: Run tests**
+
+```bash
+cd /Users/alvarodelser/Projects/GraphVisor && npm run test:run
+```
+
+Expected: 14 tests pass.
+
+- [ ] **Step 4: Commit**
+
+```bash
+cd /Users/alvarodelser/Projects/GraphVisor && git add src/views/GraphView/useGraphD3.ts && git commit -m "feat: slim chevrons, structural lines, converging CONTRADICTS/INHIBITS, stronger repulsion"
+```
