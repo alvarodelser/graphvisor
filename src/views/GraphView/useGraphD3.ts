@@ -6,12 +6,13 @@ import { computeRadialTiers, RELATION_COLORS } from '../../utils/geometry'
 
 const RADIAL_RADII = [0, 120, 240, 360]
 
-const CHEV_HALF_H = 12
-const CHEV_TIP_OFFSET = 25
-const CHEV_SPACING = 28
-const CHEV_TIP_REACH = 14
-const CHEV_COUNT = 16
-const CHEV_START = -8
+// ── Chevron geometry constants ────────────────────────────────────────────────
+const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
+const CHEV_TIP_OFFSET = 8    // tip projection past body end (was 25)
+const CHEV_SPACING    = 20   // px between inner chevron backs — must equal CSS animation stride
+const CHEV_TIP_REACH  = 8    // inner chevron tip projection
+const CHEV_COUNT      = 28   // pre-created chevrons per direction (covers ~560 px)
+const CHEV_START      = -28  // first chevron starts before x=0 for seamless left entry
 
 interface HoverPayload {
   type: 'node'
@@ -39,19 +40,37 @@ interface Options {
   onCanvasClick?: () => void
 }
 
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+
+// Full pentagon for standard semantic edges → (tip points right)
 function chevronOuterPoints(len: number): string {
   const bodyEnd = Math.max(0, len - CHEV_TIP_OFFSET)
   return `0,${-CHEV_HALF_H} ${bodyEnd},${-CHEV_HALF_H} ${len},0 ${bodyEnd},${CHEV_HALF_H} 0,${CHEV_HALF_H}`
 }
 
-const STRUCTURAL_STROKE = 'rgba(7,59,76,0.45)'
-function edgeStroke(group: string): string {
-  return group === 'structural' ? STRUCTURAL_STROKE : RELATION_COLORS[group]
-}
-function edgeFill(group: string): string {
-  return group === 'structural' ? 'rgba(7,59,76,0.04)' : `${RELATION_COLORS[group]}0f`
+// Left half-pentagon for converging edges → (tip at midpoint, opens toward source)
+function halfChevronLeftPoints(len: number): string {
+  const mid = len / 2
+  const bodyEnd = Math.max(0, mid - CHEV_TIP_OFFSET)
+  return `0,${-CHEV_HALF_H} ${bodyEnd},${-CHEV_HALF_H} ${mid},0 ${bodyEnd},${CHEV_HALF_H} 0,${CHEV_HALF_H}`
 }
 
+// Right half-pentagon for converging edges ← (tip at midpoint, opens toward target)
+function halfChevronRightPoints(len: number): string {
+  const mid = len / 2
+  const bodyStart = Math.min(len, mid + CHEV_TIP_OFFSET)
+  return `${len},${-CHEV_HALF_H} ${bodyStart},${-CHEV_HALF_H} ${mid},0 ${bodyStart},${CHEV_HALF_H} ${len},${CHEV_HALF_H}`
+}
+
+// ── Styling helpers ───────────────────────────────────────────────────────────
+function edgeStroke(group: string): string {
+  return group === 'structural' ? '#64748b' : RELATION_COLORS[group]
+}
+function edgeFill(group: string): string {
+  return group === 'structural' ? 'none' : `${RELATION_COLORS[group]}0f`
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 export function useGraphD3(
   svgRef: RefObject<SVGSVGElement | null>,
   nodes: GraphNode[],
@@ -129,6 +148,7 @@ export function useGraphD3(
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
 
+    // ── Build edge groups ─────────────────────────────────────────────────────
     const edgeGroups = edgeG.selectAll<SVGGElement, GraphEdge>('g.edge-group')
       .data(simEdges, d => d.id)
       .join('g')
@@ -138,45 +158,120 @@ export function useGraphD3(
     edgeGroups.each(function(d) {
       const g = d3.select(this)
       const isStructural = d.group === 'structural'
-      const isReverse = d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS'
+      const isConverging = d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS'
 
-      if (!isStructural) {
+      if (isStructural) {
+        // Plain line — no clip, no animation
+        g.append('line')
+          .attr('class', 'struct-line')
+          .attr('x1', 0).attr('y1', 0)
+          .attr('x2', 0).attr('y2', 0)
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2)
+          .attr('opacity', 0.75)
+
+      } else if (isConverging) {
+        // Two opposing half-chevrons; inner chevrons converge toward midpoint.
+        // Both inner groups use the same CHEV_START + i*CHEV_SPACING positions —
+        // the respective clip polygons restrict visibility to each half.
+        // Because CHEV_SPACING equals the CSS animation stride (20 px), the loop
+        // is seamless with no additional tick transform on the inner groups.
+        defs.append('clipPath')
+          .attr('id', `edgeclip-L-${d.id}`)
+          .attr('clipPathUnits', 'userSpaceOnUse')
+          .append('polygon')
+          .attr('points', halfChevronLeftPoints(0))
+
+        defs.append('clipPath')
+          .attr('id', `edgeclip-R-${d.id}`)
+          .attr('clipPathUnits', 'userSpaceOnUse')
+          .append('polygon')
+          .attr('points', halfChevronRightPoints(0))
+
+        // Outer half-shapes
+        g.append('polygon')
+          .attr('class', 'chevron-L')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('opacity', 0.85)
+
+        g.append('polygon')
+          .attr('class', 'chevron-R')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('opacity', 0.85)
+
+        // Left inner: right-pointing chevrons marching forward (→ toward midpoint)
+        const leftWrap = g.append('g').attr('clip-path', `url(#edgeclip-L-${d.id})`)
+        const leftInner = leftWrap.append('g').attr('class', 'chevrons-forward')
+        for (let i = 0; i < CHEV_COUNT; i++) {
+          const bx = CHEV_START + i * CHEV_SPACING
+          leftInner.append('polyline')
+            .attr('points', `${bx},${-CHEV_HALF_H} ${bx + CHEV_TIP_REACH},0 ${bx},${CHEV_HALF_H}`)
+            .attr('fill', 'none')
+            .attr('stroke', RELATION_COLORS[d.group])
+            .attr('stroke-width', 3)
+            .attr('stroke-linejoin', 'miter')
+            .attr('stroke-linecap', 'butt')
+            .attr('opacity', 0.65)
+        }
+
+        // Right inner: left-pointing chevrons marching reverse (← toward midpoint)
+        const rightWrap = g.append('g').attr('clip-path', `url(#edgeclip-R-${d.id})`)
+        const rightInner = rightWrap.append('g').attr('class', 'chevrons-reverse')
+        for (let i = 0; i < CHEV_COUNT; i++) {
+          const bx = CHEV_START + i * CHEV_SPACING
+          // Left-pointing: back (widest) at bx+reach, tip (point) at bx
+          rightInner.append('polyline')
+            .attr('points', `${bx + CHEV_TIP_REACH},${-CHEV_HALF_H} ${bx},0 ${bx + CHEV_TIP_REACH},${CHEV_HALF_H}`)
+            .attr('fill', 'none')
+            .attr('stroke', RELATION_COLORS[d.group])
+            .attr('stroke-width', 3)
+            .attr('stroke-linejoin', 'miter')
+            .attr('stroke-linecap', 'butt')
+            .attr('opacity', 0.65)
+        }
+
+      } else {
+        // Standard semantic edge: single pentagon + forward marching chevrons
         defs.append('clipPath')
           .attr('id', `edgeclip-${d.id}`)
           .attr('clipPathUnits', 'userSpaceOnUse')
           .append('polygon')
           .attr('points', chevronOuterPoints(0))
-      }
 
-      g.append('polyline')
-        .attr('class', 'chevron-outer')
-        .attr('fill', edgeFill(d.group))
-        .attr('stroke', edgeStroke(d.group))
-        .attr('stroke-width', 1.5)
-        .attr('stroke-linejoin', 'miter')
-        .attr('stroke-linecap', 'butt')
-        .attr('opacity', isStructural ? 1 : 0.7)
+        g.append('polyline')
+          .attr('class', 'chevron-outer')
+          .attr('fill', edgeFill(d.group))
+          .attr('stroke', edgeStroke(d.group))
+          .attr('stroke-width', 1)
+          .attr('stroke-linejoin', 'miter')
+          .attr('stroke-linecap', 'butt')
+          .attr('opacity', 0.85)
 
-      if (!isStructural) {
         const clipWrap = g.append('g').attr('clip-path', `url(#edgeclip-${d.id})`)
-        const innerG = clipWrap.append('g')
-          .attr('class', isReverse ? 'chevrons-reverse' : 'chevrons-forward')
+        const innerG = clipWrap.append('g').attr('class', 'chevrons-forward')
         for (let i = 0; i < CHEV_COUNT; i++) {
           const bx = CHEV_START + i * CHEV_SPACING
           innerG.append('polyline')
             .attr('points', `${bx},${-CHEV_HALF_H} ${bx + CHEV_TIP_REACH},0 ${bx},${CHEV_HALF_H}`)
             .attr('fill', 'none')
             .attr('stroke', RELATION_COLORS[d.group])
-            .attr('stroke-width', 6)
+            .attr('stroke-width', 3)
             .attr('stroke-linejoin', 'miter')
             .attr('stroke-linecap', 'butt')
-            .attr('opacity', 0.55)
+            .attr('opacity', 0.65)
         }
       }
 
       g.append('title').text(`${d.relation_type} · ${d.confidence.toFixed(2)}`)
     })
 
+    // ── Edge hover ────────────────────────────────────────────────────────────
     edgeGroups
       .on('mouseenter', (event, d) => {
         const [mx, my] = d3.pointer(event, svgEl)
@@ -200,6 +295,7 @@ export function useGraphD3(
         edgeGroups.attr('opacity', null)
       })
 
+    // ── Node groups ───────────────────────────────────────────────────────────
     const nodeGroups = nodeG.selectAll<SVGGElement, GraphNode>('g')
       .data(simNodes, d => d.id)
       .join('g')
@@ -250,11 +346,12 @@ export function useGraphD3(
       }
     })
 
+    // ── Force simulation (charge -320, was -180) ──────────────────────────────
     const sim = d3.forceSimulation<GraphNode>(simNodes)
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges)
         .id(d => d.id)
         .strength(d => d.group === 'structural' ? 0.2 : d.confidence * 0.4))
-      .force('charge', d3.forceManyBody<GraphNode>().strength(-180).theta(0.9))
+      .force('charge', d3.forceManyBody<GraphNode>().strength(-320).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(d => d.type === 'Argument' ? 22 : 14).strength(0.7))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('radial',
@@ -264,20 +361,35 @@ export function useGraphD3(
         ).strength(d => d.type === 'Argument' ? 0.4 : 0)
       )
 
+    // ── Tick ──────────────────────────────────────────────────────────────────
     sim.on('tick', () => {
       edgeGroups.each(function(d) {
         const src = d.source as GraphNode
         const tgt = d.target as GraphNode
         if (src.x == null || tgt.x == null) return
+
         const dx = tgt.x! - src.x!
         const dy = tgt.y! - src.y!
         const len = Math.sqrt(dx * dx + dy * dy)
         const angle = Math.atan2(dy, dx) * (180 / Math.PI)
         const sel = d3.select(this)
+
         sel.attr('transform', `translate(${src.x},${src.y}) rotate(${angle})`)
-        const pts = chevronOuterPoints(len)
-        sel.select('.chevron-outer').attr('points', pts)
-        if (d.group !== 'structural') {
+
+        if (d.group === 'structural') {
+          sel.select('.struct-line').attr('x2', len)
+
+        } else if (d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS') {
+          const ptsL = halfChevronLeftPoints(len)
+          const ptsR = halfChevronRightPoints(len)
+          sel.select('.chevron-L').attr('points', ptsL)
+          sel.select('.chevron-R').attr('points', ptsR)
+          d3.select(`#edgeclip-L-${d.id} polygon`).attr('points', ptsL)
+          d3.select(`#edgeclip-R-${d.id} polygon`).attr('points', ptsR)
+
+        } else {
+          const pts = chevronOuterPoints(len)
+          sel.select('.chevron-outer').attr('points', pts)
           d3.select(`#edgeclip-${d.id} polygon`).attr('points', pts)
         }
       })
@@ -285,6 +397,7 @@ export function useGraphD3(
       nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
     })
 
+    // ── Resize ────────────────────────────────────────────────────────────────
     const observer = new ResizeObserver(() => {
       const { width: w, height: h } = svgEl.getBoundingClientRect()
       if (w < 10 || h < 10) return
@@ -298,6 +411,7 @@ export function useGraphD3(
     return () => { sim.stop(); observer.disconnect() }
   }, [nodes, edges, opts.filters])
 
+  // ── Selection halo ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!svgRef.current) return
     d3.select(svgRef.current).selectAll<SVGGElement, GraphNode>('.nodes g')
