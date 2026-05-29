@@ -38,7 +38,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
           .attr('x1', xScale(focalDoc.umap_x)).attr('y1', yScale(focalDoc.umap_y))
           .attr('x2', xScale(target.umap_x)).attr('y2', yScale(target.umap_y))
           .attr('stroke', RELATION_COLORS[rel.group])
-          .attr('stroke-width', Math.max(0.5, rel.confidence * 2))
+          .attr('stroke-width', Math.max(0.5, rel.confidence * 1.5))
           .attr('opacity', 0.65)
           .append('title').text(`${rel.relation_type} · ${rel.confidence.toFixed(2)}`)
       })
@@ -50,7 +50,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
       .join('circle')
       .attr('cx', d => xScale(d.umap_x))
       .attr('cy', d => yScale(d.umap_y))
-      .attr('r', d => d.id === focalId ? 5 : relatedMap.has(d.id) ? 3.5 : 2)
+      .attr('r', d => d.id === focalId ? 7 : relatedMap.has(d.id) ? 4 : 2)
       .attr('fill', d =>
         d.id === focalId ? '#F4A124'
         : relatedMap.has(d.id) ? '#118ab2'
@@ -60,7 +60,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
     if (focalDoc) {
       dotG.append('circle')
         .attr('cx', xScale(focalDoc.umap_x)).attr('cy', yScale(focalDoc.umap_y))
-        .attr('r', 9).attr('fill', 'none').attr('stroke', '#F4A124').attr('stroke-width', 2)
+        .attr('r', 11).attr('fill', 'none').attr('stroke', '#F4A124').attr('stroke-width', 2)
     }
   }, [detail, allDocs])
 
