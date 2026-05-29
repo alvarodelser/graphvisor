@@ -7,6 +7,7 @@ import { NodePanel } from './NodePanel'
 import { HoverTooltip } from './HoverTooltip'
 import { graphRailSections } from './GraphFilterRail'
 import type { GraphNode, GraphEdge } from '../../types'
+import type { HoverItem } from './useGraphD3'
 import styles from './GraphView.module.css'
 
 export function GraphView() {
@@ -22,11 +23,19 @@ export function GraphView() {
     })
   }, [selectedDocumentIds])
 
+  const handleHover = (item: HoverItem) => {
+    if (item?.type === 'node') {
+      setHoveredNode({ node: item.node, x: item.x, y: item.y })
+    } else {
+      setHoveredNode(null)
+    }
+  }
+
   const { reheat, freeze } = useGraphD3(svgRef, nodes, edges, {
     filters,
     selectedNodeId,
     onNodeClick: (node) => setSelectedNode(node.id),
-    onNodeHover: (node, x, y) => node ? setHoveredNode({ node, x, y }) : setHoveredNode(null),
+    onHover: handleHover,
     onCanvasClick: () => setSelectedNode(null),
   })
 

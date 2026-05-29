@@ -48,23 +48,9 @@ body {
   opacity: 0.7;
 }
 
-/* Graph edge animations */
-@keyframes dash-flow {
-  from { stroke-dashoffset: 12; }
-  to   { stroke-dashoffset: 0; }
-}
-@keyframes dash-flow-reverse {
-  from { stroke-dashoffset: 0; }
-  to   { stroke-dashoffset: 12; }
-}
-.edge-semantic-forward {
-  stroke-dasharray: 8 4;
-  animation: dash-flow 1.5s linear infinite;
-}
-.edge-semantic-reverse {
-  stroke-dasharray: 8 4;
-  animation: dash-flow-reverse 1.5s linear infinite;
-}
-.edge-structural {
-  stroke-dasharray: 3 3;
-}
+
+/* GraphVisor v3: Chevron edge animations (replace v2 dash animations) */
+@keyframes march-forward { from { transform: translateX(0); } to { transform: translateX(28px); } }
+@keyframes march-reverse { from { transform: translateX(0); } to { transform: translateX(-28px); } }
+.chevrons-forward { animation: march-forward 0.8s linear infinite; }
+.chevrons-reverse { animation: march-reverse 0.8s linear infinite; }
