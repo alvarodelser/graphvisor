@@ -1,0 +1,35 @@
+.card {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 260px;
+  padding: 12px 14px;
+  z-index: 200;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.sticky {
+  pointer-events: all;
+  border-left: 3px solid #F4A124;
+}
+.close {
+  position: absolute; top: 8px; right: 10px;
+  background: none; border: none; font-size: 18px;
+  color: #9ca3af; cursor: pointer; line-height: 1; padding: 0;
+}
+.close:hover { color: #374151; }
+.header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.edgeHeader { display: flex; align-items: center; gap: 8px; }
+.fullText {
+  font-size: 10px; color: #374151; line-height: 1.5;
+  max-height: 120px; overflow-y: auto;
+  margin-top: 6px;
+}
+.detailBtn {
+  width: 100%; background: #F4A124; color: #073b4c;
+  border: none; border-radius: 6px; padding: 6px 0;
+  font-size: 10px; font-weight: 700; cursor: pointer;
+  margin-top: 10px;
+}
+.detailBtn:hover { background: #e8940f; }
