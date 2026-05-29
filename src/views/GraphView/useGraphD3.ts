@@ -244,7 +244,7 @@ export function useGraphD3(
           .append('polygon')
           .attr('points', chevronOuterPoints(0))
 
-        g.append('polyline')
+        g.append('polygon')
           .attr('class', 'chevron-outer')
           .attr('fill', edgeFill(d.group))
           .attr('stroke', edgeStroke(d.group))
