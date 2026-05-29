@@ -41,7 +41,7 @@ export interface GraphEdge {
 export interface ArgumentRelation {
   relation_type: string
   confidence: number
-  group: 'positive' | 'negative' | 'causal'
+  group: RelationGroup
   source_document_id: string
   source_document_title: string
   page_reference: number

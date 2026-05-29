@@ -35,7 +35,6 @@ export function DetailView() {
     if (!detail || !rel.target_argument_id || rel.target_argument_id === detail.argument.id) return
     setNavStack(prev => [...prev, detail.argument.id])
     setSelectedNode(rel.target_argument_id)
-    dataService.getArgumentDetail(rel.target_argument_id).then(setDetail)
   }
 
   const navigateBack = () => {
@@ -43,7 +42,6 @@ export function DetailView() {
     const prevId = navStack[navStack.length - 1]
     setNavStack(s => s.slice(0, -1))
     setSelectedNode(prevId)
-    dataService.getArgumentDetail(prevId).then(setDetail)
   }
 
   if (!detail) {
