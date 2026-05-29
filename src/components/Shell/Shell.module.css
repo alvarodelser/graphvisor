@@ -17,6 +17,11 @@
   background: #F4A124; color: #073b4c; border-radius: 10px;
   padding: 1px 6px; font-size: 9px; font-weight: 700;
 }
+.dot {
+  font-size: 8px;
+  color: #F4A124;
+  line-height: 1;
+}
 .cta {
   margin-left: auto; background: #F4A124; color: #073b4c;
   border: none; border-radius: 8px; padding: 6px 16px;

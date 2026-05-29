@@ -39,6 +39,9 @@ export function Shell({ children }: Props) {
               {v === 'graph' && selectedDocumentIds.length > 0 && (
                 <span className={styles.badge}>{selectedDocumentIds.length}</span>
               )}
+              {v === 'detail' && selectedNodeId && (
+                <span className={styles.dot}>●</span>
+              )}
             </button>
           ))}
         </nav>
