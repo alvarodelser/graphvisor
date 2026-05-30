@@ -381,7 +381,7 @@ export function useGraphD3(
       })
       .on('mouseleave.label', function() {
         const el = d3.select(this).select<SVGTextElement>('.node-label').node()
-        if (el && el.getAttribute('data-pinned') !== '1') el.setAttribute('opacity', '0')
+        if (el && el.getAttribute('data-pinned') === '0') el.setAttribute('opacity', '0')
       })
 
     // ── Force simulation (charge -320, was -180) ──────────────────────────────
@@ -436,45 +436,55 @@ export function useGraphD3(
     })
 
     // ── Label collision detection after sim settles ────────────────────────────
-    // Estimate label bounding boxes in simulation space (no getBBox needed).
-    // Pin the label if no higher-priority label overlaps it.
-    const PX_PER_CHAR = 4.8  // 8px system-ui, approximate
-    sim.on('end', () => {
-      // Reset all pins first
-      nodeGroups.select('.node-label').attr('data-pinned', null).attr('opacity', 0)
+    // Run once when alpha drops below a low threshold (sim ~settled).
+    // Uses estimated bounding boxes in simulation space — no getBBox needed.
+    // Higher-degree nodes take priority; overlapping lower-priority labels stay hidden.
+    const PX_PER_CHAR = 5.0   // 8px system-ui, slightly generous
+    const LABEL_H = 14        // approximate pixel height of 8px text with padding
 
-      // Collect label rects in sim space, sorted by degree desc
+    let pinningDone = false
+    sim.on('tick.labels', () => {
+      if (pinningDone || sim.alpha() > 0.04) return
+      pinningDone = true
+
       type LabelRect = { node: GraphNode; x1: number; x2: number; y1: number; y2: number; el: SVGTextElement }
       const rects: LabelRect[] = []
+
       nodeGroups.each(function(d) {
         if (d.x == null || d.y == null) return
         const el = d3.select(this).select<SVGTextElement>('.node-label').node()
         if (!el) return
         const text = el.textContent ?? ''
         if (!text) return
-        const w = text.length * PX_PER_CHAR
-        const yOff = d.type === 'Argument'
-          ? (16 + Math.min(degree.get(d.id) ?? 0, 10) * 1.5) / 2 + 11
-          : d.type === 'Entity' ? 20 : 22
+        const w = text.length * PX_PER_CHAR + 8  // 4px padding each side
+        const nodeHalfH = d.type === 'Argument'
+          ? (16 + Math.min(degree.get(d.id) ?? 0, 10) * 1.5) / 2
+          : d.type === 'Entity' ? 8 : 10
+        const yOff = nodeHalfH + 11
         rects.push({
           node: d,
           x1: d.x! - w / 2, x2: d.x! + w / 2,
-          y1: d.y! + yOff - 5, y2: d.y! + yOff + 5,
+          y1: d.y! + yOff - LABEL_H / 2, y2: d.y! + yOff + LABEL_H / 2,
           el,
         })
       })
-      rects.sort((a, b) => (degree.get(b.node.id) ?? 0) - (degree.get(a.node.id) ?? 0))
 
-      const pinned: LabelRect[] = []
+      // Sort: Arguments before others, then by degree desc (most connected = highest priority)
+      rects.sort((a, b) => {
+        const ta = a.node.type === 'Argument' ? 0 : 1
+        const tb = b.node.type === 'Argument' ? 0 : 1
+        if (ta !== tb) return ta - tb
+        return (degree.get(b.node.id) ?? 0) - (degree.get(a.node.id) ?? 0)
+      })
+
+      const visible: LabelRect[] = []
       rects.forEach(r => {
-        const overlaps = pinned.some(p =>
+        const overlaps = visible.some(p =>
           r.x1 < p.x2 && r.x2 > p.x1 && r.y1 < p.y2 && r.y2 > p.y1
         )
-        if (!overlaps) {
-          r.el.setAttribute('data-pinned', '1')
-          r.el.setAttribute('opacity', '1')
-          pinned.push(r)
-        }
+        r.el.setAttribute('data-pinned', overlaps ? '0' : '1')
+        r.el.setAttribute('opacity', overlaps ? '0' : '1')
+        if (!overlaps) visible.push(r)
       })
     })
 
