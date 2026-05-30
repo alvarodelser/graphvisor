@@ -284,11 +284,8 @@ export function useGraphD3(
         const sn = (d.source as GraphNode).id
         const tn = (d.target as GraphNode).id
         const involvedNodes = new Set([sn, tn])
-        const involvedEdges = new Set<string>([d.id])
-        ;(adjEdges.get(sn) ?? new Set()).forEach(id => involvedEdges.add(id))
-        ;(adjEdges.get(tn) ?? new Set()).forEach(id => involvedEdges.add(id))
         nodeGroups.attr('opacity', (nd: GraphNode) => involvedNodes.has(nd.id) ? 1 : 0.06)
-        edgeGroups.attr('opacity', (ed: GraphEdge) => involvedEdges.has(ed.id) ? 1 : 0.04)
+        edgeGroups.attr('opacity', (ed: GraphEdge) => ed.id === d.id ? 1 : 0.04)
       })
       .on('mouseleave.mute', () => {
         nodeGroups.attr('opacity', null)
@@ -351,7 +348,7 @@ export function useGraphD3(
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges)
         .id(d => d.id)
         .strength(d => d.group === 'structural' ? 0.2 : d.confidence * 0.4))
-      .force('charge', d3.forceManyBody<GraphNode>().strength(-320).theta(0.9))
+      .force('charge', d3.forceManyBody<GraphNode>().strength(-500).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(d => d.type === 'Argument' ? 22 : 14).strength(0.7))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('radial',

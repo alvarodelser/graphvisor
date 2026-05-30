@@ -28,11 +28,25 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
           </span>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>{edge.confidence.toFixed(2)}</span>
         </div>
-        <div style={{ fontSize: 10, color: '#073b4c', marginTop: 6 }}>
-          <span style={{ fontWeight: 600 }}>{sourceNode?.label ?? '?'}</span>
-          <span style={{ color: '#9ca3af', margin: '0 6px' }}>→</span>
-          <span style={{ fontWeight: 600 }}>{targetNode?.label ?? '?'}</span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
+          <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#073b4c', lineHeight: 1.4 }}>
+            {sourceNode?.full_text ? `"${sourceNode.full_text.slice(0, 60)}…"` : sourceNode?.label ?? '?'}
+          </div>
+          <div style={{ fontSize: 16, color: '#9ca3af', flexShrink: 0, paddingTop: 1 }}>→</div>
+          <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#073b4c', lineHeight: 1.4 }}>
+            {targetNode?.full_text ? `"${targetNode.full_text.slice(0, 60)}…"` : targetNode?.label ?? '?'}
+          </div>
         </div>
+        {edge.full_predicate && (
+          <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5, marginTop: 8, fontStyle: 'italic' }}>
+            "{edge.full_predicate}"
+          </div>
+        )}
+        {edge.source_document_title && (
+          <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
+            {edge.source_document_title}
+          </div>
+        )}
       </div>
     )
   }

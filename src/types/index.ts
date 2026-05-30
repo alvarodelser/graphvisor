@@ -36,6 +36,8 @@ export interface GraphEdge {
   relation_type: string
   confidence: number
   group: RelationGroup
+  full_predicate?: string
+  source_document_title?: string
 }
 
 export interface ArgumentRelation {
