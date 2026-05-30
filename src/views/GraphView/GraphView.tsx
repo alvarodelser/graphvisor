@@ -13,7 +13,7 @@ export function GraphView() {
   const svgRef = useRef<SVGSVGElement>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [edges, setEdges] = useState<GraphEdge[]>([])
-  const [hoverItem, setHoverItem] = useState<HoverItem>(null)
+  const [, setHoverItem] = useState<HoverItem>(null)
   const [stickyItem, setStickyItem] = useState<HoverItem>(null)
   const { selectedDocumentIds, selectedNodeId, setSelectedNode, setActiveView, filters, setFilters } = useStore()
 
@@ -37,7 +37,7 @@ export function GraphView() {
     },
   })
 
-  const displayItem = stickyItem ?? hoverItem
+  const displayItem = stickyItem
 
   return (
     <div className={styles.view}>

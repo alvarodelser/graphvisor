@@ -51,18 +51,26 @@ export function RelationList({ detail, visibleGroups, onRowClick, focalId }: Pro
                 background: RELATION_COLORS[rel.group],
                 color: GROUP_TEXT_COLOR[rel.group] ?? '#fff',
                 borderRadius: 20, padding: '2px 7px', fontSize: 9, fontWeight: 700,
-                display: 'inline-block',
+                display: 'inline-block', whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
               }}>
                 {rel.relation_type}
               </span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124', paddingTop: 1 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124', paddingTop: 1, whiteSpace: 'nowrap' }}>
                 {rel.confidence.toFixed(2)}
               </span>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#073b4c' }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: '#073b4c',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+              }}>
                 {rel.source_document_title.split(' — ')[0]} · p.{rel.page_reference}
               </div>
-              <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.4 }}>
-                "{rel.full_predicate.length > 60 ? rel.full_predicate.slice(0, 60) + '…' : rel.full_predicate}"
+              <div style={{
+                fontSize: 10, color: '#374151', lineHeight: 1.4,
+                overflow: 'hidden', display: '-webkit-box',
+                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              }}>
+                "{rel.full_predicate}"
               </div>
             </div>
           )
