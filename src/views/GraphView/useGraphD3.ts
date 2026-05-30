@@ -4,7 +4,7 @@ import type { RefObject } from 'react'
 import type { GraphNode, GraphEdge, FilterState } from '../../types'
 import { computeRadialTiers, RELATION_COLORS } from '../../utils/geometry'
 
-const RADIAL_RADII = [0, 120, 240, 360]
+const RADIAL_RADII = [0, 180, 360, 520]
 
 // ── Chevron geometry constants ────────────────────────────────────────────────
 const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
@@ -103,8 +103,9 @@ export function useGraphD3(
         .attr('cx', width / 2).attr('cy', height / 2)
         .attr('r', i * 120)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(7,59,76,0.05)')
+        .attr('stroke', 'rgba(7,59,76,0.18)')
         .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '4 8')
     }
 
     const { minConfidence, relationGroups, nodeTypes } = optsRef.current.filters
@@ -334,12 +335,36 @@ export function useGraphD3(
         g.append('rect').attr('x', -size / 2).attr('y', -size / 2)
           .attr('width', size).attr('height', size).attr('rx', 4).attr('fill', '#073b4c')
         g.append('title').text(d.full_text ?? d.label)
+        const snippet = d.full_text ? d.full_text.slice(0, 28) + '…' : d.id
+        g.append('text')
+          .attr('y', size / 2 + 11)
+          .attr('text-anchor', 'middle')
+          .attr('pointer-events', 'none')
+          .attr('fill', '#073b4c')
+          .attr('font-size', '8px')
+          .text(snippet)
       } else if (d.type === 'Entity') {
         g.append('circle').attr('r', 8).attr('fill', '#118ab2')
         g.append('title').text(d.label)
+        g.append('text')
+          .attr('y', 20)
+          .attr('text-anchor', 'middle')
+          .attr('pointer-events', 'none')
+          .attr('fill', '#118ab2')
+          .attr('font-size', '8px')
+          .attr('font-weight', '600')
+          .text(d.label)
       } else {
         g.append('polygon').attr('points', '0,-10 10,0 0,10 -10,0').attr('fill', '#74b9d6')
         g.append('title').text(d.label)
+        g.append('text')
+          .attr('y', 22)
+          .attr('text-anchor', 'middle')
+          .attr('pointer-events', 'none')
+          .attr('fill', '#74b9d6')
+          .attr('font-size', '8px')
+          .attr('font-weight', '600')
+          .text(d.label)
       }
     })
 
@@ -348,14 +373,14 @@ export function useGraphD3(
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges)
         .id(d => d.id)
         .strength(d => d.group === 'structural' ? 0.2 : d.confidence * 0.4))
-      .force('charge', d3.forceManyBody<GraphNode>().strength(-500).theta(0.9))
+      .force('charge', d3.forceManyBody<GraphNode>().strength(-280).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(d => d.type === 'Argument' ? 22 : 14).strength(0.7))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('radial',
         d3.forceRadial<GraphNode>(
           d => d.type === 'Argument' ? RADIAL_RADII[tiers.get(d.id) ?? 3] : 0,
           width / 2, height / 2
-        ).strength(d => d.type === 'Argument' ? 0.4 : 0)
+        ).strength(d => d.type === 'Argument' ? 0.85 : 0)
       )
 
     // ── Tick ──────────────────────────────────────────────────────────────────
