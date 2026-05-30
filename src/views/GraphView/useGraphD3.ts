@@ -103,7 +103,7 @@ export function useGraphD3(
         .attr('cx', width / 2).attr('cy', height / 2)
         .attr('r', i * 120)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(7,59,76,0.18)')
+        .attr('stroke', 'rgba(7,59,76,0.35)')
         .attr('stroke-width', 1)
         .attr('stroke-dasharray', '4 8')
     }
@@ -337,36 +337,51 @@ export function useGraphD3(
         g.append('title').text(d.full_text ?? d.label)
         const snippet = d.full_text ? d.full_text.slice(0, 28) + '…' : d.id
         g.append('text')
+          .attr('class', 'node-label')
           .attr('y', size / 2 + 11)
           .attr('text-anchor', 'middle')
           .attr('pointer-events', 'none')
           .attr('fill', '#073b4c')
           .attr('font-size', '8px')
+          .attr('opacity', 0)
           .text(snippet)
       } else if (d.type === 'Entity') {
         g.append('circle').attr('r', 8).attr('fill', '#118ab2')
         g.append('title').text(d.label)
         g.append('text')
+          .attr('class', 'node-label')
           .attr('y', 20)
           .attr('text-anchor', 'middle')
           .attr('pointer-events', 'none')
           .attr('fill', '#118ab2')
           .attr('font-size', '8px')
           .attr('font-weight', '600')
+          .attr('opacity', 0)
           .text(d.label)
       } else {
         g.append('polygon').attr('points', '0,-10 10,0 0,10 -10,0').attr('fill', '#74b9d6')
         g.append('title').text(d.label)
         g.append('text')
+          .attr('class', 'node-label')
           .attr('y', 22)
           .attr('text-anchor', 'middle')
           .attr('pointer-events', 'none')
           .attr('fill', '#74b9d6')
           .attr('font-size', '8px')
           .attr('font-weight', '600')
+          .attr('opacity', 0)
           .text(d.label)
       }
     })
+
+    // Show label on hover, hide on leave
+    nodeGroups
+      .on('mouseenter.label', function() {
+        d3.select(this).select('.node-label').attr('opacity', 1)
+      })
+      .on('mouseleave.label', function() {
+        d3.select(this).select('.node-label').attr('opacity', 0)
+      })
 
     // ── Force simulation (charge -320, was -180) ──────────────────────────────
     const sim = d3.forceSimulation<GraphNode>(simNodes)

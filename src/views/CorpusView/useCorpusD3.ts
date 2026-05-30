@@ -82,7 +82,7 @@ export function useCorpusD3(
         .attr('cx', width / 2).attr('cy', height / 2)
         .attr('r', i * 120)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(7,59,76,0.18)')
+        .attr('stroke', 'rgba(7,59,76,0.35)')
         .attr('stroke-width', 1)
         .attr('stroke-dasharray', '4 8')
     }
