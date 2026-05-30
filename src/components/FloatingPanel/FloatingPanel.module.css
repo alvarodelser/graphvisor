@@ -1,0 +1,66 @@
+/* FAB button — positioned absolute inside the view's canvas div */
+.fab {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #073b4c;
+  color: #fff;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(7,59,76,0.35);
+  user-select: none;
+}
+.fab:hover { box-shadow: 0 3px 12px rgba(7,59,76,0.5); }
+.fab.open  { border-color: #F4A124; }
+
+/* Floating panel — fixed in viewport, draggable */
+.panel {
+  position: fixed;
+  width: 220px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  user-select: none;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  cursor: grab;
+  border-bottom: 1px solid rgba(7,59,76,0.08);
+  flex-shrink: 0;
+}
+.header:active { cursor: grabbing; }
+.headerTitle {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #073b4c;
+}
+.close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #9ca3af;
+  line-height: 1;
+  padding: 0;
+}
+.close:hover { color: #374151; }
+.body {
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
