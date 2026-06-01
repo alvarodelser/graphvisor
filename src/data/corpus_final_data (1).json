@@ -1,0 +1,1858 @@
+[
+    {
+        "source": "Seeing Mutations in Living Cells - Current Biology",
+        "year": "2010",
+        "data": [
+            {
+                "relations": [
+                    {
+                        "subject": "compromised mismatch repair",
+                        "relation": "causes",
+                        "object": "increased MutL foci accumulation",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 0,
+                        "reasoning": "The argument directly links compromised mismatch repair to a dramatic rise in MutL foci accumulation in cells."
+                    },
+                    {
+                        "subject": "number of MutL foci",
+                        "relation": "correlates_with",
+                        "object": "strain-specific mutation rates",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.9,
+                        "source_argument_id": 0,
+                        "reasoning": "The argument explicitly states that foci counts correspond to mutation rates across different strains."
+                    }
+                ],
+                "full_argument": "We have removed this limitation by studying the localization of functional, fluorescently labeled derivatives of mismatch repair proteins. In wild-type cells, a small fraction of the cells contains fluorescent focus formed by the accumulation of MutL, and the number of cells with focus, as well as the number of foci per cell, rises dramatically as mismatch repair is compromised, with the number of foci corresponding to the mutation rates of the different strains.",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes a statistical relationship between the number of fluorescent foci and mutation rates in different strains, without asserting causality. The observed correlation is presented as empirical evidence supporting the claim that mismatch repair compromise correlates with increased foci formation.",
+                "confidence": 0.9,
+                "arg_id": 0,
+                "concept_level": {
+                    "concept_id": 41,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "genomic mutation rate",
+                        "mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9186834,
+                        0.8973346,
+                        0.89031965
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.75,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "DNA repair machinery",
+                        "relation": "reveals",
+                        "object": "genomic mutations",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 1,
+                        "reasoning": "The method utilizes DNA repair machinery to directly observe unrepaired DNA replication errors, thereby revealing emerging genomic mutations."
+                    },
+                    {
+                        "subject": "unrepaired DNA replication errors",
+                        "relation": "induces",
+                        "object": "mutations",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 1,
+                        "reasoning": "Unrepaired DNA replication errors are converted into mutations during subsequent DNA synthesis, establishing a mechanistic link between error persistence and mutagenesis."
+                    }
+                ],
+                "full_argument": "Here we exploit the cell’s own machinery for correcting mistakes in DNA replication to directly see the small fraction of mistakes that is not repaired and is converted into mutations by the next round of DNA synthesis (Figure 1). This method detects genomic mutations as they emerge in living cells independently of their potential phenotype.",
+                "argument_type": "evidence",
+                "reasoning": "The argument describes an experimental method (using cellular machinery to detect unrepaired DNA replication errors) that provides direct empirical evidence for mutation detection in living cells. The mechanistic secondary type reflects the explanation of how the method works (via DNA synthesis converting unrepaired mistakes into mutations). The epistemic strength is strong due to the explicit description of a validated technique for observing mutations.",
+                "confidence": 0.95,
+                "arg_id": 1,
+                "concept_level": {
+                    "concept_id": 43,
+                    "parent_concepts": [
+                        "genomic mutation rate",
+                        "mutation rate",
+                        "mean number of foci per cell"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9268544,
+                        0.9097269,
+                        0.9026854
+                    ],
+                    "descriptions": [
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.75,
+                        0.95,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "stochastic fluctuations of a limiting component",
+                        "relation": "may_cause",
+                        "object": "transient mismatch repair-defective subpopulation in wild-type cells",
+                        "argument_type": "causal",
+                        "epistemic_strength": "speculative",
+                        "confidence": 0.65,
+                        "source_argument_id": 2,
+                        "reasoning": "The argument speculates that stochastic fluctuations in a limiting component could transiently cause mismatch repair-defectiveness in wild-type cells, though this remains unconfirmed."
+                    }
+                ],
+                "full_argument": "Second, because we analyze only cells with high mutation rates, our conclusion of uniformity of mutation rates holds for most cells with high mutation rates. We cannot rule out, for example, that a subpopulation in wild-type cells can become transiently mismatch repair-defective as a result of, for example, stochastic fluctuations of a limiting component.",
+                "argument_type": "evidence",
+                "reasoning": "The argument presents evidence supporting the conclusion that mutation rate uniformity holds for most high-mutation-rate cells. However, it also speculates (hypothesis) about a potential exception involving stochastic fluctuations in wild-type cells, acknowledging uncertainty in ruling out this possibility.",
+                "confidence": 0.75,
+                "arg_id": 2,
+                "concept_level": {
+                    "concept_id": 43,
+                    "parent_concepts": [
+                        "mutation rate",
+                        "genomic mutation rate",
+                        "mean number of foci per cell"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9254353,
+                        0.9225854,
+                        0.9151699
+                    ],
+                    "descriptions": [
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms.",
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.95,
+                        0.75,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "mean genome number calculation in exponentially growing cell population",
+                        "relation": "is_defined_as",
+                        "object": "exponential growth model using measured doubling time (40 min)",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 5,
+                        "reasoning": "The argument explicitly defines the calculation method for mean genome number using exponential growth parameters and measured doubling time."
+                    },
+                    {
+                        "subject": "fluorescent microcolony images",
+                        "relation": "describes",
+                        "object": "time-dependent morphological changes in microcolony growth",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.85,
+                        "source_argument_id": 5,
+                        "reasoning": "The fluorescent images provide visual evidence of microcolony development at specific time intervals (0-50 min)."
+                    }
+                ],
+                "full_argument": "We calculate that an exponentially growing population of cells has mean genome number of 2.0 by using the measured doubling time of the population $( 4 0 \\mathrm { \\ m i n } )$ and three (A) Representative examples of the consecutive fluorescent images of the same microcolony after 0, 10, 20, 30, 40, and 50 min of growth.",
+                "argument_type": "evidence",
+                "reasoning": "The argument presents a calculation (mean genome number of 2.0) derived from measured data (doubling time of 40 min) and observational evidence (fluorescent images of microcolony growth). This constitutes empirical evidence supporting a quantitative claim, without proposing a causal mechanism, hypothesis, or conceptual framework.",
+                "confidence": 0.8,
+                "arg_id": 5,
+                "concept_level": {
+                    "concept_id": 70,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "mutation rate",
+                        "genomic mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9131802,
+                        0.8971548,
+                        0.8940243
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.95,
+                        0.75
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "fluorescently labeled mismatch repair proteins",
+                        "relation": "supports",
+                        "object": "distinguishing hypotheses",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 8,
+                        "reasoning": "The production of fluorescently labeled mismatch repair proteins is explicitly described as a method used to distinguish hypotheses, indicating experimental support for this purpose."
+                    }
+                ],
+                "full_argument": "to distinguish these hypotheses, we produced fluorescently labeled mismatch repair proteins",
+                "argument_type": "evidence",
+                "reasoning": "The argument describes an experimental method (producing fluorescently labeled proteins) aimed at distinguishing hypotheses, which contributes to empirical evidence collection. While the action itself is not direct evidence, it is part of the experimental process that would generate evidence to support or refute hypotheses. The secondary classification as 'hypothesis' reflects the context of testing competing hypotheses.",
+                "confidence": 0.6,
+                "arg_id": 8,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "Yeast Aging Biomarkers",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.8950581,
+                        0.8948923,
+                        0.8891663
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.92,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "measuring the frequency of mutant cells",
+                        "relation": "reveals",
+                        "object": "discrepancy in the expected direction of rifampicin-resistant colony probability",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 10,
+                        "reasoning": "The argument explicitly links the measurement of mutant cell frequency to the observed discrepancy, explaining it as a mechanistic consequence of earlier-arising mutations generating more colonies."
+                    },
+                    {
+                        "subject": "mutations arising earlier in the culture",
+                        "relation": "causes",
+                        "object": "increased number of mutant colonies compared to later-arising mutations",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.98,
+                        "source_argument_id": 10,
+                        "reasoning": "The argument directly states that earlier-arising mutations give rise to more mutant colonies, establishing a clear causal relationship."
+                    }
+                ],
+                "full_argument": "We observe that each focus corresponds to a probability of obtaining a rifampicin-resistant colony of $8 . 2 \times 1 0 ^ { - 6 }$ ; this discrepancy is in the expected direction because we measured the frequency of mutant cells, rather than the mutation rate, and mutations that arise earlier in the culture give rise to more mutant colonies than those that arise later [1].",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes a statistical relationship between measured mutant cell frequency and observed rifampicin-resistant colony probability, while explaining the discrepancy through a mechanistic rationale (earlier mutations producing more colonies). It does not assert causality but highlights a correlation and its underlying biological mechanism.",
+                "confidence": 0.9,
+                "arg_id": 10,
+                "concept_level": {
+                    "concept_id": 70,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "mutation rate",
+                        "genomic mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.914595,
+                        0.9022545,
+                        0.8991848
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.95,
+                        0.75
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "eGFP-MutL focus frequency",
+                        "relation": "correlates_with",
+                        "object": "rifampicin resistance mutation frequency",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.98,
+                        "source_argument_id": 12,
+                        "reasoning": "The high R² value (0.999) in the plot indicates a strong statistical correlation between eGFP-MutL focus frequency and rifampicin resistance mutation frequency across the three strains."
+                    }
+                ],
+                "full_argument": "The plot shows the correlation between eGFP-MutL focus frequency and frequency of colonies that contain spontaneous mutations to rifampicin resistance $( \\mathsf { R } ^ { 2 } = 0 . 9 9 9 )$ for three strains with different mutation rates: , mutL , and  , all expressing eGFP-MutLWT.",
+                "argument_type": "correlational",
+                "reasoning": "The argument explicitly describes a statistical correlation (R² = 0.999) between two variables without asserting causation, aligning with the correlational category. The high R² value provides strong empirical support, and the presentation of data across multiple strains qualifies as evidence.",
+                "confidence": 0.95,
+                "arg_id": 12,
+                "concept_level": {
+                    "concept_id": 70,
+                    "parent_concepts": [
+                        "mutation rate",
+                        "mean number of foci per cell",
+                        "genomic mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.911024,
+                        0.9100999,
+                        0.90028405
+                    ],
+                    "descriptions": [
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.95,
+                        0.9,
+                        0.75
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "tracking eGFP-MutL foci in individual cells",
+                        "relation": "supports",
+                        "object": "first prediction",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.7,
+                        "source_argument_id": 15,
+                        "reasoning": "The experimental method of tracking eGFP-MutL foci in individual cells is explicitly used to test the first prediction, providing empirical evidence for its validation."
+                    }
+                ],
+                "full_argument": "We tested the first prediction by following the fate of the eGFP-MutL foci in individual  cells.",
+                "argument_type": "evidence",
+                "reasoning": "The argument describes an experimental approach (tracking eGFP-MutL foci in individual cells) to test a prediction, which constitutes providing empirical evidence. The epistemic strength is moderate because the outcome of the experiment is not explicitly stated, only the method of testing. Confidence is high due to the clear description of an experimental procedure, though secondary types are not applicable here as the focus is solely on evidence provision.",
+                "confidence": 0.8,
+                "arg_id": 15,
+                "concept_level": {
+                    "concept_id": 41,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "Yeast Aging Biomarkers",
+                        "mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.90011156,
+                        0.8882303,
+                        0.8823209
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.92,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "point mutations, small deletions, or small insertions in mutH mutD5 gene",
+                        "relation": "causes",
+                        "object": "Rifampicin mutH mutD5 resistance",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 16,
+                        "reasoning": "The argument directly states that Rifampicin mutH mutD5 resistance results from specific genetic alterations, establishing a causal relationship."
+                    }
+                ],
+                "full_argument": "Rifampicin mutH mutD5 resistance is a result of point mutations, small deletions, or small insertions in the  gene [16].",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states that specific genetic alterations (point mutations, deletions, insertions) cause Rifampicin resistance in mutH mutD5, establishing a direct causal relationship. The citation [16] supports this as empirical evidence, strengthening the epistemic claim.",
+                "confidence": 0.95,
+                "arg_id": 16,
+                "concept_level": {
+                    "concept_id": 70,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "mutation rate",
+                        "genomic mutation rate"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9001069,
+                        0.8979509,
+                        0.8965723
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Rate of mutations occurring across the genome, often subject to underestimation due to undetected lesions or repair mechanisms."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.95,
+                        0.75
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "source": "Protein damage_ageing_and_ARDs_annotated",
+        "year": "2014",
+        "data": [
+            {
+                "relations": [],
+                "full_argument": "A total of 466 WT OGT cells during $1 2 \\mathrm{h}$ and 207 petite OGT cells during $3 5 \\mathrm{h}$ were examined.",
+                "argument_type": "evidence",
+                "reasoning": "The argument reports specific numerical data from experimental observations (cell counts over defined time periods), which directly constitutes empirical evidence. There is no causal claim, hypothesis, or conceptual reframing.",
+                "confidence": 0.95,
+                "arg_id": 2,
+                "concept_level": {
+                    "concept_id": 86,
+                    "parent_concepts": [
+                        "mean number of foci per cell",
+                        "Yeast Aging Biomarkers",
+                        "Oxidative Proteome Damage"
+                    ],
+                    "parent_concepts_cos": [
+                        0.8953485,
+                        0.87786025,
+                        0.8714636
+                    ],
+                    "descriptions": [
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.92,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "acting upstream on disease causes",
+                        "relation": "causes",
+                        "object": "elimination of the need to study downstream consequences",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 4,
+                        "reasoning": "The argument directly states that acting upstream on disease causes leads to the elimination of the need to study downstream consequences, establishing a causal relationship."
+                    }
+                ],
+                "full_argument": "Health-wise, acting 'upstream' upon the cause(s) of disease(s) eliminates the need to study their complicated downstream consequences.",
+                "argument_type": "causal",
+                "reasoning": "The argument implies a causal relationship between acting on upstream causes of disease and eliminating the need to study downstream consequences. It frames this as a strategic approach (conceptual) to disease prevention, suggesting that addressing root causes directly mitigates the need for downstream analysis. The epistemic strength is moderate as it presents a general principle without specific empirical evidence.",
+                "confidence": 0.7,
+                "arg_id": 4,
+                "concept_level": {
+                    "concept_id": 45,
+                    "parent_concepts": [
+                        "Disease Etiology",
+                        "Age-Related Diseases",
+                        "Proteome Homeostasis"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9075752,
+                        0.90329206,
+                        0.8893757
+                    ],
+                    "descriptions": [
+                        "The study of the causes and mechanisms underlying diseases, including genetic, environmental, and molecular factors contributing to pathogenesis.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.95,
+                        0.94,
+                        0.93
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "translation speed",
+                        "relation": "increases",
+                        "object": "error rate",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 7,
+                        "reasoning": "The argument directly states that faster translation leads to higher error rates, establishing a causal relationship between translation speed and error rate."
+                    }
+                ],
+                "full_argument": "While it is difficult to live longer by becoming another species, there is a potent physiological tuning of translational fidelity via the regulation of the speed of translation by TOR signalling: the faster the translation, the higher is its error rate.",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states a causal relationship between translation speed (regulated by TOR signaling) and error rate, asserting that faster translation directly increases error rates. The mention of TOR signaling as the regulatory mechanism adds a mechanistic layer, explaining how the causal relationship is mediated. The claim is presented as a well-established physiological principle, indicating strong epistemic support.",
+                "confidence": 0.9,
+                "arg_id": 7,
+                "concept_level": {
+                    "concept_id": 64,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "Proteome Homeostasis",
+                        "Yeast Aging Biomarkers"
+                    ],
+                    "parent_concepts_cos": [
+                        0.89981985,
+                        0.8987397,
+                        0.896638
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.93,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "monitoring Hsp104-GFP aggregates during lifespan of budding yeast",
+                        "relation": "describes",
+                        "object": "ageing-related phenotypes",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 8,
+                        "reasoning": "The argument explicitly states that monitoring Hsp104-GFP aggregates is a well-established method for studying ageing-related phenotypes in budding yeast."
+                    },
+                    {
+                        "subject": "lifespan of budding yeast",
+                        "relation": "associated_with",
+                        "object": "ageing-related phenotypes",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 8,
+                        "reasoning": "The argument classifies the lifespan of budding yeast as one of the best-described ageing-related phenotypes, establishing an explicit association."
+                    }
+                ],
+                "full_argument": "Due to the lack of reliable methods to quantitate in vivo protein carbonylation in single cells, we applied a wellestablished methodology of monitoring Hsp104-GFP aggregates during lifespan of budding yeast, Saccharomyces cerevisiae, one of the best-described ageing-related phenotypes [40,41].",
+                "argument_type": "evidence",
+                "reasoning": "The argument cites established methodologies (Hsp104-GFP aggregate monitoring) as a justified approach due to limitations in alternative methods. This references prior empirical work (references 40,41) to support the choice of experimental strategy, aligning with the 'evidence' category. The conceptual aspect arises from framing the methodological choice within the context of aging-related phenotypes.",
+                "confidence": 0.85,
+                "arg_id": 8,
+                "concept_level": {
+                    "concept_id": 45,
+                    "parent_concepts": [
+                        "Yeast Aging Biomarkers",
+                        "Protein Carbonylation",
+                        "Proteome Homeostasis"
+                    ],
+                    "parent_concepts_cos": [
+                        0.95836157,
+                        0.91120607,
+                        0.90755266
+                    ],
+                    "descriptions": [
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.92,
+                        0.85,
+                        0.93
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "oxidative protein damage",
+                        "relation": "may_cause",
+                        "object": "ageing and ARD",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 9,
+                        "reasoning": "The argument proposes that oxidative protein damage is a likely common cause of ageing and ARD, indicating a causal relationship with moderate certainty."
+                    },
+                    {
+                        "subject": "oxidative protein damage",
+                        "relation": "may_cause",
+                        "object": "snowballing phenotypic consequences",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 9,
+                        "reasoning": "The argument links oxidative protein damage to 'snowballing phenotypic consequences,' suggesting a causal relationship with moderate certainty."
+                    }
+                ],
+                "full_argument": "Here, we conclude that oxidative protein damage is a likely common cause ofageing and ARD emerging via a common mechanism with 'snowballing' phenotypic consequences (symptoms).",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly proposes a causal relationship between oxidative protein damage and aging/ARD, but frames it as a 'likely' explanation, indicating tentativeness. The mention of a 'common mechanism' with 'snowballing' consequences suggests a mechanistic explanation. The use of 'likely' and 'conclude' implies a hypothesis rather than a strongly supported claim.",
+                "confidence": 0.75,
+                "arg_id": 9,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Age-Related Diseases",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.93887234,
+                        0.9193713,
+                        0.91395795
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.94,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "protein carbonylation detection experiments",
+                        "relation": "reveals",
+                        "object": "lower protein carbonylation levels in D. radiodurans relative to E. coli",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 10,
+                        "reasoning": "The detection of lower protein carbonylation levels in D. radiodurans compared to E. coli reveals a correlational relationship between the organism and the level of protein carbonylation."
+                    },
+                    {
+                        "subject": "protein carbonylation detection experiments",
+                        "relation": "reveals",
+                        "object": "lower protein carbonylation levels in ES cells relative to HeLa cells",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 10,
+                        "reasoning": "The detection of lower protein carbonylation levels in ES cells compared to HeLa cells reveals a correlational relationship between cell type and the level of protein carbonylation."
+                    }
+                ],
+                "full_argument": "For comparison, 10-fold lower protein carbonylation is detected for D. radiodurans relative to E.coli, as well as in ES cells compared to HeLa cells.",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes a quantitative comparison of protein carbonylation levels between distinct biological systems (D. radiodurans vs. E. coli, ES cells vs. HeLa cells), establishing a statistical relationship without asserting causality. The use of '10-fold lower' indicates a measurable, empirical observation, which functions as evidence for broader comparative analyses.",
+                "confidence": 0.95,
+                "arg_id": 10,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Protein Carbonylation",
+                        "Yeast Aging Biomarkers",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9038384,
+                        0.89827573,
+                        0.890355
+                    ],
+                    "descriptions": [
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.85,
+                        0.92,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "protein aggregates",
+                        "relation": "correlates_with",
+                        "object": "Gompertz function",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 11,
+                        "reasoning": "The argument directly links the appearance of protein aggregates to following the Gompertz function under optimal growth conditions, indicating a statistical correlation."
+                    },
+                    {
+                        "subject": "protein aggregates",
+                        "relation": "reveals",
+                        "object": "accumulation of damaged proteins",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 11,
+                        "reasoning": "The text explicitly states that protein aggregates reflect the accumulation of damaged proteins, providing empirical evidence of this association."
+                    }
+                ],
+                "full_argument": "In contrast with other well-known hallmarks of ageing, like telomere shortening or genomic instability, we show that under optimal growth conditions, the appearance of protein aggregates, reflecting the accumulation of damaged proteins [16,42], follows the Gompertz function (figure 5).",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes a statistical relationship (protein aggregates following the Gompertz function) under specific conditions without asserting causality. It presents an empirical observation ('we show') supported by references, aligning with correlational and evidence categories.",
+                "confidence": 0.95,
+                "arg_id": 11,
+                "concept_level": {
+                    "concept_id": 86,
+                    "parent_concepts": [
+                        "Yeast Aging Biomarkers",
+                        "Age-Related Diseases",
+                        "Oxidative Proteome Damage"
+                    ],
+                    "parent_concepts_cos": [
+                        0.925984,
+                        0.9205512,
+                        0.9161495
+                    ],
+                    "descriptions": [
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.92,
+                        0.94,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "protein carbonylation",
+                        "relation": "correlates_with",
+                        "object": "oxidative stress during ageing",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.75,
+                        "source_argument_id": 14,
+                        "reasoning": "The argument explicitly states that Stadtman's correlations link protein carbonylation to oxidative stress during ageing, framing it as a biomarker (a correlational relationship). The use of 'cautiousness' indicates moderate confidence in this association."
+                    }
+                ],
+                "full_argument": "By cautiousness, Stadtman's correlations were considered to mean that protein carbonylation is a mere biomarker of oxidative stress during ageing.",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes an interpretation of Stadtman's correlations (protein carbonylation as a biomarker of oxidative stress) without asserting causality. The cautious framing ('were considered to mean') suggests tentative interpretation, aligning with correlational reasoning. The claim could also be viewed as a hypothesis about the meaning of the correlations.",
+                "confidence": 0.7,
+                "arg_id": 14,
+                "concept_level": {
+                    "concept_id": 64,
+                    "parent_concepts": [
+                        "Protein Carbonylation",
+                        "Oxidative Proteome Damage",
+                        "Yeast Aging Biomarkers"
+                    ],
+                    "parent_concepts_cos": [
+                        0.93235123,
+                        0.91929734,
+                        0.9150186
+                    ],
+                    "descriptions": [
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.85,
+                        0.9,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "truncated proteins",
+                        "relation": "describes",
+                        "object": "inability to fold",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 15,
+                        "reasoning": "The argument directly states that truncated proteins cannot be folded, describing a mechanistic property related to protein structure."
+                    },
+                    {
+                        "subject": "truncated proteins",
+                        "relation": "describes",
+                        "object": "chaperone induction without requiring oxidation",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 15,
+                        "reasoning": "The argument specifies that truncated proteins do not require oxidation to elicit chaperone induction, describing a mechanistic pathway distinct from oxidation-dependent mechanisms."
+                    }
+                ],
+                "full_argument": "The truncated proteins cannot be folded and do not require oxidation to elicit chaperone induction [15]",
+                "argument_type": "evidence",
+                "reasoning": "The argument presents an empirical observation (truncated proteins cannot be folded and do not require oxidation for chaperone induction) supported by a citation [15], which aligns with the definition of evidence as experimental/observational support for a claim. The statement does not propose a hypothesis, mechanism, or causal relationship explicitly, but rather reports a finding.",
+                "confidence": 0.95,
+                "arg_id": 15,
+                "concept_level": {
+                    "concept_id": 86,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "Proteasome and Autophagy Pathways",
+                        "Oxidative Proteome Damage"
+                    ],
+                    "parent_concepts_cos": [
+                        0.917964,
+                        0.89673114,
+                        0.89479935
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.95,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "oxidative protein damage",
+                        "relation": "correlates_with",
+                        "object": "cell death",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 17,
+                        "reasoning": "The argument explicitly mentions a 'common correlation' between oxidative protein damage and cell death."
+                    },
+                    {
+                        "subject": "oxidative protein damage",
+                        "relation": "causes",
+                        "object": "cell death",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 17,
+                        "reasoning": "The argument directly states that oxidative protein damage is the 'root cause' of cell death."
+                    }
+                ],
+                "full_argument": "This common correlation establishes boxidative2protein damage as the root cause of cell death or the 'chemistry of death'[36].",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly claims a causal relationship ('root cause') between oxidative protein damage and cell death. However, this causal assertion is based on a 'common correlation,' which only establishes an association (not causation). The epistemic strength is weak because correlation alone does not rigorously prove causality without additional mechanistic or experimental evidence.",
+                "confidence": 0.75,
+                "arg_id": 17,
+                "concept_level": {
+                    "concept_id": 45,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Age-Related Diseases",
+                        "Proteome Homeostasis"
+                    ],
+                    "parent_concepts_cos": [
+                        0.92444086,
+                        0.91218895,
+                        0.910287
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.94,
+                        0.93
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "difference in carbonylation between wild-type and mutant α-synucleins",
+                        "relation": "reveals",
+                        "object": "intrinsic susceptibility to oxidative damage",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.75,
+                        "source_argument_id": 19,
+                        "reasoning": "The observed carbonylation difference is presented as evidence for underlying differences in oxidative damage susceptibility, conditional on the assumption of similar biosynthesis error rates."
+                    }
+                ],
+                "full_argument": "Supposing that error rates in biosynthesis and folding of three commercially available $\\alpha$-synuclein proteoforms are similar, the observed difference in the detected carbonylation between the wild-type and two mutant $\\alpha$-synucleins reflects the difference in their intrinsic susceptibility to oxidative damage.",
+                "argument_type": "causal",
+                "reasoning": "The argument posits that the observed difference in carbonylation reflects intrinsic susceptibility to oxidative damage, implying a causal relationship between susceptibility and carbonylation levels. However, the claim is conditional on the unverified assumption that error rates in biosynthesis/folding are similar, introducing uncertainty. This makes the causal conclusion tentative rather than definitive, aligning with a hypothesis as a secondary category.",
+                "confidence": 0.75,
+                "arg_id": 19,
+                "concept_level": {
+                    "concept_id": 10,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Protein Carbonylation",
+                        "Proteasome and Autophagy Pathways"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9006891,
+                        0.90046465,
+                        0.89940333
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.85,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "reduced intrinsic protein oxidability",
+                        "relation": "correlates_with",
+                        "object": "increased protein stability in pathogenic bacteria",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 20,
+                        "reasoning": "The argument establishes a statistical association between reduced protein oxidability and increased protein stability in pathogenic bacteria without implying direct causality."
+                    }
+                ],
+                "full_argument": "Reduced intrinsic protein oxidability (carbonylation) is also related to increased stability of proteins in pathogenic bacteria [52].",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes an association between reduced protein oxidability and increased protein stability in pathogenic bacteria without asserting causality. The citation [52] implies empirical support, aligning with the 'evidence' secondary category.",
+                "confidence": 0.9,
+                "arg_id": 20,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Protein Carbonylation",
+                        "Oxidative Proteome Damage",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.93597007,
+                        0.92368054,
+                        0.912585
+                    ],
+                    "descriptions": [
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.85,
+                        0.9,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "Lewy bodies from motor neurons in early-onset Parkinson's disease patients",
+                        "relation": "reveals",
+                        "object": "α-synuclein carrying one of two mutations",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 21,
+                        "reasoning": "The analysis directly links Lewy bodies from Parkinson's disease patients to the presence of specific α-synuclein mutations."
+                    }
+                ],
+                "full_argument": "Analyses of the Lewy bodies from motor neurons of patients with early-onset Parkinson's disease revealed that their $\\alpha$ -synuclein carries one of two mutations:",
+                "argument_type": "evidence",
+                "reasoning": "The argument presents empirical findings from the analysis of Lewy bodies in Parkinson's disease patients, directly reporting observed mutations in α-synuclein. This constitutes experimental evidence supporting the claim about genetic alterations in the disease context.",
+                "confidence": 0.95,
+                "arg_id": 21,
+                "concept_level": {
+                    "concept_id": 85,
+                    "parent_concepts": [
+                        "Proteasome and Autophagy Pathways",
+                        "Age-Related Diseases",
+                        "Genetic Polymorphisms"
+                    ],
+                    "parent_concepts_cos": [
+                        0.8972715,
+                        0.8900484,
+                        0.88586104
+                    ],
+                    "descriptions": [
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Heritable DNA sequence variations influencing disease susceptibility, including single nucleotide polymorphisms (SNPs) and structural variants."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.95,
+                        0.94,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "attribute",
+                        "relation": "increases",
+                        "object": "reliability of growth curve parameters",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 22,
+                        "reasoning": "The argument directly states that the attribute increases the reliability of characteristic parameters derived from growth curves."
+                    }
+                ],
+                "full_argument": "This attribute increases the reliability of the characteristic parameters (e.g. lag phase, maximal growth rate, stationary phase) derived from a single growth curve [64].",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states that an attribute (independent variable) increases the reliability of parameters (dependent variable), implying a causal relationship. The citation [64] suggests empirical support, but the statement itself is a conclusion rather than raw evidence. The epistemic strength is moderate because the causal claim is contextualized within a scientific study, though the mechanism is not detailed.",
+                "confidence": 0.85,
+                "arg_id": 22,
+                "concept_level": {
+                    "concept_id": 64,
+                    "parent_concepts": [
+                        "mutation rate",
+                        "mean number of foci per cell",
+                        "Yeast Aging Biomarkers"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9073782,
+                        0.90262365,
+                        0.89485157
+                    ],
+                    "descriptions": [
+                        "Genetic parameter quantifying the frequency of mutations per generation, typically assumed to be uniform across populations under certain experimental conditions.",
+                        "Quantitative measure derived from Poisson distribution modeling, representing the average number of mutation-induced foci observed per cell in experimental assays.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.95,
+                        0.9,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "carbonylability",
+                        "relation": "associated_with",
+                        "object": "proteome quality",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 25,
+                        "reasoning": "The argument directly links carbonylability to proteome quality, indicating a statistical association where changes in proteome quality influence carbonylability."
+                    }
+                ],
+                "full_argument": "However, such carbonylability is readily affected by changing the quality of the proteome (figures 2 and 8).",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states that changes in proteome quality affect carbonylability, implying a causal relationship. The reference to figures (2 and 8) suggests empirical support, aligning with the 'evidence' secondary type. The epistemic strength is moderate because the claim is based on experimental data but does not establish a mechanistic pathway or definitive causality.",
+                "confidence": 0.8,
+                "arg_id": 25,
+                "concept_level": {
+                    "concept_id": 45,
+                    "parent_concepts": [
+                        "Protein Carbonylation",
+                        "Oxidative Proteome Damage",
+                        "Proteome Homeostasis"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9202874,
+                        0.9153491,
+                        0.9100708
+                    ],
+                    "descriptions": [
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.85,
+                        0.9,
+                        0.93
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "protein misfolding fixed by carbonylation",
+                        "relation": "may_cause",
+                        "object": "cell death diagnosed by membrane permeability",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.75,
+                        "source_argument_id": 27,
+                        "reasoning": "The argument suggests that protein misfolding fixed by carbonylation may directly cause cell death, though this is framed as a speculative conclusion ('seems to occur')."
+                    },
+                    {
+                        "subject": "protein misfolding fixed by carbonylation",
+                        "relation": "causes",
+                        "object": "formation of cytotoxic pore-like hydrophobic structures",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.9,
+                        "source_argument_id": 27,
+                        "reasoning": "The argument explicitly describes a mechanistic link between carbonylation-fixed protein misfolding and the formation of cytotoxic pore-like structures."
+                    }
+                ],
+                "full_argument": "Cell death diagnosed by membrane permeability seems to occur as the direct consequence of protein misfolding fixed by carbonylation (figure 3) that leads to the formation of cytotoxic pore-like hydrophobic structures that insert into biological membranes ([38,39] and references therein).",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states a causal chain (protein misfolding → carbonylation → pore formation → membrane permeability → cell death) and provides mechanistic details about the intermediate steps. The use of 'direct consequence' and references to supporting literature ([38,39]) indicates moderate epistemic strength, as the claim is contextualized within prior work but not definitively proven in the text.",
+                "confidence": 0.9,
+                "arg_id": 27,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Protein Carbonylation",
+                        "Oxidative Proteome Damage",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9159974,
+                        0.910561,
+                        0.9068566
+                    ],
+                    "descriptions": [
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.85,
+                        0.9,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "rapamycin",
+                        "relation": "reveals",
+                        "object": "molecular mechanisms of biological effects on ageing and age-related diseases (ARD)",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 28,
+                        "reasoning": "The argument states that the biological effects of rapamycin on ageing and ARD are now better understood at the molecular level, implying that research has revealed these mechanisms."
+                    },
+                    {
+                        "subject": "metformin",
+                        "relation": "reveals",
+                        "object": "molecular mechanisms of biological effects on ageing and age-related diseases (ARD)",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 28,
+                        "reasoning": "The argument states that the biological effects of metformin on ageing and ARD are now better understood at the molecular level, implying that research has revealed these mechanisms."
+                    },
+                    {
+                        "subject": "antioxidants",
+                        "relation": "reveals",
+                        "object": "molecular mechanisms of biological effects on ageing and age-related diseases (ARD)",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 28,
+                        "reasoning": "The argument states that the biological effects of antioxidants on ageing and ARD are now better understood at the molecular level, implying that research has revealed these mechanisms."
+                    }
+                ],
+                "full_argument": "The biological effects of rapamycin, metformin and antioxidants upon ageing and several ARD can now be better understood at the molecular level.",
+                "argument_type": "mechanistic",
+                "reasoning": "The argument describes enhanced molecular-level understanding of biological effects, which aligns with mechanistic explanations. It does not assert causality, propose hypotheses, or present empirical evidence directly.",
+                "confidence": 0.9,
+                "arg_id": 28,
+                "concept_level": {
+                    "concept_id": 64,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Age-Related Diseases",
+                        "Yeast Aging Biomarkers"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9246667,
+                        0.9232754,
+                        0.913928
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.94,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "studies of repair of UVA and UVB damage in human skin cells",
+                        "relation": "supports",
+                        "object": "conclusions",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 29,
+                        "reasoning": "The studies provide experimental evidence that supports the conclusions drawn about UVA and UVB damage repair mechanisms in human skin cells."
+                    }
+                ],
+                "full_argument": "Similar conclusions were drawn from the studies of repair of UVA and UVB damage in human skin cells [28].",
+                "argument_type": "evidence",
+                "reasoning": "The argument references prior studies ([28]) that have drawn similar conclusions about UV damage repair mechanisms in human skin cells, thereby providing empirical support for the claim. This directly aligns with the 'evidence' category, as it cites existing research to substantiate a scientific assertion.",
+                "confidence": 0.95,
+                "arg_id": 29,
+                "concept_level": {
+                    "concept_id": 10,
+                    "parent_concepts": [
+                        "Age-Related Diseases",
+                        "Oxidative Proteome Damage",
+                        "Proteasome and Autophagy Pathways"
+                    ],
+                    "parent_concepts_cos": [
+                        0.89451516,
+                        0.8885596,
+                        0.8834778
+                    ],
+                    "descriptions": [
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.94,
+                        0.9,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "age-related proteome oxidation",
+                        "relation": "increases",
+                        "object": "biological effect of silent mutations",
+                        "argument_type": "causal",
+                        "epistemic_strength": "speculative",
+                        "confidence": 0.6,
+                        "source_argument_id": 31,
+                        "reasoning": "The argument proposes that proteome oxidation over time enhances the phenotypic impact of silent mutations, though this is framed as an expectation rather than a confirmed mechanism."
+                    },
+                    {
+                        "subject": "age-related proteome oxidation",
+                        "relation": "associated_with",
+                        "object": "inter-individual variation in ARD onset",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.75,
+                        "source_argument_id": 31,
+                        "reasoning": "The argument suggests proteome oxidation explains variability in ARD onset, implying a statistical association rather than a direct causal link."
+                    }
+                ],
+                "full_argument": "Age-related proteome oxidation [8] is expected to keep augmenting the biological (phenotypic) effect of such silent mutations (typically amino acid substitutions) over time and account for inter-individual variation in the onset of ARD and conditions.",
+                "argument_type": "causal",
+                "reasoning": "The argument asserts a causal relationship between age-related proteome oxidation and the augmentation of biological effects from silent mutations, while also implying a mechanistic pathway (oxidation → increased phenotypic impact → inter-individual variation in ARD onset). The use of 'expected' suggests a hypothesis, but the claim is framed as a scientific expectation grounded in prior work [8].",
+                "confidence": 0.8,
+                "arg_id": 31,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Age-Related Diseases",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.93736994,
+                        0.92579675,
+                        0.9199047
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.94,
+                        0.8
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "Trolox",
+                        "relation": "may_cause",
+                        "object": "reversibility of deleterious phenotypes caused by damaged proteome",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 34,
+                        "reasoning": "The argument states that the observed reversibility of phenotypes by Trolox is expected, implying a potential causal relationship though not definitively proven."
+                    },
+                    {
+                        "subject": "protein-based phenotypic change",
+                        "relation": "supports",
+                        "object": "expectation of reversibility of deleterious phenotypes caused by damaged proteome",
+                        "argument_type": "evidence",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.75,
+                        "source_argument_id": 34,
+                        "reasoning": "The argument posits that the reversibility is expected from a protein-based phenotypic change, suggesting the change provides explanatory evidence for the observed effect."
+                    }
+                ],
+                "full_argument": "The observed reversibility of deleterious phenotypes caused by damaged proteome (short of mutations fixed by the mutator phenotype of proteome damage) by the antioxidant Trolox [9] is expected from a protein-based phenotypic change.",
+                "argument_type": "mechanistic",
+                "reasoning": "The argument explains the reversibility of phenotypes by proposing a protein-based mechanism (via antioxidant action), linking the cause (proteome damage) to the effect (reversibility by Trolox) through a biological process. While it implies causality (antioxidant action leading to reversal), the focus is on explaining the mechanism rather than asserting a direct causal claim. The epistemic strength is moderate as it relies on existing knowledge of protein-based changes to predict the observed outcome.",
+                "confidence": 0.75,
+                "arg_id": 34,
+                "concept_level": {
+                    "concept_id": 10,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Proteotoxic Stress Resistance",
+                        "Proteasome and Autophagy Pathways"
+                    ],
+                    "parent_concepts_cos": [
+                        0.92674065,
+                        0.92263186,
+                        0.91075385
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.8,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "proteome damage",
+                        "relation": "may_cause",
+                        "object": "telomere attrition and genome instability",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 37,
+                        "reasoning": "The argument proposes that proteome damage may lead to telomere attrition and genome instability as downstream consequences, using cautious language ('can be viewed as')."
+                    }
+                ],
+                "full_argument": "Other phenotypes recognized as the hallmarks of ageing [44], like telomere attrition and genome instability, can be viewed as downstream consequences of proteome damage.",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly states that proteome damage leads to telomere attrition and genome instability as downstream consequences, establishing a causal relationship. The use of 'can be viewed as' introduces some interpretive caution, but the core claim is a direct causal assertion. No explicit mechanistic details are provided, and the claim is presented as a conceptual reframing of aging hallmarks rather than a purely empirical observation.",
+                "confidence": 0.85,
+                "arg_id": 37,
+                "concept_level": {
+                    "concept_id": 45,
+                    "parent_concepts": [
+                        "Age-Related Diseases",
+                        "Oxidative Proteome Damage",
+                        "Proteome Homeostasis"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9368747,
+                        0.9321642,
+                        0.9199958
+                    ],
+                    "descriptions": [
+                        "Pathological conditions emerging with aging, often linked to cumulative molecular damage, proteostasis failure, and genetic susceptibility.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Cellular mechanisms maintaining proteome integrity through synthesis, folding, and degradation pathways, essential for cellular function and longevity."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.94,
+                        0.9,
+                        0.93
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "ROS cytotoxic property",
+                        "relation": "associated_with",
+                        "object": "apoptotic cell death",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 39,
+                        "reasoning": "The argument explicitly links ROS cytotoxic property to apoptotic cell death via a cited review, indicating a mechanistic association."
+                    },
+                    {
+                        "subject": "ROS cytotoxic property",
+                        "relation": "associated_with",
+                        "object": "bacterial killing by immune cells",
+                        "argument_type": "mechanistic",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.9,
+                        "source_argument_id": 39,
+                        "reasoning": "The argument directly associates ROS cytotoxic property with immune cell-mediated bacterial killing, supported by a reference."
+                    }
+                ],
+                "full_argument": "This cytotoxic property of ROS was adopted in apoptotic cell death (review [3]) and bacterial killing by the specialized cells of the immune system [5].",
+                "argument_type": "mechanistic",
+                "reasoning": "The argument explains how the cytotoxic property of ROS is utilized in apoptotic cell death and bacterial killing, describing a functional mechanism. While it implies a causal relationship (ROS's property leads to these outcomes), the focus is on explaining the process rather than asserting a direct cause-effect link. The citation of references [3] and [5] supports the claim with prior literature, giving it moderate epistemic strength.",
+                "confidence": 0.95,
+                "arg_id": 39,
+                "concept_level": {
+                    "concept_id": 10,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "Oxidative Proteome Damage",
+                        "Proteasome and Autophagy Pathways"
+                    ],
+                    "parent_concepts_cos": [
+                        0.89926684,
+                        0.8971232,
+                        0.88835776
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.9,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "high protein synthesis and folding accuracy",
+                        "relation": "associated_with",
+                        "object": "UVC resistance",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 40,
+                        "reasoning": "The argument directly links strains with high protein synthesis/folding accuracy to UVC resistance as an observed characteristic."
+                    },
+                    {
+                        "subject": "high protein synthesis and folding accuracy",
+                        "relation": "associated_with",
+                        "object": "low constitutive proteome carbonylation",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 40,
+                        "reasoning": "The argument explicitly associates high protein synthesis/folding accuracy with reduced baseline proteome carbonylation levels."
+                    },
+                    {
+                        "subject": "strains with high protein synthesis and folding accuracy",
+                        "relation": "associated_with",
+                        "object": "decreased proteome carbonylation saturation levels",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 40,
+                        "reasoning": "The argument reports that these strains exhibit lower saturation levels of proteome carbonylation compared to wild-type."
+                    }
+                ],
+                "full_argument": "However, the saturation levels of protein carbonylation and cell survival after exposure to UVC differ: strains with high accuracy of protein synthesis and folding are resistant to UVC, display low constitutive proteome carbonylation and a decrease in its saturation levels relative to the wild-type [9].",
+                "argument_type": "correlational",
+                "reasoning": "The argument describes an observed association between protein synthesis/folding accuracy and UVC resistance, supported by experimental data (low carbonylation, decreased saturation levels). It does not explicitly claim causation or explain mechanisms, focusing instead on correlational patterns between variables.",
+                "confidence": 0.9,
+                "arg_id": 40,
+                "concept_level": {
+                    "concept_id": 86,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "Protein Carbonylation",
+                        "Oxidative Proteome Damage"
+                    ],
+                    "parent_concepts_cos": [
+                        0.9179512,
+                        0.91402024,
+                        0.90396047
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.85,
+                        0.9
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "protein damage",
+                        "relation": "causes",
+                        "object": "functional (phenotypic) consequences",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.85,
+                        "source_argument_id": 42,
+                        "reasoning": "The argument explicitly states that protein damage leads to functional phenotypic consequences through direct or cascading effects."
+                    },
+                    {
+                        "subject": "antioxidants",
+                        "relation": "inhibits",
+                        "object": "phenotypic consequences of protein damage",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.8,
+                        "source_argument_id": 42,
+                        "reasoning": "The argument indicates that antioxidants can reverse phenotypic consequences, implying inhibition of their progression."
+                    },
+                    {
+                        "subject": "oxidative damage",
+                        "relation": "causes",
+                        "object": "phenotypic consequences of misfolding",
+                        "argument_type": "causal",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.85,
+                        "source_argument_id": 42,
+                        "reasoning": "The argument asserts that oxidative damage, rather than misfolding itself, is the primary cause of these phenotypic consequences."
+                    }
+                ],
+                "full_argument": "In all cases, there are functional (phenotypic) consequences of protein damage via direct or cascading (snowballing) effects that are reversible by antioxidants (i.e. phenotypes of misfolding are due to oxidative damage more than to misfolding itself [9,10]).",
+                "argument_type": "causal",
+                "reasoning": "The argument explicitly attributes functional consequences of protein damage to oxidative damage (rather than misfolding itself), establishing a causal relationship. The reference citations [9,10] provide empirical support, classifying it as evidence. The claim is contextually supported but not universally definitive, hence moderate strength.",
+                "confidence": 0.8,
+                "arg_id": 42,
+                "concept_level": {
+                    "concept_id": 10,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Proteotoxic Stress Resistance",
+                        "Proteasome and Autophagy Pathways"
+                    ],
+                    "parent_concepts_cos": [
+                        0.92697287,
+                        0.9255043,
+                        0.9101354
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Two major protein degradation systems: proteasomes degrade misfolded/oxidized proteins, while autophagy clears damaged organelles and protein aggregates."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.8,
+                        0.95
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "high ROS levels",
+                        "relation": "causes",
+                        "object": "evolution of functional longevity in proteins",
+                        "argument_type": "causal",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.92,
+                        "source_argument_id": 44,
+                        "reasoning": "The argument directly links the emergence of high ROS levels to evolutionary adaptations in proteins for functional longevity under selective pressure."
+                    },
+                    {
+                        "subject": "protein oxidation levels",
+                        "relation": "correlates_with",
+                        "object": "distinct phenotypic differences in biological endpoints",
+                        "argument_type": "correlational",
+                        "epistemic_strength": "moderate",
+                        "confidence": 0.85,
+                        "source_argument_id": 44,
+                        "reasoning": "The experimental observation associates variations in protein oxidation levels with proportional phenotypic differences in chaperone mutants."
+                    }
+                ],
+                "full_argument": "Since the emergence of high ROS levels (2.5 3 billion years ago), proteins were under strong selective pressure to acquire functional longevity leading to the evolution of functional structures resistant to oxidative damage. Therefore, strains from figure 2 and chaperone-down and -up mutants display expected distinct phenotypic differences for all tested biological endpoints in proportion to their protein oxidation levels [9].",
+                "argument_type": "causal",
+                "reasoning": "The argument posits a causal relationship between ROS levels and evolutionary adaptations in protein longevity, while also citing experimental evidence (mutant phenotypes) to support this mechanism. The mechanistic aspect is implied through the evolutionary process described. The epistemic strength is moderate as it combines evolutionary theory with experimental data, though the causal link is inferred rather than directly observed.",
+                "confidence": 0.85,
+                "arg_id": 44,
+                "concept_level": {
+                    "concept_id": 64,
+                    "parent_concepts": [
+                        "Proteotoxic Stress Resistance",
+                        "Oxidative Proteome Damage",
+                        "Yeast Aging Biomarkers"
+                    ],
+                    "parent_concepts_cos": [
+                        0.936818,
+                        0.91892076,
+                        0.90853965
+                    ],
+                    "descriptions": [
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways.",
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "Model system for aging research using Saccharomyces cerevisiae, with Hsp104-GFP aggregates as a key indicator of proteotoxic stress during lifespan."
+                    ],
+                    "epistemic_strength": [
+                        "moderate",
+                        "high",
+                        "high"
+                    ],
+                    "confidence": [
+                        0.8,
+                        0.9,
+                        0.92
+                    ]
+                }
+            },
+            {
+                "relations": [
+                    {
+                        "subject": "studies of DNA-repair-deficient mutants with low proteome damage from low radiation",
+                        "relation": "contradicts",
+                        "object": "cell death causes protein carbonylation",
+                        "argument_type": "contradiction",
+                        "epistemic_strength": "strong",
+                        "confidence": 0.95,
+                        "source_argument_id": 45,
+                        "reasoning": "The study explicitly excluded the possibility that protein carbonylation results from cell death, directly contradicting the hypothesis that cell death causes protein carbonylation."
+                    }
+                ],
+                "full_argument": "Studies of DNA-repair-deficient mutants displaying high mortality at low levels of proteome damage from low radiation exposures excluded the possibility that the incurred protein carbonylation could be the consequence of cell death [30].",
+                "argument_type": "evidence",
+                "reasoning": "The argument presents experimental evidence (studies on DNA-repair-deficient mutants) that directly excludes a specific causal possibility (protein carbonylation as a consequence of cell death). The epistemic strength is strong due to the explicit reference to experimental studies. The secondary classification as 'contradiction' arises from the exclusion of an alternative explanation, implying a conflict between observed results and the excluded hypothesis.",
+                "confidence": 0.95,
+                "arg_id": 45,
+                "concept_level": {
+                    "concept_id": 4,
+                    "parent_concepts": [
+                        "Oxidative Proteome Damage",
+                        "Protein Carbonylation",
+                        "Proteotoxic Stress Resistance"
+                    ],
+                    "parent_concepts_cos": [
+                        0.91639984,
+                        0.91000533,
+                        0.9055538
+                    ],
+                    "descriptions": [
+                        "Accumulation of oxidized proteins due to reactive oxygen species, linked to aging and age-related pathologies through proteotoxicity and loss of function.",
+                        "A post-translational modification involving the addition of carbonyl groups to amino acid residues, often used as a biomarker of oxidative stress and protein damage.",
+                        "Evolutionary adaptations enabling organisms to withstand protein misfolding and oxidation, including chaperone systems and enhanced degradation pathways."
+                    ],
+                    "epistemic_strength": [
+                        "high",
+                        "moderate",
+                        "moderate"
+                    ],
+                    "confidence": [
+                        0.9,
+                        0.85,
+                        0.8
+                    ]
+                }
+            }
+        ]
+    }
+]
