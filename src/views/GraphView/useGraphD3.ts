@@ -108,8 +108,11 @@ export function useGraphD3(
         .attr('stroke-dasharray', '4 8')
     }
 
-    const { minConfidence, relationGroups, nodeTypes } = optsRef.current.filters
-    const filteredEdges = edges.filter(e => e.confidence >= minConfidence && relationGroups[e.group])
+    const { minConfidence, relationTypes, nodeTypes } = optsRef.current.filters
+    const filteredEdges = edges.filter(e =>
+      e.confidence >= minConfidence &&
+      (relationTypes[e.relation_type] !== false)
+    )
 
     const visibleNodes = nodes.filter(n => nodeTypes[n.type])
     const visibleNodeIdSet = new Set(visibleNodes.map(n => n.id))

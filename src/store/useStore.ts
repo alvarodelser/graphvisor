@@ -4,7 +4,12 @@ import type { FilterState, ActiveView, Projection, SizeBy } from '../types'
 const defaultFilters: FilterState = {
   nodeTypes: { Argument: true, Entity: true, Concept: true },
   minConfidence: 0,
-  relationGroups: { positive: true, negative: true, causal: true, structural: true },
+  relationTypes: {
+    SUPPORTS: true, CORRELATES_WITH: true, REVEALS: true,
+    CONTRADICTS: true,
+    CAUSES: true, ASSOCIATED_WITH: true,
+    HAS_SUBJECT: true, HAS_OBJECT: true, HAS_CONCEPT: true,
+  },
 }
 
 interface AppState {

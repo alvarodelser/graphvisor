@@ -57,8 +57,20 @@ export interface ArgumentDetail {
   sources: DocNode[]
 }
 
+export const RELATION_TYPE_GROUPS: Record<string, RelationGroup> = {
+  SUPPORTS: 'positive',
+  CORRELATES_WITH: 'positive',
+  REVEALS: 'positive',
+  CONTRADICTS: 'negative',
+  CAUSES: 'causal',
+  ASSOCIATED_WITH: 'causal',
+  HAS_SUBJECT: 'structural',
+  HAS_OBJECT: 'structural',
+  HAS_CONCEPT: 'structural',
+}
+
 export interface FilterState {
   nodeTypes: Record<GraphNodeType, boolean>
   minConfidence: number
-  relationGroups: Record<RelationGroup, boolean>
+  relationTypes: Record<string, boolean>
 }
