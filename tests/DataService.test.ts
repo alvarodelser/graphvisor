@@ -61,19 +61,32 @@ describe('RealDataService', () => {
 describe('entity detail — argument blobs and source_argument_id', () => {
   it('entity detail includes a non-empty argumentBlobs array', async () => {
     const { nodes } = await svc.getGraph([])
-    const entityNode = nodes[0]
-    const detail = await svc.getArgumentDetail(entityNode.id)
-    expect(Array.isArray(detail.argumentBlobs)).toBe(true)
-    expect((detail.argumentBlobs ?? []).length).toBeGreaterThan(0)
+    // find an entity that appears in multi-entity arguments (has blobs)
+    let detail = null
+    for (const node of nodes) {
+      const d = await svc.getArgumentDetail(node.id)
+      if ((d.argumentBlobs ?? []).length > 0) { detail = d; break }
+    }
+    expect(detail).not.toBeNull()
+    expect(Array.isArray(detail!.argumentBlobs)).toBe(true)
+    expect(detail!.argumentBlobs!.length).toBeGreaterThan(0)
   })
 
   it('entity detail relations all have a valid source_argument_id', async () => {
     const { nodes } = await svc.getGraph([])
-    const entityNode = nodes[0]
-    const detail = await svc.getArgumentDetail(entityNode.id)
-    for (const rel of detail.relations) {
-      expect(rel.source_argument_id).toMatch(/^doc_\d+_arg_\d+$/)
+    // find an entity with at least one relation
+    let detail = null
+    for (const node of nodes) {
+      const d = await svc.getArgumentDetail(node.id)
+      if (d.relations.length > 0) { detail = d; break }
     }
+    expect(detail).not.toBeNull()
+    let checked = 0
+    for (const rel of detail!.relations) {
+      expect(rel.source_argument_id).toMatch(/^doc_\d+_arg_\d+$/)
+      checked++
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 
   it('argumentBlobs each contain the queried entity id', async () => {
