@@ -73,8 +73,8 @@ export function DiscoverView() {
       </div>
 
       <div className={styles.grid}>
-        {displayed.map((h, i) => (
-          <HypothesisCard key={i} hypothesis={h} />
+        {displayed.map((h) => (
+          <HypothesisCard key={h.hypothesis} hypothesis={h} />
         ))}
       </div>
     </div>
