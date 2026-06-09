@@ -3,10 +3,10 @@ import { useStore } from '../../store/useStore'
 import { StatusBar } from '../StatusBar/StatusBar'
 import styles from './Shell.module.css'
 
-const VIEW_ORDER = ['corpus', 'graph', 'detail'] as const
+const VIEW_ORDER = ['corpus', 'graph', 'detail', 'discover'] as const
 
 interface Props {
-  children: [ReactNode, ReactNode, ReactNode]
+  children: [ReactNode, ReactNode, ReactNode, ReactNode]
 }
 
 export function Shell({ children }: Props) {
@@ -24,7 +24,7 @@ export function Shell({ children }: Props) {
       <header className={styles.topBar}>
         <span className={styles.logo}>GRAPHVISOR</span>
         <nav className={styles.tabs}>
-          {(['corpus', 'graph', 'detail'] as const).map((v) => (
+          {(['corpus', 'graph', 'detail', 'discover'] as const).map((v) => (
             <button
               key={v}
               className={[

@@ -13,7 +13,7 @@ export interface DocNode {
 
 export type GraphNodeType = 'Argument' | 'Entity' | 'Concept'
 export type RelationGroup = 'positive' | 'negative' | 'causal' | 'structural'
-export type ActiveView = 'corpus' | 'graph' | 'detail'
+export type ActiveView = 'corpus' | 'graph' | 'detail' | 'discover'
 export type SizeBy = 'argument_count' | 'uniform' | 'page_count'
 
 export interface GraphNode {
@@ -78,6 +78,17 @@ export const RELATION_TYPE_GROUPS: Record<string, RelationGroup> = {
   HAS_SUBJECT: 'structural',
   HAS_OBJECT: 'structural',
   HAS_CONCEPT: 'structural',
+}
+
+export interface Hypothesis {
+  hypothesis: string
+  decision: 'ADVANCE' | 'BORDERLINE'
+  scores: {
+    novelty: number
+    scientific_plausibility: number
+    potential_impact: number
+    commercial_potential: number
+  }
 }
 
 export interface FilterState {

@@ -9,6 +9,7 @@ export function App() {
       <CorpusView />
       <GraphView />
       <DetailView />
+      <div>Discover View (TODO)</div>
     </Shell>
   )
 }
