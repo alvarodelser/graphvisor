@@ -228,8 +228,8 @@ export function useGraphD3(
       .data(opts.blobs, d => d.id)
       .join('path')
       .attr('class', 'blob')
-      .attr('fill', 'rgba(100,116,139,0.08)')
-      .attr('stroke', 'rgba(100,116,139,0.35)')
+      .attr('fill', 'rgba(100,116,139,0.10)')
+      .attr('stroke', 'rgba(100,116,139,0.50)')
       .attr('stroke-width', 1.5)
       .attr('stroke-dasharray', '4 3')
       .attr('pointer-events', 'fill')
@@ -248,8 +248,8 @@ export function useGraphD3(
       .on('mouseleave', function(_, d) {
         const isSelected = optsRef.current.selectedArgumentId === d.id
         d3.select(this)
-          .attr('stroke', isSelected ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.35)')
-          .attr('fill', isSelected ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.08)')
+          .attr('stroke', isSelected ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.50)')
+          .attr('fill', isSelected ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.10)')
         optsRef.current.onHover?.(null)
       })
 
@@ -525,8 +525,10 @@ export function useGraphD3(
         })
       })
 
-    // ── Blob drag — moves all member entities as a group ──────────────────────
-    let blobDragMembers: { node: GraphNode; sx: number; sy: number }[] = []
+    // ── Blob drag — moves group and squeezes members toward centroid ──────────
+    interface BlobDragMember { node: GraphNode; relX: number; relY: number }
+    let blobDragMembers: BlobDragMember[] = []
+    let blobDragCX = 0, blobDragCY = 0
     let blobDragStartX = 0, blobDragStartY = 0
 
     blobPaths.call(
@@ -536,18 +538,30 @@ export function useGraphD3(
           if (!event.active) sim.alphaTarget(0.3).restart()
           blobDragStartX = event.x
           blobDragStartY = event.y
-          blobDragMembers = d.entityIds
+          const members = d.entityIds
             .map(id => simNodes.find(n => n.id === id))
             .filter((n): n is GraphNode => n !== undefined)
-            .map(n => ({ node: n, sx: n.x ?? 0, sy: n.y ?? 0 }))
+          // Compute centroid
+          blobDragCX = members.reduce((s, n) => s + (n.x ?? 0), 0) / (members.length || 1)
+          blobDragCY = members.reduce((s, n) => s + (n.y ?? 0), 0) / (members.length || 1)
+          // Store offset from centroid (for squeezing)
+          blobDragMembers = members.map(n => ({
+            node: n,
+            relX: (n.x ?? 0) - blobDragCX,
+            relY: (n.y ?? 0) - blobDragCY,
+          }))
           blobDragMembers.forEach(({ node }) => { node.fx = node.x; node.fy = node.y })
         })
         .on('drag', (event) => {
           const dx = event.x - blobDragStartX
           const dy = event.y - blobDragStartY
-          blobDragMembers.forEach(({ node, sx, sy }) => {
-            node.fx = sx + dx
-            node.fy = sy + dy
+          const ncx = blobDragCX + dx
+          const ncy = blobDragCY + dy
+          // Squeeze members 25% toward centroid while translating
+          const squeeze = 0.75
+          blobDragMembers.forEach(({ node, relX, relY }) => {
+            node.fx = ncx + relX * squeeze
+            node.fy = ncy + relY * squeeze
           })
         })
         .on('end', (event) => {
@@ -655,7 +669,6 @@ export function useGraphD3(
     const observer = new ResizeObserver(() => {
       const { width: w, height: h } = svgEl.getBoundingClientRect()
       if (w < 10 || h < 10) return
-      ;(sim.force('center') as d3.ForceCenter<GraphNode>).x(w / 2).y(h / 2)
       sim.alpha(0.1).restart()
       d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
     })
@@ -689,6 +702,12 @@ export function useGraphD3(
     if (opts.showBlobs) {
       sim.force('blobCluster', makeBlobClusterForce(opts.blobs, simNodesRef.current))
       blobG.style('display', '')
+      // Force-render blob paths immediately so they appear even if sim has settled
+      const nodePositions = new Map(
+        simNodesRef.current.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
+      )
+      blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
+        .attr('d', d => computeBlobPath(d, nodePositions) ?? '')
       sim.alpha(0.3).restart()
     } else {
       sim.force('blobCluster', null)
@@ -709,8 +728,8 @@ export function useGraphD3(
       svg.selectAll<SVGGElement, GraphEdge>('.edges g.edge-group').attr('opacity', null)
       if (blobG) {
         blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
-          .attr('stroke', 'rgba(100,116,139,0.35)')
-          .attr('fill', 'rgba(100,116,139,0.08)')
+          .attr('stroke', 'rgba(100,116,139,0.50)')
+          .attr('fill', 'rgba(100,116,139,0.10)')
       }
       return
     }
@@ -732,8 +751,8 @@ export function useGraphD3(
 
     if (blobG) {
       blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
-        .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.35)')
-        .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.08)')
+        .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.50)')
+        .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.10)')
     }
   }, [opts.selectedArgumentId])
 
