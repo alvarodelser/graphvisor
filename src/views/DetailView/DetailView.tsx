@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { DetailMiniMap } from './DetailMiniMap'
 import { RelationList } from './RelationList'
+import { ArgumentCards } from './ArgumentCards'
 import { RELATION_COLORS } from '../../utils/geometry'
 import type { ArgumentDetail, DocNode, RelationGroup, ArgumentRelation } from '../../types'
 import styles from './DetailView.module.css'
@@ -44,6 +45,12 @@ export function DetailView() {
     setSelectedNode(prevId)
   }
 
+  const navigateToBlob = (blobId: string) => {
+    if (!detail) return
+    setNavStack(prev => [...prev, detail.argument.id])
+    setSelectedNode(blobId)
+  }
+
   if (!detail) {
     return (
       <div className={styles.empty}>
@@ -70,6 +77,14 @@ export function DetailView() {
             "{detail.argument.full_text}"
           </div>
         </div>
+
+        {detail.argumentBlobs && detail.argumentBlobs.length > 0 && (
+          <ArgumentCards
+            blobs={detail.argumentBlobs}
+            entityLabel={detail.argument.label}
+            onBlobClick={navigateToBlob}
+          />
+        )}
 
         <div className={styles.mapWrapper}>
           <DetailMiniMap detail={detail} allDocs={allDocs} isActive={isActive} />
@@ -108,6 +123,7 @@ export function DetailView() {
             detail={detail}
             visibleGroups={visibleGroups}
             onRowClick={navigateToArgument}
+            onBlobClick={navigateToBlob}
             focalId={detail.argument.id}
           />
         </div>
