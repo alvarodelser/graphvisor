@@ -12,7 +12,7 @@ const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
 }
 
 export function DetailView() {
-  const { activeView, selectedNodeId, setSelectedNode } = useStore()
+  const { activeView, selectedNodeId, setSelectedNode, selectedArgumentId } = useStore()
   const [detail, setDetail] = useState<ArgumentDetail | null>(null)
   const [allDocs, setAllDocs] = useState<DocNode[]>([])
   const [visibleGroups, setVisibleGroups] = useState(DEFAULT_GROUPS)
@@ -23,9 +23,10 @@ export function DetailView() {
   useEffect(() => { dataService.getDocuments().then(setAllDocs) }, [])
 
   useEffect(() => {
-    if (!selectedNodeId) return
-    dataService.getArgumentDetail(selectedNodeId).then(setDetail)
-  }, [selectedNodeId])
+    const id = selectedArgumentId ?? selectedNodeId
+    if (!id) return
+    dataService.getArgumentDetail(id).then(setDetail)
+  }, [selectedArgumentId, selectedNodeId])
 
   const toggleGroup = (group: RelationGroup) =>
     setVisibleGroups(g => ({ ...g, [group]: !g[group] }))

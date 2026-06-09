@@ -6,7 +6,7 @@ import { useGraphD3 } from './useGraphD3'
 import type { HoverItem } from './useGraphD3'
 import { NodeFloatingCard } from './NodeFloatingCard'
 import { RELATION_COLORS } from '../../utils/geometry'
-import type { GraphNode, GraphEdge } from '../../types'
+import type { GraphNode, GraphEdge, ArgumentBlob } from '../../types'
 import styles from './GraphView.module.css'
 
 const REL_GROUP_COLORS: Record<string, string> = {
@@ -27,27 +27,55 @@ export function GraphView() {
   const svgRef = useRef<SVGSVGElement>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [edges, setEdges] = useState<GraphEdge[]>([])
-  const [, setHoverItem] = useState<HoverItem>(null)
-  const [stickyItem, setStickyItem] = useState<HoverItem>(null)
-  const { activeView, selectedDocumentIds, selectedNodeId, setSelectedNode, setActiveView, filters, setFilters } = useStore()
+  const [blobs, setBlobs] = useState<ArgumentBlob[]>([])
+  const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
+  const [isSticky, setIsSticky] = useState(false)
+  const {
+    activeView, selectedDocumentIds,
+    selectedNodeId, setSelectedNode,
+    setActiveView, filters, setFilters,
+    showBlobs, setShowBlobs,
+    selectedArgumentId, setSelectedArgumentId,
+  } = useStore()
 
   const isActive = activeView === 'graph'
 
   useEffect(() => {
-    dataService.getGraph(selectedDocumentIds).then(({ nodes, edges }) => {
-      setNodes(nodes); setEdges(edges)
+    dataService.getGraph(selectedDocumentIds).then(({ nodes, edges, blobs }) => {
+      setNodes(nodes); setEdges(edges); setBlobs(blobs)
     })
   }, [selectedDocumentIds])
 
   const { reheat, freeze } = useGraphD3(svgRef, nodes, edges, {
     filters,
     selectedNodeId,
+    blobs,
+    showBlobs,
+    selectedArgumentId,
     onNodeClick: (node) => {
       setSelectedNode(node.id)
-      setStickyItem({ type: 'node', node, x: 0, y: 0 })
+      setSelectedArgumentId(null)
+      setDisplayedItem({ type: 'node', node, x: 0, y: 0 })
+      setIsSticky(true)
     },
-    onHover: (item) => setHoverItem(item),
-    onCanvasClick: () => { setSelectedNode(null); setStickyItem(null) },
+    onBlobClick: (blob) => {
+      setSelectedArgumentId(blob.id)
+      setSelectedNode(null)
+      setActiveView('detail')
+    },
+    onHover: (item) => {
+      if (isSticky) {
+        if (item !== null) setDisplayedItem(item)
+      } else {
+        setDisplayedItem(item)
+      }
+    },
+    onCanvasClick: () => {
+      setSelectedNode(null)
+      setSelectedArgumentId(null)
+      setDisplayedItem(null)
+      setIsSticky(false)
+    },
   })
 
   const toggleRelationType = (type: string, checked: boolean) =>
@@ -121,6 +149,17 @@ export function GraphView() {
       </div>
 
       <div>
+        <div className="sl">Arguments</div>
+        <label style={checkRow}>
+          <input type="checkbox"
+            checked={showBlobs}
+            onChange={e => setShowBlobs(e.target.checked)}
+            style={{ accentColor: '#64748b' }} />
+          <span style={labelText}>Show argument blobs</span>
+        </label>
+      </div>
+
+      <div>
         <div className="sl">Layout</div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={reheat} style={btnStyle}>Reheat</button>
@@ -177,12 +216,18 @@ export function GraphView() {
       <div className={styles.canvas}>
         <svg ref={svgRef} className={styles.svg} />
 
-        {stickyItem && (
+        {displayedItem && (
           <NodeFloatingCard
-            item={stickyItem}
-            sticky
-            onDismiss={() => { setStickyItem(null); setSelectedNode(null) }}
-            onOpenDetail={() => setActiveView('detail')}
+            item={displayedItem}
+            sticky={isSticky}
+            onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null) }}
+            onOpenDetail={() => {
+              if (displayedItem?.type === 'blob') {
+                setSelectedArgumentId(displayedItem.blob.id)
+                setSelectedNode(null)
+              }
+              setActiveView('detail')
+            }}
           />
         )}
 

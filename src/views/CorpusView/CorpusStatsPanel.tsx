@@ -15,24 +15,45 @@ interface TooltipState {
   items: { term: string; val: number; color: string }[]
 }
 
-const YEAR_START = 2014
-const YEAR_END   = 2024
-const N_FINE     = 300
+const N_FINE = 300
 
 const PALETTE = [
   '#118ab2', '#ef476f', '#06d6a0', '#ffd166',
   '#F4A124', '#74b9d6', '#073b4c', '#64748b',
 ]
 
-function mockFreq(term: string, x: number): number {
-  let h = 0
-  for (const c of term) h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0
-  const peak      = YEAR_START + (Math.abs(h) % (YEAR_END - YEAR_START - 1))
-  const amplitude = 0.22 + (Math.abs(h >> 4) % 7) * 0.06
-  const slope     = ((Math.abs(h >> 8) % 3) - 1) * 0.016
-  const freq      = Math.exp(-Math.pow(x - peak, 2) / 14) * amplitude
-  const noise     = Math.sin(x * ((Math.abs(h) % 9) + 2) * 1.3) * 0.022
-  return Math.max(0, Math.min(0.95, freq + slope * (x - YEAR_START) + noise))
+// Fritsch-Carlson monotone cubic spline — smooth, no oscillation, matches d3.curveMonotoneX
+function makeSpline(pts: { x: number; val: number }[]): (x: number) => number {
+  const n = pts.length
+  if (n === 0) return () => 0
+  if (n === 1) return () => pts[0].val
+
+  const d: number[] = []
+  for (let i = 0; i < n - 1; i++)
+    d[i] = (pts[i + 1].val - pts[i].val) / (pts[i + 1].x - pts[i].x)
+
+  const m: number[] = new Array(n)
+  m[0] = d[0]
+  m[n - 1] = d[n - 2]
+  for (let i = 1; i < n - 1; i++)
+    m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2
+
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = m[i + 1] = 0; continue }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b
+    if (h > 9) { const tau = 3 / Math.sqrt(h); m[i] = tau * a * d[i]; m[i + 1] = tau * b * d[i] }
+  }
+
+  return (x: number): number => {
+    if (x <= pts[0].x) return pts[0].val
+    if (x >= pts[n - 1].x) return pts[n - 1].val
+    let lo = 0, hi = n - 1
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid].x <= x) lo = mid; else hi = mid }
+    const h = pts[hi].x - pts[lo].x, t = (x - pts[lo].x) / h
+    const t2 = t * t, t3 = t2 * t
+    return (2 * t3 - 3 * t2 + 1) * pts[lo].val + (t3 - 2 * t2 + t) * h * m[lo]
+         + (-2 * t3 + 3 * t2) * pts[hi].val + (t3 - t2) * h * m[hi + 1 < n ? hi : hi]
+  }
 }
 
 export function CorpusStatsPanel({ docs, height }: Props) {
@@ -41,16 +62,39 @@ export function CorpusStatsPanel({ docs, height }: Props) {
 
   const terms = useMemo(() => {
     const counts: Record<string, number> = {}
-    docs.forEach(d => d.top_terms.forEach(t => { counts[t] = (counts[t] || 0) + 1 }))
+    docs.forEach(d =>
+      Object.entries(d.termCounts).forEach(([t, n]) => {
+        counts[t] = (counts[t] || 0) + n
+      })
+    )
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([t]) => t)
   }, [docs])
 
+  const years = useMemo(
+    () => [...new Set(docs.map(d => d.year))].sort((a, b) => a - b),
+    [docs]
+  )
+
+  const yearTermCounts = useMemo(() => {
+    const map = new Map<number, Record<string, number>>()
+    docs.forEach(d => {
+      if (!map.has(d.year)) map.set(d.year, {})
+      const entry = map.get(d.year)!
+      Object.entries(d.termCounts).forEach(([t, n]) => {
+        entry[t] = (entry[t] || 0) + n
+      })
+    })
+    return map
+  }, [docs])
+
   useEffect(() => {
-    if (!svgRef.current || terms.length === 0) return
+    if (!svgRef.current || terms.length === 0 || years.length < 2) return
     const el = svgRef.current
+
+    function draw() {
     const { width } = el.getBoundingClientRect()
     if (width < 40) return
 
@@ -58,21 +102,29 @@ export function CorpusStatsPanel({ docs, height }: Props) {
     const chartW = width  - PAD.left - PAD.right
     const chartH = height - PAD.top  - PAD.bottom
 
+    const yearStart = years[0]
+    const yearEnd   = years[years.length - 1]
+
     const svg = d3.select(el)
     svg.selectAll('*').remove()
 
     const xs = Array.from({ length: N_FINE }, (_, i) =>
-      YEAR_START + i * (YEAR_END - YEAR_START) / (N_FINE - 1)
+      yearStart + i * (yearEnd - yearStart) / (N_FINE - 1)
     )
 
-    const series = terms.map((term, i) => ({
-      term,
-      color: PALETTE[i % PALETTE.length],
-      vals: xs.map(x => mockFreq(term, x)),
-    }))
+    const series = terms.map((term, i) => {
+      const pts = years.map(y => ({ x: y, val: yearTermCounts.get(y)?.[term] ?? 0 }))
+      const spline = makeSpline(pts)
+      return {
+        term,
+        color: PALETTE[i % PALETTE.length],
+        spline,
+        vals: xs.map(x => Math.max(0, spline(x))),
+      }
+    })
 
     const yMax = d3.max(series, s => d3.max(s.vals) ?? 0) ?? 1
-    const xScale = d3.scaleLinear().domain([YEAR_START, YEAR_END]).range([0, chartW])
+    const xScale = d3.scaleLinear().domain([yearStart, yearEnd]).range([0, chartW])
     const yScale = d3.scaleLinear().domain([0, yMax * 1.12]).range([chartH, 0])
 
     const chart = svg.append('g').attr('transform', `translate(${PAD.left},${PAD.top})`)
@@ -118,21 +170,53 @@ export function CorpusStatsPanel({ docs, height }: Props) {
         .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 1.5)
     })
 
-    // Right-edge labels
-    series.forEach(s => {
+    // Right-edge labels — collision-resolved
+    const MIN_GAP = 13
+    const labelItems = series
+      .map(s => ({ term: s.term, color: s.color, idealY: yScale(s.vals[N_FINE - 1]) }))
+      .sort((a, b) => a.idealY - b.idealY)
+    const pos = labelItems.map(l => l.idealY)
+
+    for (let iter = 0; iter < 200; iter++) {
+      let moved = false
+      for (let i = 1; i < pos.length; i++) {
+        if (pos[i] - pos[i - 1] < MIN_GAP) {
+          const mid = (pos[i] + pos[i - 1]) / 2
+          pos[i - 1] = mid - MIN_GAP / 2
+          pos[i]     = mid + MIN_GAP / 2
+          moved = true
+        }
+      }
+      // clamp to chart
+      if (pos[0] < 4) { const shift = 4 - pos[0]; pos.forEach((_, j) => { pos[j] += shift }) }
+      if (pos[pos.length - 1] > chartH - 4) { const shift = pos[pos.length - 1] - (chartH - 4); pos.forEach((_, j) => { pos[j] -= shift }) }
+      if (!moved) break
+    }
+
+    labelItems.forEach((l, i) => {
+      const labelY = pos[i]
+      const anchorY = l.idealY
+      // connector from curve end to label if they diverged
+      if (Math.abs(labelY - anchorY) > 3) {
+        chart.append('path')
+          .attr('d', `M${chartW + 1},${anchorY} C${chartW + 5},${anchorY} ${chartW + 5},${labelY} ${chartW + 8},${labelY}`)
+          .attr('fill', 'none')
+          .attr('stroke', l.color)
+          .attr('stroke-width', 0.8)
+          .attr('opacity', 0.5)
+      }
       chart.append('text')
-        .attr('x', chartW + 6).attr('y', yScale(s.vals[N_FINE - 1]) + 4)
+        .attr('x', chartW + (Math.abs(labelY - anchorY) > 3 ? 10 : 6))
+        .attr('y', labelY + 4)
         .attr('font-size', 10).attr('font-weight', 600)
-        .attr('fill', s.color).attr('font-family', 'system-ui, sans-serif')
-        .text(s.term)
+        .attr('fill', l.color).attr('font-family', 'system-ui, sans-serif')
+        .text(l.term)
     })
 
-    // X axis
+    // X axis — tick only at real years
     chart.append('g')
       .attr('transform', `translate(0,${chartH})`)
-      .call(d3.axisBottom(xScale)
-        .tickValues(Array.from({ length: YEAR_END - YEAR_START + 1 }, (_, i) => YEAR_START + i).filter(y => y % 2 === 0))
-        .tickFormat(d => String(d)).tickSize(3))
+      .call(d3.axisBottom(xScale).tickValues(years).tickFormat(d => String(d)).tickSize(3))
       .call(g => {
         g.select('.domain').attr('stroke', 'rgba(7,59,76,0.12)')
         g.selectAll('.tick line').attr('stroke', 'rgba(7,59,76,0.1)')
@@ -148,15 +232,14 @@ export function CorpusStatsPanel({ docs, height }: Props) {
       .attr('x', PAD.left).attr('y', 9)
       .attr('font-size', 8).attr('font-weight', 700).attr('letter-spacing', '0.09em')
       .attr('fill', 'rgba(7,59,76,0.28)').attr('font-family', 'system-ui, sans-serif')
-      .text('CONCEPT FREQUENCY OVER TIME')
+      .text('CONCEPT MENTIONS BY YEAR')
 
-    // ── Crosshair + tooltip interaction ──────────────────────────────────────
+    // ── Crosshair + tooltip — follows mouse continuously ──────────────────────
     const crosshair = chart.append('line')
       .attr('y1', 0).attr('y2', chartH)
       .attr('stroke', 'rgba(7,59,76,0.25)').attr('stroke-width', 1)
       .attr('stroke-dasharray', '3 3').attr('pointer-events', 'none').attr('opacity', 0)
 
-    // Dot markers on lines (one per series, moved on hover)
     const dots = series.map(s =>
       chart.append('circle')
         .attr('r', 3).attr('fill', s.color).attr('stroke', '#fff').attr('stroke-width', 1.5)
@@ -169,19 +252,18 @@ export function CorpusStatsPanel({ docs, height }: Props) {
       .on('mousemove', function(event: MouseEvent) {
         const [mx] = d3.pointer(event, this as SVGRectElement)
         const xi = Math.max(0, Math.min(N_FINE - 1,
-          Math.round((xScale.invert(mx) - YEAR_START) / (YEAR_END - YEAR_START) * (N_FINE - 1))
+          Math.round((xScale.invert(mx) - yearStart) / (yearEnd - yearStart) * (N_FINE - 1))
         ))
-        const snappedX = xScale(xs[xi])
-        crosshair.attr('x1', snappedX).attr('x2', snappedX).attr('opacity', 1)
+        crosshair.attr('x1', mx).attr('x2', mx).attr('opacity', 1)
         dots.forEach((dot, i) => {
-          dot.attr('cx', snappedX).attr('cy', yScale(series[i].vals[xi])).attr('opacity', 1)
+          dot.attr('cx', mx).attr('cy', yScale(series[i].vals[xi])).attr('opacity', 1)
         })
         setTooltip({
           clientX: event.clientX,
           clientY: event.clientY,
           year: Math.round(xs[xi]),
           items: series
-            .map(s => ({ term: s.term, val: s.vals[xi], color: s.color }))
+            .map(s => ({ term: s.term, val: Math.max(0, s.spline(xs[xi])), color: s.color }))
             .sort((a, b) => b.val - a.val),
         })
       })
@@ -190,8 +272,14 @@ export function CorpusStatsPanel({ docs, height }: Props) {
         dots.forEach(d => d.attr('opacity', 0))
         setTooltip(null)
       })
+    } // close draw()
 
-  }, [terms, height])
+    draw()
+
+    const ro = new ResizeObserver(draw)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [terms, years, yearTermCounts, height])
 
   if (terms.length === 0) {
     return (
@@ -227,10 +315,10 @@ export function CorpusStatsPanel({ docs, height }: Props) {
                 {item.term}
               </span>
               <div style={{ flex: 1, height: 3, background: '#e5e7eb', borderRadius: 2 }}>
-                <div style={{ height: '100%', width: `${(item.val / maxVal) * 100}%`, background: item.color, borderRadius: 2, transition: 'width 0.1s' }} />
+                <div style={{ height: '100%', width: `${maxVal > 0 ? (item.val / maxVal) * 100 : 0}%`, background: item.color, borderRadius: 2, transition: 'width 0.1s' }} />
               </div>
               <span style={{ fontSize: 9, color: '#9ca3af', width: 28, textAlign: 'right', flexShrink: 0 }}>
-                {(item.val * 100).toFixed(0)}%
+                {item.val.toFixed(1)}
               </span>
             </div>
           ))}

@@ -6,6 +6,8 @@ beforeEach(() => {
     selectedDocumentIds: [],
     selectedNodeId: null,
     activeView: 'corpus',
+    showBlobs: false,
+    selectedArgumentId: null,
   })
 })
 
@@ -31,5 +33,18 @@ describe('useStore', () => {
   it('setActiveView changes active view', () => {
     useStore.getState().setActiveView('graph')
     expect(useStore.getState().activeView).toBe('graph')
+  })
+  it('setShowBlobs toggles blob visibility', () => {
+    expect(useStore.getState().showBlobs).toBe(false)
+    useStore.getState().setShowBlobs(true)
+    expect(useStore.getState().showBlobs).toBe(true)
+    useStore.getState().setShowBlobs(false)
+    expect(useStore.getState().showBlobs).toBe(false)
+  })
+  it('setSelectedArgumentId sets and clears argument selection', () => {
+    useStore.getState().setSelectedArgumentId('doc_0_arg_3')
+    expect(useStore.getState().selectedArgumentId).toBe('doc_0_arg_3')
+    useStore.getState().setSelectedArgumentId(null)
+    expect(useStore.getState().selectedArgumentId).toBeNull()
   })
 })

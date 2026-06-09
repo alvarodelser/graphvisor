@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { RefObject } from 'react'
-import type { GraphNode, GraphEdge, FilterState } from '../../types'
-import { computeRadialTiers, RELATION_COLORS } from '../../utils/geometry'
-
-const RADIAL_RADII = [0, 180, 360, 520]
+import type { GraphNode, GraphEdge, FilterState, ArgumentBlob } from '../../types'
+import { RELATION_COLORS } from '../../utils/geometry'
+import { computeBlobPath, makeBlobClusterForce } from '../../utils/blobGeometry'
 
 // ── Chevron geometry constants ────────────────────────────────────────────────
 const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
@@ -30,12 +29,23 @@ interface EdgeHoverPayload {
   y: number
 }
 
-export type HoverItem = HoverPayload | EdgeHoverPayload | null
+interface BlobHoverPayload {
+  type: 'blob'
+  blob: ArgumentBlob
+  x: number
+  y: number
+}
+
+export type HoverItem = HoverPayload | EdgeHoverPayload | BlobHoverPayload | null
 
 interface Options {
   filters: FilterState
   selectedNodeId: string | null
+  blobs: ArgumentBlob[]
+  showBlobs: boolean
+  selectedArgumentId: string | null
   onNodeClick: (node: GraphNode) => void
+  onBlobClick: (blob: ArgumentBlob) => void
   onHover?: (item: HoverItem) => void
   onCanvasClick?: () => void
 }
@@ -80,6 +90,8 @@ export function useGraphD3(
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge>>()
   const optsRef = useRef(opts)
   optsRef.current = opts
+  const simNodesRef = useRef<GraphNode[]>([])
+  const blobGRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -116,9 +128,9 @@ export function useGraphD3(
 
     const visibleNodes = nodes.filter(n => nodeTypes[n.type])
     const visibleNodeIdSet = new Set(visibleNodes.map(n => n.id))
-    const tiers = computeRadialTiers(visibleNodes, filteredEdges)
 
     const simNodes: GraphNode[] = visibleNodes.map(n => ({ ...n }))
+    simNodesRef.current = simNodes
     const simEdges: GraphEdge[] = filteredEdges
       .filter(e => {
         const sid = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
@@ -148,9 +160,98 @@ export function useGraphD3(
       degree.set(tid, (degree.get(tid) ?? 0) + 1)
     })
 
+    // ── Connected components ──────────────────────────────────────────────────
+    const ufParent = new Map<string, string>()
+    simNodes.forEach(n => ufParent.set(n.id, n.id))
+    const ufFind = (id: string): string => {
+      if (ufParent.get(id) !== id) ufParent.set(id, ufFind(ufParent.get(id)!))
+      return ufParent.get(id)!
+    }
+    simEdges.forEach(e => {
+      const sid = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
+      const tid = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id
+      const rs = ufFind(sid), rt = ufFind(tid)
+      if (rs !== rt) ufParent.set(rs, rt)
+    })
+    const compOf = new Map<string, string>()
+    simNodes.forEach(n => compOf.set(n.id, ufFind(n.id)))
+
+    const compSizes = new Map<string, number>()
+    simNodes.forEach(n => compSizes.set(compOf.get(n.id)!, (compSizes.get(compOf.get(n.id)!) ?? 0) + 1))
+
+    // Sort chains by size — biggest gets canvas center, rest spread in rings
+    const sortedComps = [...compSizes.entries()].sort((a, b) => b[1] - a[1])
+    const COMP_RING_R = Math.min(width, height) * 0.30
+    const compCenters = new Map<string, { x: number; y: number }>()
+    sortedComps.forEach(([id], idx) => {
+      if (idx === 0) {
+        compCenters.set(id, { x: width / 2, y: height / 2 })
+      } else {
+        const angle = ((idx - 1) / Math.max(1, sortedComps.length - 1)) * Math.PI * 2
+        const r = COMP_RING_R + Math.floor((idx - 1) / 7) * 220
+        compCenters.set(id, { x: width / 2 + Math.cos(angle) * r, y: height / 2 + Math.sin(angle) * r })
+      }
+    })
+
+    // Per-component max degree (for normalising within-chain radial positioning)
+    const compMaxDeg = new Map<string, number>()
+    simNodes.forEach(n => {
+      const c = compOf.get(n.id)!
+      compMaxDeg.set(c, Math.max(compMaxDeg.get(c) ?? 0, degree.get(n.id) ?? 0))
+    })
+
+    // Pre-position nodes: high-degree nodes near component center, low-degree farther out.
+    // This prevents the initial tangle — nodes start close to their final layout region.
+    simNodes.forEach(n => {
+      const c = compOf.get(n.id)!
+      const home = compCenters.get(c)!
+      const compSize = compSizes.get(c) ?? 1
+      const deg = degree.get(n.id) ?? 0
+      const maxDeg = compMaxDeg.get(c) ?? 1
+      const spread = Math.sqrt(compSize) * 30
+      const r = maxDeg > 0 ? (1 - deg / maxDeg) * spread : spread
+      const angle = Math.random() * Math.PI * 2
+      n.x = home.x + Math.cos(angle) * r
+      n.y = home.y + Math.sin(angle) * r
+      n.vx = 0; n.vy = 0
+    })
+
     const defs = svg.append('defs')
+    const blobG = zoomG.append('g').attr('class', 'blobs')
+      .style('display', opts.showBlobs ? '' : 'none')
+    blobGRef.current = blobG
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
+
+    // ── Blob paths ────────────────────────────────────────────────────────────
+    const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
+      .data(opts.blobs, d => d.id)
+      .join('path')
+      .attr('class', 'blob')
+      .attr('fill', 'rgba(100,116,139,0.08)')
+      .attr('stroke', 'rgba(100,116,139,0.35)')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '4 3')
+      .attr('pointer-events', 'fill')
+      .style('cursor', 'pointer')
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        optsRef.current.onBlobClick(d)
+      })
+      .on('mouseenter', function(event, d) {
+        d3.select(this)
+          .attr('stroke', 'rgba(100,116,139,0.65)')
+          .attr('fill', 'rgba(100,116,139,0.14)')
+        const [mx, my] = d3.pointer(event, svgEl)
+        optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
+      })
+      .on('mouseleave', function(_, d) {
+        const isSelected = optsRef.current.selectedArgumentId === d.id
+        d3.select(this)
+          .attr('stroke', isSelected ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.35)')
+          .attr('fill', isSelected ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.08)')
+        optsRef.current.onHover?.(null)
+      })
 
     // ── Build edge groups ─────────────────────────────────────────────────────
     const edgeGroups = edgeG.selectAll<SVGGElement, GraphEdge>('g.edge-group')
@@ -387,20 +488,74 @@ export function useGraphD3(
         if (el && el.getAttribute('data-pinned') === '0') el.setAttribute('opacity', '0')
       })
 
-    // ── Force simulation (charge -320, was -180) ──────────────────────────────
+    // ── Force simulation ──────────────────────────────────────────────────────
+    const maxCompSize = sortedComps[0]?.[1] ?? 1
     const sim = d3.forceSimulation<GraphNode>(simNodes)
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges)
         .id(d => d.id)
         .strength(d => d.group === 'structural' ? 0.2 : d.confidence * 0.4))
       .force('charge', d3.forceManyBody<GraphNode>().strength(-280).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(d => d.type === 'Argument' ? 22 : 14).strength(0.7))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('radial',
-        d3.forceRadial<GraphNode>(
-          d => d.type === 'Argument' ? RADIAL_RADII[tiers.get(d.id) ?? 3] : 0,
-          width / 2, height / 2
-        ).strength(d => d.type === 'Argument' ? 0.85 : 0)
-      )
+      // Pull each chain toward its assigned canvas position (bigger chains get stronger pull)
+      .force('compHome', (alpha: number) => {
+        simNodes.forEach(n => {
+          const c = compOf.get(n.id)!
+          const home = compCenters.get(c)!
+          const s = 0.06 * alpha * Math.sqrt(compSizes.get(c) ?? 1) / Math.sqrt(maxCompSize)
+          n.vx! += (home.x - n.x!) * s
+          n.vy! += (home.y - n.y!) * s
+        })
+      })
+      // Within each chain: pull high-degree nodes toward the chain center
+      .force('compRadial', (alpha: number) => {
+        simNodes.forEach(n => {
+          const c = compOf.get(n.id)!
+          if ((compSizes.get(c) ?? 1) <= 1) return
+          const home = compCenters.get(c)!
+          const deg = degree.get(n.id) ?? 0
+          const maxDeg = compMaxDeg.get(c) ?? 1
+          const spread = Math.sqrt(compSizes.get(c) ?? 1) * 30
+          const targetR = maxDeg > 0 ? (1 - deg / maxDeg) * spread : spread
+          const dx = n.x! - home.x
+          const dy = n.y! - home.y
+          const currR = Math.sqrt(dx * dx + dy * dy) || 1
+          const f = (currR - targetR) / currR * 0.12 * alpha
+          n.vx! -= dx * f
+          n.vy! -= dy * f
+        })
+      })
+
+    // ── Blob drag — moves all member entities as a group ──────────────────────
+    let blobDragMembers: { node: GraphNode; sx: number; sy: number }[] = []
+    let blobDragStartX = 0, blobDragStartY = 0
+
+    blobPaths.call(
+      d3.drag<SVGPathElement, ArgumentBlob>()
+        .on('start', (event, d) => {
+          event.sourceEvent.stopPropagation()
+          if (!event.active) sim.alphaTarget(0.3).restart()
+          blobDragStartX = event.x
+          blobDragStartY = event.y
+          blobDragMembers = d.entityIds
+            .map(id => simNodes.find(n => n.id === id))
+            .filter((n): n is GraphNode => n !== undefined)
+            .map(n => ({ node: n, sx: n.x ?? 0, sy: n.y ?? 0 }))
+          blobDragMembers.forEach(({ node }) => { node.fx = node.x; node.fy = node.y })
+        })
+        .on('drag', (event) => {
+          const dx = event.x - blobDragStartX
+          const dy = event.y - blobDragStartY
+          blobDragMembers.forEach(({ node, sx, sy }) => {
+            node.fx = sx + dx
+            node.fy = sy + dy
+          })
+        })
+        .on('end', (event) => {
+          if (!event.active) sim.alphaTarget(0)
+          blobDragMembers.forEach(({ node }) => { node.fx = null; node.fy = null })
+          blobDragMembers = []
+        })
+    )
 
     // ── Tick ──────────────────────────────────────────────────────────────────
     sim.on('tick', () => {
@@ -436,6 +591,11 @@ export function useGraphD3(
       })
 
       nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
+
+      if (optsRef.current.showBlobs) {
+        const nodePositions = new Map(simNodes.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]))
+        blobPaths.attr('d', d => computeBlobPath(d, nodePositions) ?? '')
+      }
     })
 
     // ── Label collision detection after sim settles ────────────────────────────
@@ -520,6 +680,62 @@ export function useGraphD3(
         }
       })
   }, [opts.selectedNodeId])
+
+  // ── Blob cluster force toggle ──────────────────────────────────────────────
+  useEffect(() => {
+    const sim = simRef.current
+    const blobG = blobGRef.current
+    if (!sim || !blobG) return
+    if (opts.showBlobs) {
+      sim.force('blobCluster', makeBlobClusterForce(opts.blobs, simNodesRef.current))
+      blobG.style('display', '')
+      sim.alpha(0.3).restart()
+    } else {
+      sim.force('blobCluster', null)
+      blobG.style('display', 'none')
+      sim.alpha(0.15).restart()
+    }
+  }, [opts.showBlobs, opts.blobs])
+
+  // ── Blob selection highlight ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = d3.select(svgRef.current)
+    const blobG = blobGRef.current
+    const argId = optsRef.current.selectedArgumentId
+
+    if (!argId) {
+      svg.selectAll<SVGGElement, GraphNode>('.nodes g').attr('opacity', null)
+      svg.selectAll<SVGGElement, GraphEdge>('.edges g.edge-group').attr('opacity', null)
+      if (blobG) {
+        blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
+          .attr('stroke', 'rgba(100,116,139,0.35)')
+          .attr('fill', 'rgba(100,116,139,0.08)')
+      }
+      return
+    }
+
+    const blob = optsRef.current.blobs.find(b => b.id === argId)
+    if (!blob) return
+
+    const blobEntitySet = new Set(blob.entityIds)
+
+    svg.selectAll<SVGGElement, GraphNode>('.nodes g')
+      .attr('opacity', d => blobEntitySet.has(d.id) ? 1 : 0.06)
+
+    svg.selectAll<SVGGElement, GraphEdge>('.edges g.edge-group')
+      .attr('opacity', d => {
+        const sid = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
+        const tid = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
+        return blobEntitySet.has(sid) && blobEntitySet.has(tid) ? 1 : 0.04
+      })
+
+    if (blobG) {
+      blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
+        .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.35)')
+        .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.08)')
+    }
+  }, [opts.selectedArgumentId])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

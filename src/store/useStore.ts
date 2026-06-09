@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FilterState, ActiveView, Projection, SizeBy } from '../types'
+import type { FilterState, ActiveView, SizeBy } from '../types'
 
 const defaultFilters: FilterState = {
   nodeTypes: { Argument: true, Entity: true, Concept: true },
@@ -17,8 +17,9 @@ interface AppState {
   selectedNodeId: string | null
   activeView: ActiveView
   filters: FilterState
-  projection: Projection
   sizeBy: SizeBy
+  showBlobs: boolean
+  selectedArgumentId: string | null
   toggleDocumentSelection: (id: string) => void
   setSelectedDocuments: (ids: string[]) => void
   clearSelection: () => void
@@ -26,8 +27,9 @@ interface AppState {
   setSelectedNode: (id: string | null) => void
   setActiveView: (view: ActiveView) => void
   setFilters: (partial: Partial<FilterState>) => void
-  setProjection: (p: Projection) => void
   setSizeBy: (s: SizeBy) => void
+  setShowBlobs: (v: boolean) => void
+  setSelectedArgumentId: (id: string | null) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -35,8 +37,9 @@ export const useStore = create<AppState>((set) => ({
   selectedNodeId: null,
   activeView: 'corpus',
   filters: defaultFilters,
-  projection: 'umap',
   sizeBy: 'argument_count',
+  showBlobs: false,
+  selectedArgumentId: null,
   toggleDocumentSelection: (id) =>
     set((s) => ({
       selectedDocumentIds: s.selectedDocumentIds.includes(id)
@@ -49,6 +52,7 @@ export const useStore = create<AppState>((set) => ({
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setActiveView: (view) => set({ activeView: view }),
   setFilters: (partial) => set((s) => ({ filters: { ...s.filters, ...partial } })),
-  setProjection: (p) => set({ projection: p }),
   setSizeBy: (s) => set({ sizeBy: s }),
+  setShowBlobs: (v) => set({ showBlobs: v }),
+  setSelectedArgumentId: (id) => set({ selectedArgumentId: id }),
 }))

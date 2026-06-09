@@ -17,6 +17,31 @@ interface Props {
 }
 
 export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Props) {
+  if (item.type === 'blob') {
+    const { blob } = item
+    const snippet = blob.full_argument.length > 160
+      ? blob.full_argument.slice(0, 160) + '…'
+      : blob.full_argument
+    return (
+      <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
+        {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+        <div className={styles.header}>
+          <span style={{ background: 'rgba(100,116,139,0.18)', color: '#475569', border: '1px solid rgba(100,116,139,0.35)', borderRadius: 4, padding: '1px 6px', fontSize: 8, fontWeight: 700 }}>
+            ARGUMENT · {blob.argument_type}
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>{blob.confidence.toFixed(2)}</span>
+        </div>
+        <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5, marginTop: 6, fontStyle: 'italic' }}>
+          "{snippet}"
+        </div>
+        <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
+          {blob.source_document_title} · {blob.entityIds.length} entities
+        </div>
+        <button className={styles.detailBtn} onClick={onOpenDetail}>Open in Detail View →</button>
+      </div>
+    )
+  }
+
   if (item.type === 'edge') {
     const { edge, sourceNode, targetNode } = item
     return (
@@ -61,6 +86,11 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         </span>
         <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>{node.confidence.toFixed(2)}</span>
       </div>
+      {node.type !== 'Argument' && (
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#073b4c', marginTop: 6, lineHeight: 1.4 }}>
+          {node.label}
+        </div>
+      )}
       {node.full_text && (
         <div className={styles.fullText}>"{node.full_text}"</div>
       )}
