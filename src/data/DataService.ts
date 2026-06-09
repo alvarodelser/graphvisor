@@ -115,6 +115,7 @@ interface RawEdgeRecord {
   relation: string
   confidence: number
   docIdx: number
+  argIdx: number        // index of this argument within the document's data array
   full_predicate: string
 }
 
@@ -125,6 +126,7 @@ function buildGraphData(): {
   // maps entity label → doc indices that mention it (for filtering)
   entityDocs: Map<string, Set<number>>
   rawEdges: RawEdgeRecord[]
+  entityBlobs: Map<string, ArgumentBlob[]>
 } {
   // Collect raw entity labels and edges
   const entityLabels = new Map<string, { totalConf: number; count: number }>()
@@ -157,6 +159,7 @@ function buildGraphData(): {
           relation: rel.relation,
           confidence: rel.confidence,
           docIdx,
+          argIdx,
           full_predicate: `${s} ${rel.relation.replace(/_/g, ' ')} ${o}`,
         })
       })
@@ -174,6 +177,15 @@ function buildGraphData(): {
       }
     })
   })
+
+  // Build entity → blobs reverse index
+  const entityBlobs = new Map<string, ArgumentBlob[]>()
+  for (const blob of blobs) {
+    for (const eid of blob.entityIds) {
+      if (!entityBlobs.has(eid)) entityBlobs.set(eid, [])
+      entityBlobs.get(eid)!.push(blob)
+    }
+  }
 
   // Build GraphNode list
   const nodes: GraphNode[] = Array.from(entityLabels.entries()).map(([label, { totalConf, count }]) => ({
@@ -207,7 +219,7 @@ function buildGraphData(): {
 
   const edges = Array.from(edgeMap.values()).map(({ docIdx: _dropped, ...e }) => e)
 
-  return { nodes, edges, blobs, entityDocs, rawEdges }
+  return { nodes, edges, blobs, entityDocs, rawEdges, entityBlobs }
 }
 
 const CACHED_DOCS  = buildDocs()
@@ -295,7 +307,7 @@ export class RealDataService implements DataServiceInterface {
     }
 
     // Entity node path
-    const { nodes: allNodes, rawEdges } = CACHED_GRAPH
+    const { nodes: allNodes, rawEdges, entityBlobs } = CACHED_GRAPH
 
     const node = allNodes.find(n => n.id === nodeId)
     if (!node) throw new Error(`Node ${nodeId} not found`)
@@ -317,6 +329,7 @@ export class RealDataService implements DataServiceInterface {
         page_reference: 0,
         full_predicate: re.full_predicate,
         target_argument_id: otherId,
+        source_argument_id: `doc_${re.docIdx}_arg_${re.argIdx}`,
       }
     })
 
@@ -327,7 +340,12 @@ export class RealDataService implements DataServiceInterface {
       return docIndices.has(idx)
     })
 
-    return { argument: node, relations, sources }
+    return {
+      argument: node,
+      relations,
+      sources,
+      argumentBlobs: entityBlobs.get(nodeId) ?? [],
+    }
   }
 }
 
