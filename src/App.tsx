@@ -2,6 +2,7 @@ import { Shell } from './components/Shell/Shell'
 import { CorpusView } from './views/CorpusView/CorpusView'
 import { GraphView } from './views/GraphView/GraphView'
 import { DetailView } from './views/DetailView/DetailView'
+import { DiscoverView } from './views/DiscoverView/DiscoverView'
 
 export function App() {
   return (
@@ -9,7 +10,7 @@ export function App() {
       <CorpusView />
       <GraphView />
       <DetailView />
-      <div>Discover View (TODO)</div>
+      <DiscoverView />
     </Shell>
   )
 }
