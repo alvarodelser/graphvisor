@@ -33,9 +33,12 @@ function groupRelations(relations: ArgumentRelation[], blobs: ArgumentBlob[] | u
   for (const rel of relations) {
     const key = rel.source_argument_id ?? '__none__'
     if (!seen.has(key)) {
+      const resolvedBlobId = rel.source_argument_id && blobById.has(rel.source_argument_id)
+        ? rel.source_argument_id
+        : null
       const g: RelGroup = {
-        blobId: rel.source_argument_id ?? null,
-        blob: rel.source_argument_id ? (blobById.get(rel.source_argument_id) ?? null) : null,
+        blobId: resolvedBlobId,
+        blob: resolvedBlobId ? (blobById.get(resolvedBlobId) ?? null) : null,
         relations: [],
       }
       seen.set(key, g)
@@ -90,7 +93,7 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
                   padding: '8px 6px',
                   borderRight: '1px solid rgba(7,59,76,0.06)',
                   cursor: group.blobId ? 'pointer' : 'default',
-                  display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'start',
+                  display: 'flex', flexDirection: 'column', gap: 4,
                 }}
                 onMouseEnter={e => { if (group.blobId) e.currentTarget.style.background = '#f4f7fa' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '' }}
