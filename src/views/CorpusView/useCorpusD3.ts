@@ -37,11 +37,10 @@ export function useCorpusD3(
     svg.style('background', CANVAS_BG)
 
     const pad = 60
-    // Always UMAP — projection toggle removed
     const xScale = d3.scaleLinear()
-      .domain(d3.extent(docs, d => d.umap_x) as [number, number]).range([pad, width - pad])
+      .domain(d3.extent(docs, d => d.pca_x) as [number, number]).range([pad, width - pad])
     const yScale = d3.scaleLinear()
-      .domain(d3.extent(docs, d => d.umap_y) as [number, number]).range([height - pad, pad])
+      .domain(d3.extent(docs, d => d.pca_y) as [number, number]).range([height - pad, pad])
     xScaleRef.current = xScale
     yScaleRef.current = yScale
 
@@ -56,7 +55,7 @@ export function useCorpusD3(
 
     const simNodes = docs.map(d => ({
       id: d.id, data: d,
-      x: xScale(d.umap_x), y: yScale(d.umap_y),
+      x: xScale(d.pca_x), y: yScale(d.pca_y),
       r: getRadius(d),
     }))
     const sim = d3.forceSimulation(simNodes)
@@ -77,10 +76,10 @@ export function useCorpusD3(
 
     // Concentric rings
     const ringG = zoomG.append('g').attr('class', 'rings')
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 14; i++) {
       ringG.append('circle')
         .attr('cx', width / 2).attr('cy', height / 2)
-        .attr('r', i * 120)
+        .attr('r', i * 240)
         .attr('fill', 'none')
         .attr('stroke', 'rgba(7,59,76,0.35)')
         .attr('stroke-width', 1)
@@ -102,8 +101,8 @@ export function useCorpusD3(
       .data(docs, d => d.id)
       .join('circle')
       .attr('class', 'corpus-dot')
-      .attr('cx', d => simPositions.current.get(d.id)?.x ?? xScale(d.umap_x))
-      .attr('cy', d => simPositions.current.get(d.id)?.y ?? yScale(d.umap_y))
+      .attr('cx', d => simPositions.current.get(d.id)?.x ?? xScale(d.pca_x))
+      .attr('cy', d => simPositions.current.get(d.id)?.y ?? yScale(d.pca_y))
       .attr('r', d => getRadius(d))
       .attr('fill', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : DOT_DEFAULT)
       .attr('stroke', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : 'none')
@@ -126,8 +125,8 @@ export function useCorpusD3(
       .data(docs, d => d.id)
       .join('text')
       .attr('class', 'doc-title')
-      .attr('x', d => simPositions.current.get(d.id)?.x ?? xScale(d.umap_x))
-      .attr('y', d => (simPositions.current.get(d.id)?.y ?? yScale(d.umap_y)) + getRadius(d) + 10)
+      .attr('x', d => simPositions.current.get(d.id)?.x ?? xScale(d.pca_x))
+      .attr('y', d => (simPositions.current.get(d.id)?.y ?? yScale(d.pca_y)) + getRadius(d) + 10)
       .attr('text-anchor', 'middle')
       .attr('pointer-events', 'none')
       .attr('fill', '#073b4c')
@@ -181,11 +180,11 @@ export function useCorpusD3(
       const xS = xScaleRef.current
       const yS = yScaleRef.current
       d3.select(svgEl).selectAll<SVGCircleElement, DocNode>('.corpus-dot')
-        .attr('cx', d => xS(d.umap_x))
-        .attr('cy', d => yS(d.umap_y))
+        .attr('cx', d => xS(d.pca_x))
+        .attr('cy', d => yS(d.pca_y))
       d3.select(svgEl).selectAll<SVGTextElement, DocNode>('.doc-title')
-        .attr('x', d => xS(d.umap_x))
-        .attr('y', d => yS(d.umap_y) + 14)
+        .attr('x', d => xS(d.pca_x))
+        .attr('y', d => yS(d.pca_y) + 14)
       d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
       bgRect.attr('x', -w * 4).attr('y', -h * 4)
         .attr('width', w * 8).attr('height', h * 8)

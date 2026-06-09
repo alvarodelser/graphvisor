@@ -72,13 +72,15 @@ export function DetailView() {
         )}
 
         <div className={styles.header}>
-          <div className="sl">Argument</div>
+          <div className="sl">{detail.argument.type}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
             {detail.argument.source_document_title}
           </div>
-          <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
-            "{detail.argument.full_text}"
-          </div>
+          {detail.argument.full_text && (
+            <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+              "{detail.argument.full_text}"
+            </div>
+          )}
         </div>
 
         {detail.argumentBlobs && detail.argumentBlobs.length > 0 && (

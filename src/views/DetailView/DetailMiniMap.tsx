@@ -31,8 +31,8 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
     svg.selectAll('*').remove()
 
     const pad = 12
-    const xExt = d3.extent(allDocs, d => d.umap_x) as [number, number]
-    const yExt = d3.extent(allDocs, d => d.umap_y) as [number, number]
+    const xExt = d3.extent(allDocs, d => d.pca_x) as [number, number]
+    const yExt = d3.extent(allDocs, d => d.pca_y) as [number, number]
     const xScale = d3.scaleLinear().domain(xExt).range([pad, width - pad])
     const yScale = d3.scaleLinear().domain(yExt).range([height - pad, pad])
 
@@ -62,8 +62,8 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
         const target = allDocs.find(d => d.id === rel.source_document_id)
         if (!target || target.id === focalId) return
         lineG.append('line')
-          .attr('x1', xScale(focalDoc.umap_x)).attr('y1', yScale(focalDoc.umap_y))
-          .attr('x2', xScale(target.umap_x)).attr('y2', yScale(target.umap_y))
+          .attr('x1', xScale(focalDoc.pca_x)).attr('y1', yScale(focalDoc.pca_y))
+          .attr('x2', xScale(target.pca_x)).attr('y2', yScale(target.pca_y))
           .attr('stroke', RELATION_COLORS[rel.group])
           .attr('stroke-width', Math.max(0.5, rel.confidence * 1.5))
           .attr('opacity', 0.65)
@@ -74,8 +74,8 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
     dotG.selectAll<SVGCircleElement, DocNode>('circle')
       .data(allDocs)
       .join('circle')
-      .attr('cx', d => xScale(d.umap_x))
-      .attr('cy', d => yScale(d.umap_y))
+      .attr('cx', d => xScale(d.pca_x))
+      .attr('cy', d => yScale(d.pca_y))
       .attr('r', d => d.id === focalId ? 7 : relatedMap.has(d.id) ? 4 : 2)
       .attr('fill', d =>
         d.id === focalId ? '#F4A124'
@@ -98,7 +98,7 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
 
     if (focalDoc) {
       dotG.append('circle')
-        .attr('cx', xScale(focalDoc.umap_x)).attr('cy', yScale(focalDoc.umap_y))
+        .attr('cx', xScale(focalDoc.pca_x)).attr('cy', yScale(focalDoc.pca_y))
         .attr('r', 11).attr('fill', 'none').attr('stroke', '#F4A124').attr('stroke-width', 2)
         .attr('pointer-events', 'none')
     }
@@ -125,7 +125,7 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
       <div>
         <div className="sl">Layout</div>
         <div style={{ ...text, color: '#6b7280', lineHeight: 1.6 }}>
-          <div>Positions = UMAP embedding</div>
+          <div>Positions = PCA projection</div>
           <div>Hover dots for details</div>
         </div>
       </div>

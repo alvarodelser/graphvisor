@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import type { RefObject } from 'react'
 import type { GraphNode, GraphEdge, FilterState, ArgumentBlob } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
-import { computeBlobPath, makeBlobClusterForce } from '../../utils/blobGeometry'
+import { computeBlobPath, makeBlobRepulsionForce } from '../../utils/blobGeometry'
 
 // ── Chevron geometry constants ────────────────────────────────────────────────
 const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
@@ -110,10 +110,10 @@ export function useGraphD3(
     svg.call(zoom)
 
     const ringG = zoomG.append('g').attr('class', 'rings')
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 14; i++) {
       ringG.append('circle')
         .attr('cx', width / 2).attr('cy', height / 2)
-        .attr('r', i * 120)
+        .attr('r', i * 240)
         .attr('fill', 'none')
         .attr('stroke', 'rgba(7,59,76,0.35)')
         .attr('stroke-width', 1)
@@ -228,10 +228,9 @@ export function useGraphD3(
       .data(opts.blobs, d => d.id)
       .join('path')
       .attr('class', 'blob')
-      .attr('fill', 'rgba(100,116,139,0.10)')
-      .attr('stroke', 'rgba(100,116,139,0.50)')
+      .attr('fill', 'rgba(100,116,139,0.04)')
+      .attr('stroke', 'rgba(100,116,139,0.12)')
       .attr('stroke-width', 1.5)
-      .attr('stroke-dasharray', '4 3')
       .attr('pointer-events', 'fill')
       .style('cursor', 'pointer')
       .on('click', (event, d) => {
@@ -240,16 +239,16 @@ export function useGraphD3(
       })
       .on('mouseenter', function(event, d) {
         d3.select(this)
-          .attr('stroke', 'rgba(100,116,139,0.65)')
-          .attr('fill', 'rgba(100,116,139,0.14)')
+          .attr('stroke', 'rgba(100,116,139,0.45)')
+          .attr('fill', 'rgba(100,116,139,0.13)')
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
       .on('mouseleave', function(_, d) {
         const isSelected = optsRef.current.selectedArgumentId === d.id
         d3.select(this)
-          .attr('stroke', isSelected ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.50)')
-          .attr('fill', isSelected ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.10)')
+          .attr('stroke', isSelected ? 'rgba(100,116,139,0.6)' : 'rgba(100,116,139,0.12)')
+          .attr('fill', isSelected ? 'rgba(100,116,139,0.13)' : 'rgba(100,116,139,0.04)')
         optsRef.current.onHover?.(null)
       })
 
@@ -525,6 +524,15 @@ export function useGraphD3(
         })
       })
 
+    // ── Blob soft anchors — spring force toward last-dropped position ─────────
+    const blobMemberAnchors = new Map<string, { node: GraphNode; ax: number; ay: number }>()
+    sim.force('blobAnchor', (alpha: number) => {
+      for (const { node, ax, ay } of blobMemberAnchors.values()) {
+        node.vx = (node.vx ?? 0) + (ax - (node.x ?? 0)) * 0.25 * alpha
+        node.vy = (node.vy ?? 0) + (ay - (node.y ?? 0)) * 0.25 * alpha
+      }
+    })
+
     // ── Blob drag — moves group and squeezes members toward centroid ──────────
     interface BlobDragMember { node: GraphNode; relX: number; relY: number }
     let blobDragMembers: BlobDragMember[] = []
@@ -550,15 +558,17 @@ export function useGraphD3(
             relX: (n.x ?? 0) - blobDragCX,
             relY: (n.y ?? 0) - blobDragCY,
           }))
-          blobDragMembers.forEach(({ node }) => { node.fx = node.x; node.fy = node.y })
+          blobDragMembers.forEach(({ node }) => {
+            blobMemberAnchors.delete(node.id)  // release anchor while dragging
+            node.fx = node.x; node.fy = node.y
+          })
         })
         .on('drag', (event) => {
           const dx = event.x - blobDragStartX
           const dy = event.y - blobDragStartY
           const ncx = blobDragCX + dx
           const ncy = blobDragCY + dy
-          // Squeeze members 25% toward centroid while translating
-          const squeeze = 0.75
+          const squeeze = 0.25
           blobDragMembers.forEach(({ node, relX, relY }) => {
             node.fx = ncx + relX * squeeze
             node.fy = ncy + relY * squeeze
@@ -566,7 +576,13 @@ export function useGraphD3(
         })
         .on('end', (event) => {
           if (!event.active) sim.alphaTarget(0)
-          blobDragMembers.forEach(({ node }) => { node.fx = null; node.fy = null })
+          blobDragMembers.forEach(({ node }) => {
+            node.vx = 0; node.vy = 0
+            // Soft-anchor at the dropped position so forces keep them here naturally
+            blobMemberAnchors.set(node.id, { node, ax: node.x ?? 0, ay: node.y ?? 0 })
+            node.fx = null; node.fy = null
+          })
+          if (sim.alpha() < 0.1) sim.alpha(0.1).restart()
           blobDragMembers = []
         })
     )
@@ -700,7 +716,7 @@ export function useGraphD3(
     const blobG = blobGRef.current
     if (!sim || !blobG) return
     if (opts.showBlobs) {
-      sim.force('blobCluster', makeBlobClusterForce(opts.blobs, simNodesRef.current))
+      sim.force('blobRepulsion', makeBlobRepulsionForce(opts.blobs, simNodesRef.current))
       blobG.style('display', '')
       // Force-render blob paths immediately so they appear even if sim has settled
       const nodePositions = new Map(
@@ -710,7 +726,7 @@ export function useGraphD3(
         .attr('d', d => computeBlobPath(d, nodePositions) ?? '')
       sim.alpha(0.3).restart()
     } else {
-      sim.force('blobCluster', null)
+      sim.force('blobRepulsion', null)
       blobG.style('display', 'none')
       sim.alpha(0.15).restart()
     }
@@ -728,8 +744,8 @@ export function useGraphD3(
       svg.selectAll<SVGGElement, GraphEdge>('.edges g.edge-group').attr('opacity', null)
       if (blobG) {
         blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
-          .attr('stroke', 'rgba(100,116,139,0.50)')
-          .attr('fill', 'rgba(100,116,139,0.10)')
+          .attr('stroke', 'rgba(100,116,139,0.12)')
+          .attr('fill', 'rgba(100,116,139,0.04)')
       }
       return
     }
@@ -751,8 +767,8 @@ export function useGraphD3(
 
     if (blobG) {
       blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
-        .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.50)')
-        .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.10)')
+        .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.6)' : 'rgba(100,116,139,0.12)')
+        .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.13)' : 'rgba(100,116,139,0.04)')
     }
   }, [opts.selectedArgumentId])
 

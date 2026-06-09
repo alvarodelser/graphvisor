@@ -61,7 +61,8 @@ export function GraphView() {
     onBlobClick: (blob) => {
       setSelectedArgumentId(blob.id)
       setSelectedNode(null)
-      setActiveView('detail')
+      setDisplayedItem({ type: 'blob', blob, x: 0, y: 0 })
+      setIsSticky(true)
     },
     onHover: (item) => {
       if (isSticky) {

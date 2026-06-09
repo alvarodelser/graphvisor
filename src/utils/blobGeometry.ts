@@ -87,6 +87,42 @@ export function computeBlobPath(
   return catmullRomClosed(expanded)
 }
 
+// D3 custom force that pushes non-member nodes away from each blob member's exclusion zone
+export function makeBlobRepulsionForce(
+  blobs: ArgumentBlob[],
+  simNodes: GraphNode[],
+  strength = 0.12
+) {
+  const blobInfos = blobs.map(b => ({
+    memberSet: new Set(b.entityIds),
+    memberNodes: b.entityIds
+      .map(id => simNodes.find(n => n.id === id))
+      .filter((n): n is GraphNode => n !== undefined),
+  }))
+
+  return function (alpha: number) {
+    const R = BLOB_PAD + 10
+    for (const { memberSet, memberNodes } of blobInfos) {
+      for (const member of memberNodes) {
+        const mx = member.x ?? 0
+        const my = member.y ?? 0
+        for (const n of simNodes) {
+          if (memberSet.has(n.id)) continue
+          const dx = (n.x ?? 0) - mx
+          const dy = (n.y ?? 0) - my
+          if (Math.abs(dx) > R || Math.abs(dy) > R) continue
+          const dist = Math.hypot(dx, dy) || 1
+          if (dist < R) {
+            const f = (R - dist) / dist * strength * alpha
+            n.vx = (n.vx ?? 0) + dx * f
+            n.vy = (n.vy ?? 0) + dy * f
+          }
+        }
+      }
+    }
+  }
+}
+
 // D3 custom force that gently pulls blob members toward each other's centroid
 export function makeBlobClusterForce(
   blobs: ArgumentBlob[],

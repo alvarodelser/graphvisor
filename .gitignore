@@ -5,3 +5,5 @@ dist/
 .env
 .env.*
 .superpowers/
+.idea/
+.playwright-mcp/
