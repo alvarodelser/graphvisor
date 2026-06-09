@@ -104,3 +104,27 @@ describe('entity detail — argument blobs and source_argument_id', () => {
     expect(detail.argumentBlobs).toBeUndefined()
   })
 })
+
+describe('RealDataService.getHypotheses', () => {
+  it('returns 8 hypotheses with required fields', async () => {
+    const hypotheses = await svc.getHypotheses()
+    expect(hypotheses).toHaveLength(8)
+    expect(hypotheses[0]).toHaveProperty('hypothesis')
+    expect(hypotheses[0]).toHaveProperty('decision')
+    expect(hypotheses[0].decision).toMatch(/^(ADVANCE|BORDERLINE)$/)
+    expect(hypotheses[0].scores).toHaveProperty('novelty')
+    expect(hypotheses[0].scores).toHaveProperty('scientific_plausibility')
+    expect(hypotheses[0].scores).toHaveProperty('potential_impact')
+    expect(hypotheses[0].scores).toHaveProperty('commercial_potential')
+  })
+
+  it('all scores are numbers between 1 and 10', async () => {
+    const hypotheses = await svc.getHypotheses()
+    for (const h of hypotheses) {
+      for (const v of Object.values(h.scores)) {
+        expect(v).toBeGreaterThanOrEqual(1)
+        expect(v).toBeLessThanOrEqual(10)
+      }
+    }
+  })
+})

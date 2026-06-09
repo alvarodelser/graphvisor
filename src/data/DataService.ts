@@ -1,11 +1,13 @@
-import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, RelationGroup } from '../types'
+import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, RelationGroup, Hypothesis } from '../types'
 import { PCA } from 'ml-pca'
 import corpusJson from './corpus_final_dat.json'
+import hypothesisJson from './hypothesis_L2.json'
 
 export interface DataServiceInterface {
   getDocuments(): Promise<DocNode[]>
   getGraph(documentIds: string[]): Promise<{ nodes: GraphNode[]; edges: GraphEdge[]; blobs: ArgumentBlob[] }>
   getArgumentDetail(nodeId: string): Promise<ArgumentDetail>
+  getHypotheses(): Promise<Hypothesis[]>
 }
 
 // ── Raw JSON types ────────────────────────────────────────────────────────────
@@ -346,6 +348,10 @@ export class RealDataService implements DataServiceInterface {
       sources,
       argumentBlobs: entityBlobs.get(nodeId) ?? [],
     }
+  }
+
+  getHypotheses(): Promise<Hypothesis[]> {
+    return Promise.resolve(hypothesisJson as Hypothesis[])
   }
 }
 
