@@ -13,7 +13,7 @@ const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
 }
 
 export function DetailView() {
-  const { activeView, selectedNodeId, setSelectedNode, selectedArgumentId } = useStore()
+  const { activeView, selectedNodeId, setSelectedNode, selectedArgumentId, setSelectedArgumentId } = useStore()
   const [detail, setDetail] = useState<ArgumentDetail | null>(null)
   const [allDocs, setAllDocs] = useState<DocNode[]>([])
   const [visibleGroups, setVisibleGroups] = useState(DEFAULT_GROUPS)
@@ -35,6 +35,7 @@ export function DetailView() {
   const navigateToArgument = (rel: ArgumentRelation) => {
     if (!detail || !rel.target_argument_id || rel.target_argument_id === detail.argument.id) return
     setNavStack(prev => [...prev, detail.argument.id])
+    setSelectedArgumentId(null)
     setSelectedNode(rel.target_argument_id)
   }
 
@@ -42,12 +43,14 @@ export function DetailView() {
     if (navStack.length === 0) return
     const prevId = navStack[navStack.length - 1]
     setNavStack(s => s.slice(0, -1))
+    setSelectedArgumentId(null)
     setSelectedNode(prevId)
   }
 
   const navigateToBlob = (blobId: string) => {
     if (!detail) return
     setNavStack(prev => [...prev, detail.argument.id])
+    setSelectedArgumentId(null)
     setSelectedNode(blobId)
   }
 

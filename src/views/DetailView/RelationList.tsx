@@ -108,7 +108,9 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
                       {group.blob.argument_type}
                     </span>
                     <div style={{ fontSize: 9, color: '#374151', lineHeight: 1.4 }}>
-                      {group.blob.full_argument.slice(0, 80)}…
+                      {group.blob.full_argument.length > 80
+                        ? group.blob.full_argument.slice(0, 80) + '…'
+                        : group.blob.full_argument}
                     </div>
                   </>
                 )}
