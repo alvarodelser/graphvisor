@@ -48,12 +48,14 @@ export interface ArgumentRelation {
   page_reference: number
   full_predicate: string
   target_argument_id: string
+  source_argument_id?: string
 }
 
 export interface ArgumentDetail {
   argument: GraphNode
   relations: ArgumentRelation[]
   sources: DocNode[]
+  argumentBlobs?: ArgumentBlob[]
 }
 
 export interface ArgumentBlob {
