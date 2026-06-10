@@ -60,6 +60,46 @@ export function roundedHullPath(poly: Pt[], r: number): string {
   return d + ' Z'
 }
 
+// Perpendicular distance from point p to the infinite line through a and b.
+function perpDistance(p: Pt, a: Pt, b: Pt): number {
+  const dx = b[0] - a[0], dy = b[1] - a[1]
+  const len = Math.hypot(dx, dy) || 1
+  return Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / len
+}
+
+// The two points that are farthest apart (the principal axis of the cluster).
+function farthestPair(pts: Pt[]): [Pt, Pt] {
+  let a = pts[0], b = pts[0], best = -1
+  for (let i = 0; i < pts.length; i++)
+    for (let j = i + 1; j < pts.length; j++) {
+      const dd = Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1])
+      if (dd > best) { best = dd; a = pts[i]; b = pts[j] }
+    }
+  return [a, b]
+}
+
+// Minimum width of a convex polygon (smallest distance across any edge direction).
+function minWidth(hull: Pt[]): number {
+  let min = Infinity
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i], b = hull[(i + 1) % hull.length]
+    let maxd = 0
+    for (const p of hull) maxd = Math.max(maxd, perpDistance(p, a, b))
+    min = Math.min(min, maxd)
+  }
+  return min
+}
+
+// Capsule along the principal axis, fattened so it encloses every point with
+// `pad` of margin. Used for clusters too thin to render as a hull without
+// collapsing to a line.
+function enclosingCapsule(points: Pt[], pad: number): string {
+  const [a, b] = farthestPair(points)
+  if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6) return circlePath(a[0], a[1], pad)
+  const perp = Math.max(0, ...points.map(p => perpDistance(p, a, b)))
+  return capsulePath(a[0], a[1], b[0], b[1], pad + perp)
+}
+
 export function computeBlobPath(
   points: Pt[],
   pad: number = BLOB_PAD,
@@ -71,15 +111,8 @@ export function computeBlobPath(
     return capsulePath(points[0][0], points[0][1], points[1][0], points[1][1], pad)
   }
   const hull = polygonHull(points)
-  if (!hull) {
-    // Collinear 3+ points: treat as a capsule between the extremes
-    let a = points[0], b = points[0], best = -1
-    for (let i = 0; i < points.length; i++)
-      for (let j = i + 1; j < points.length; j++) {
-        const dd = Math.hypot(points[i][0] - points[j][0], points[i][1] - points[j][1])
-        if (dd > best) { best = dd; a = points[i]; b = points[j] }
-      }
-    return capsulePath(a[0], a[1], b[0], b[1], pad)
-  }
+  // Collinear, or a sliver thinner than the padding: a rounded hull would look
+  // like a line, so render an enclosing capsule with guaranteed thickness.
+  if (!hull || minWidth(hull as Pt[]) < pad) return enclosingCapsule(points, pad)
   return roundedHullPath(expand(hull as Pt[], pad), corner)
 }

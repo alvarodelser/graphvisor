@@ -35,6 +35,19 @@ describe('computeBlobPath', () => {
     expect(d.trim().endsWith('Z')).toBe(true)
   })
 
+  it('renders a sliver triangle as a capsule, not a thin line', () => {
+    // apex only 2px off the 100px base -> hull is thinner than the padding
+    const d = computeBlobPath([[0, 0], [100, 0], [50, 2]])!
+    expect(d).toContain('A')        // capsule arcs (enclosing capsule), not a hull
+    expect(d).not.toContain('Q')    // did not take the rounded-hull path
+    expect(d.trim().endsWith('Z')).toBe(true)
+  })
+
+  it('keeps a genuinely wide triangle as a rounded hull', () => {
+    const d = computeBlobPath([[0, 0], [100, 0], [50, 80]])!
+    expect(d).toContain('Q')        // wide enough -> rounded hull
+  })
+
   it('exposes constants', () => {
     expect(BLOB_PAD).toBeGreaterThan(0)
     expect(BLOB_CORNER).toBeGreaterThan(0)
