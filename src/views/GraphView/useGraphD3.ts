@@ -3,7 +3,7 @@ import * as d3 from 'd3'
 import type { RefObject } from 'react'
 import type { GraphNode, GraphEdge, FilterState, ArgumentBlob } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
-import { computeBlobPath, makeBlobRepulsionForce } from '../../utils/blobGeometry'
+import { computeBlobPath, makeBlobRepulsionForce, BLOB_PAD } from '../../utils/blobGeometry'
 
 // ── Chevron geometry constants ────────────────────────────────────────────────
 const CHEV_HALF_H     = 6    // half-height (total 12 px, was 12)
@@ -92,6 +92,7 @@ export function useGraphD3(
   optsRef.current = opts
   const simNodesRef = useRef<GraphNode[]>([])
   const blobGRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
+  const zoomKRef = useRef(1)
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -104,9 +105,13 @@ export function useGraphD3(
     svg.on('click', () => optsRef.current.onCanvasClick?.())
 
     const zoomG = svg.append('g').attr('class', 'zoom-group')
+    let updateLOD: () => void = () => {}
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
-      .on('zoom', (e) => zoomG.attr('transform', e.transform))
+      .on('zoom', (e) => {
+        zoomG.attr('transform', e.transform)
+        updateLOD()
+      })
     svg.call(zoom)
 
     const ringG = zoomG.append('g').attr('class', 'rings')
@@ -222,6 +227,16 @@ export function useGraphD3(
     blobGRef.current = blobG
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
+    const argNodeG = zoomG.append('g').attr('class', 'arg-nodes')
+
+    // entity → blob IDs it belongs to (for LOD hide logic)
+    const entityToBlobIds = new Map<string, string[]>()
+    for (const blob of opts.blobs) {
+      for (const eid of blob.entityIds) {
+        if (!entityToBlobIds.has(eid)) entityToBlobIds.set(eid, [])
+        entityToBlobIds.get(eid)!.push(blob.id)
+      }
+    }
 
     // ── Blob paths ────────────────────────────────────────────────────────────
     const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
@@ -487,6 +502,32 @@ export function useGraphD3(
         if (el && el.getAttribute('data-pinned') === '0') el.setAttribute('opacity', '0')
       })
 
+    // ── Argument LOD nodes (counter-scaled, shown when blobs collapse on zoom-out) ──
+    const argNodeGroups = argNodeG.selectAll<SVGGElement, ArgumentBlob>('g.arg-node')
+      .data(opts.blobs, d => d.id)
+      .join('g')
+      .attr('class', 'arg-node')
+      .style('display', 'none')
+      .style('cursor', 'pointer')
+      .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
+      .on('mouseenter', function(event, d) {
+        const [mx, my] = d3.pointer(event, svgEl)
+        optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
+      })
+      .on('mouseleave', () => optsRef.current.onHover?.(null))
+
+    argNodeGroups.each(function(d) {
+      const g = d3.select(this)
+      const S = 18
+      g.append('rect').attr('x', -S/2).attr('y', -S/2)
+        .attr('width', S).attr('height', S).attr('rx', 3).attr('fill', '#073b4c')
+      g.append('text')
+        .attr('y', S/2 + 9).attr('text-anchor', 'middle')
+        .attr('font-size', 7).attr('font-weight', 700)
+        .attr('fill', '#073b4c').attr('pointer-events', 'none')
+        .text(d.argument_type.slice(0, 14))
+    })
+
     // ── Force simulation ──────────────────────────────────────────────────────
     const maxCompSize = sortedComps[0]?.[1] ?? 1
     const sim = d3.forceSimulation<GraphNode>(simNodes)
@@ -587,6 +628,66 @@ export function useGraphD3(
         })
     )
 
+    // ── LOD: collapse blobs to argument nodes on zoom-out ─────────────────────
+    updateLOD = () => {
+      const k = zoomKRef.current
+      const showBlobs = optsRef.current.showBlobs
+      const blobs = optsRef.current.blobs
+
+      const collapsedBlobIds = new Set<string>()
+      const argPositions = new Map<string, { x: number; y: number }>()
+
+      if (showBlobs) {
+        const nodePositions = new Map(simNodes.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]))
+        for (const blob of blobs) {
+          const pts = blob.entityIds
+            .map(id => nodePositions.get(id))
+            .filter((p): p is { x: number; y: number } => p !== undefined)
+          if (pts.length < 2) continue
+          const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
+          const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
+          const spread = Math.max(...pts.map(p => Math.hypot(p.x - cx, p.y - cy)))
+          // Larger blobs (more spread) collapse first as you zoom out
+          if ((spread + BLOB_PAD) * 2 * k < 80) {
+            collapsedBlobIds.add(blob.id)
+            argPositions.set(blob.id, { x: cx, y: cy })
+          }
+        }
+      }
+
+      // Entity hidden only if ALL its blob memberships are collapsed
+      const hiddenEntityIds = new Set<string>()
+      for (const [eid, blobIds] of entityToBlobIds) {
+        if (blobIds.length > 0 && blobIds.every(bid => collapsedBlobIds.has(bid)))
+          hiddenEntityIds.add(eid)
+      }
+
+      nodeGroups.style('display', (d: GraphNode) => hiddenEntityIds.has(d.id) ? 'none' : null)
+
+      edgeGroups.style('display', (d: GraphEdge) => {
+        const sid = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
+        const tid = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
+        return hiddenEntityIds.has(sid) && hiddenEntityIds.has(tid) ? 'none' : null
+      })
+
+      // Hide collapsed blob outlines; keep visible ones
+      blobPaths.style('display', (d: ArgumentBlob) =>
+        collapsedBlobIds.has(d.id) ? 'none' : null
+      )
+
+      // Position and show/hide argument LOD nodes (counter-scaled to maintain screen size)
+      argNodeGroups
+        .style('display', (d: ArgumentBlob) => {
+          if (!showBlobs || !collapsedBlobIds.has(d.id)) return 'none'
+          return null
+        })
+        .attr('transform', (d: ArgumentBlob) => {
+          const pos = argPositions.get(d.id)
+          if (!pos) return null
+          return `translate(${pos.x},${pos.y}) scale(${1 / k})`
+        })
+    }
+
     // ── Tick ──────────────────────────────────────────────────────────────────
     sim.on('tick', () => {
       edgeGroups.each(function(d) {
@@ -626,6 +727,7 @@ export function useGraphD3(
         const nodePositions = new Map(simNodes.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]))
         blobPaths.attr('d', d => computeBlobPath(d, nodePositions) ?? '')
       }
+      updateLOD()
     })
 
     // ── Label collision detection after sim settles ────────────────────────────

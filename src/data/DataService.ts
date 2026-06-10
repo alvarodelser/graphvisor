@@ -48,7 +48,7 @@ const PCA_SCORES: Array<{ pca_x: number; pca_y: number }> = (() => {
   const embeddings = rawDocs.map(d => d.doc_embbeding)
   const pca = new PCA(embeddings)
   const projected = pca.predict(embeddings, { nComponents: 2 }).to2DArray()
-  return projected.map(row => ({ pca_x: row[0], pca_y: row[1] }))
+  return projected.map((row: number[]) => ({ pca_x: row[0], pca_y: row[1] }))
 })()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

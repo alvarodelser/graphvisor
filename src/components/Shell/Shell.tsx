@@ -10,12 +10,13 @@ interface Props {
 }
 
 export function Shell({ children }: Props) {
-  const { activeView, setActiveView, selectedDocumentIds, selectedNodeId } = useStore()
+  const { activeView, setActiveView, selectedDocumentIds, selectedNodeId, selectedArgumentId } = useStore()
   const viewIndex = VIEW_ORDER.indexOf(activeView)
 
+  const hasDetailTarget = selectedNodeId !== null || selectedArgumentId !== null
   const showCTA =
     (activeView === 'corpus' && selectedDocumentIds.length > 0) ||
-    (activeView === 'graph' && selectedNodeId !== null)
+    (activeView === 'graph' && hasDetailTarget)
   const ctaLabel = activeView === 'corpus' ? 'View Graph →' : 'Open Detail →'
   const handleCTA = () => setActiveView(activeView === 'corpus' ? 'graph' : 'detail')
 
@@ -30,16 +31,16 @@ export function Shell({ children }: Props) {
               className={[
                 styles.tab,
                 activeView === v ? styles.active : '',
-                v === 'detail' && !selectedNodeId ? styles.dimmed : '',
+                v === 'detail' && !hasDetailTarget ? styles.dimmed : '',
               ].join(' ')}
-              onClick={() => (v !== 'detail' || selectedNodeId) && setActiveView(v)}
-              disabled={v === 'detail' && !selectedNodeId}
+              onClick={() => (v !== 'detail' || hasDetailTarget) && setActiveView(v)}
+              disabled={v === 'detail' && !hasDetailTarget}
             >
               {v.charAt(0).toUpperCase() + v.slice(1)}
               {v === 'graph' && selectedDocumentIds.length > 0 && (
                 <span className={styles.badge}>{selectedDocumentIds.length}</span>
               )}
-              {v === 'detail' && selectedNodeId && (
+              {v === 'detail' && hasDetailTarget && (
                 <span className={styles.dot}>●</span>
               )}
             </button>

@@ -66,7 +66,7 @@ export function GraphView() {
     },
     onHover: (item) => {
       if (isSticky) {
-        if (item !== null) setDisplayedItem(item)
+        if (item !== null && item.type !== 'blob') setDisplayedItem(item)
       } else {
         setDisplayedItem(item)
       }
@@ -221,7 +221,7 @@ export function GraphView() {
           <NodeFloatingCard
             item={displayedItem}
             sticky={isSticky}
-            onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null) }}
+            onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null); setSelectedArgumentId(null) }}
             onOpenDetail={() => {
               if (displayedItem?.type === 'blob') {
                 setSelectedArgumentId(displayedItem.blob.id)

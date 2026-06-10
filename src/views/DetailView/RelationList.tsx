@@ -61,7 +61,7 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
   const visible = detail.relations.filter(r => visibleGroups[r.group])
   const hasArgCol = !!detail.argumentBlobs
   const groups = groupRelations(visible, detail.argumentBlobs)
-  const colTemplate = hasArgCol ? '140px 90px 36px 1fr 1fr' : '90px 36px 1fr 1fr'
+  const colTemplate = hasArgCol ? '140px 90px 36px 1fr' : '90px 36px 1fr'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -73,7 +73,6 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
         {hasArgCol && <span className="sl" style={{ margin: 0 }}>Argument</span>}
         <span className="sl" style={{ margin: 0 }}>Relation</span>
         <span className="sl" style={{ margin: 0 }}>Conf</span>
-        <span className="sl" style={{ margin: 0 }}>Source</span>
         <span className="sl" style={{ margin: 0 }}>Predicate</span>
       </div>
 
@@ -148,35 +147,17 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
             )
             cells.push(
               <div
-                key={`src-${ri}`}
-                onClick={() => { if (!hasArgCol && !isSelf) onRowClick(rel) }}
+                key={`pred-${ri}`}
+                onClick={() => { if (!isSelf) onRowClick(rel) }}
                 style={{
                   gridColumn: relCol + 2, gridRow: ri + 1,
-                  fontSize: 10, fontWeight: 600, color: '#073b4c',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  minWidth: 0, padding: '8px 0', alignSelf: 'start',
-                  cursor: (!hasArgCol && !isSelf) ? 'pointer' : 'default',
-                  opacity: isSelf ? 0.5 : 1,
-                }}
-                onMouseEnter={e => { if (!hasArgCol && !isSelf) e.currentTarget.style.color = '#1a6b8a' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#073b4c' }}
-              >
-                {rel.source_document_title.split(' — ')[0]} · p.{rel.page_reference}
-              </div>
-            )
-            cells.push(
-              <div
-                key={`pred-${ri}`}
-                onClick={() => { if (hasArgCol && !isSelf) onRowClick(rel) }}
-                style={{
-                  gridColumn: relCol + 3, gridRow: ri + 1,
                   fontSize: 10, color: '#374151', lineHeight: 1.4,
                   overflow: 'hidden', display: '-webkit-box',
                   WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                   padding: '8px 0', minWidth: 0, alignSelf: 'start',
-                  cursor: (hasArgCol && !isSelf) ? 'pointer' : 'default',
+                  cursor: !isSelf ? 'pointer' : 'default',
                 }}
-                onMouseEnter={e => { if (hasArgCol && !isSelf) e.currentTarget.style.background = '#f4f7fa' }}
+                onMouseEnter={e => { if (!isSelf) e.currentTarget.style.background = '#f4f7fa' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '' }}
               >
                 "{rel.full_predicate}"
