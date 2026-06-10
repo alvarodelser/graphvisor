@@ -18,12 +18,14 @@ function capsulePath(ax: number, ay: number, bx: number, by: number, pad: number
   const dx = bx - ax, dy = by - ay
   const len = Math.hypot(dx, dy) || 1
   const nx = (-dy / len) * pad, ny = (dx / len) * pad
+  // sweep-flag 0 so the end-caps bulge OUTWARD (convex pill). With sweep-flag 1
+  // the caps arc back toward the middle, pinching the capsule into an hourglass.
   return [
     `M ${ax + nx},${ay + ny}`,
     `L ${bx + nx},${by + ny}`,
-    `A ${pad},${pad} 0 0 1 ${bx - nx},${by - ny}`,
+    `A ${pad},${pad} 0 0 0 ${bx - nx},${by - ny}`,
     `L ${ax - nx},${ay - ny}`,
-    `A ${pad},${pad} 0 0 1 ${ax + nx},${ay + ny}`,
+    `A ${pad},${pad} 0 0 0 ${ax + nx},${ay + ny}`,
     'Z',
   ].join(' ')
 }
