@@ -37,6 +37,7 @@ export interface GraphEdge {
   group: RelationGroup
   full_predicate?: string
   source_document_title?: string
+  reasoning?: string
 }
 
 export interface ArgumentRelation {
@@ -52,6 +53,7 @@ export interface ArgumentRelation {
   subject?: string
   object?: string
   subject_id?: string
+  reasoning?: string
 }
 
 export interface EntityTriple {
@@ -68,6 +70,28 @@ export interface ArgumentDetail {
   sources: DocNode[]
   argumentBlobs?: ArgumentBlob[]
   entityGraph?: EntityTriple[]
+}
+
+export interface ConceptArgument {
+  id: string
+  argument_type: string
+  full_argument: string
+  confidence: number
+  source_document_id: string
+  source_document_title: string
+}
+
+export interface ConceptDocStat {
+  docId: string
+  total: number          // total arguments in the document
+  withConcept: number    // arguments in the document carrying this concept
+}
+
+export interface ConceptDetail {
+  conceptId: string
+  label: string
+  arguments: ConceptArgument[]
+  docStats: ConceptDocStat[]
 }
 
 export interface ArgumentBlob {

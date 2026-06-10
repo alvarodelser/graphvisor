@@ -91,7 +91,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 key="arg"
                 onClick={() => group.blobId && onBlobClick?.(group.blobId)}
                 style={{
-                  gridColumn: 1, gridRow: `1 / ${n + 1}`,
+                  gridColumn: 1, gridRow: `1 / ${2 * n + 1}`,
                   padding: '8px 6px',
                   borderRight: '1px solid rgba(7,59,76,0.06)',
                   cursor: group.blobId ? 'pointer' : 'default',
@@ -126,12 +126,14 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
             const subjectNav   = rel.subject_id && rel.subject_id !== focalId
             const objectNav    = rel.target_argument_id && rel.target_argument_id !== focalId
 
+            const contentRow = 2 * ri + 1
+
             cells.push(
               <div
                 key={`subj-${ri}`}
                 onClick={() => subjectNav && onEntityClick?.(rel.subject_id!)}
                 style={{
-                  gridColumn: subjectCol, gridRow: ri + 1,
+                  gridColumn: subjectCol, gridRow: contentRow,
                   fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
                   color: subjectFocal ? '#073b4c' : '#374151',
                   fontWeight: subjectFocal ? 700 : 400,
@@ -146,7 +148,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
 
             cells.push(
               <div key={`rel-${ri}`} style={{
-                gridColumn: subjectCol + 1, gridRow: ri + 1,
+                gridColumn: subjectCol + 1, gridRow: contentRow,
                 padding: '8px 0', alignSelf: 'start',
               }}>
                 <span style={{
@@ -166,7 +168,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 key={`obj-${ri}`}
                 onClick={() => objectNav && onEntityClick?.(rel.target_argument_id)}
                 style={{
-                  gridColumn: subjectCol + 2, gridRow: ri + 1,
+                  gridColumn: subjectCol + 2, gridRow: contentRow,
                   fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
                   color: objectFocal ? '#073b4c' : '#374151',
                   fontWeight: objectFocal ? 700 : 400,
@@ -181,13 +183,25 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
 
             cells.push(
               <span key={`conf-${ri}`} style={{
-                gridColumn: subjectCol + 3, gridRow: ri + 1,
+                gridColumn: subjectCol + 3, gridRow: contentRow,
                 fontSize: 10, fontWeight: 700, color: '#F4A124',
                 padding: '8px 0', alignSelf: 'start', whiteSpace: 'nowrap',
               }}>
                 {rel.confidence.toFixed(2)}
               </span>
             )
+
+            if (rel.reasoning) {
+              cells.push(
+                <div key={`reason-${ri}`} style={{
+                  gridColumn: `${subjectCol} / -1`, gridRow: contentRow + 1,
+                  fontSize: 9, color: '#9ca3af', fontStyle: 'italic', lineHeight: 1.4,
+                  padding: '0 0 8px 0',
+                }}>
+                  {rel.reasoning}
+                </div>
+              )
+            }
           })
 
           return (

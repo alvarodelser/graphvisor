@@ -276,8 +276,14 @@ export function GraphView() {
               if (displayedItem?.type === 'blob') {
                 setSelectedArgumentId(displayedItem.blob.id)
                 setSelectedNode(null)
+                setSelectedConceptId(null)
               } else if (displayedItem?.type === 'node' && displayedItem.node.type === 'Argument') {
                 setSelectedArgumentId(displayedItem.node.id)
+                setSelectedNode(null)
+                setSelectedConceptId(null)
+              } else if (displayedItem?.type === 'concept') {
+                setSelectedConceptId(displayedItem.conceptId)
+                setSelectedArgumentId(null)
                 setSelectedNode(null)
               }
               setActiveView('detail')

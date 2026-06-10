@@ -105,6 +105,38 @@ describe('entity detail — argument blobs and source_argument_id', () => {
   })
 })
 
+describe('RealDataService.getArgumentDetail — reasoning', () => {
+  it('argument relations carry a reasoning string', async () => {
+    const { blobs } = await svc.getGraph([])
+    const detail = await svc.getArgumentDetail(blobs[0].id)
+    const withReasoning = detail.relations.filter(r => typeof r.reasoning === 'string' && r.reasoning.length > 0)
+    expect(withReasoning.length).toBeGreaterThan(0)
+  })
+})
+
+describe('RealDataService.getConceptDetail', () => {
+  it('returns arguments and per-document stats for a concept', async () => {
+    const cd = await svc.getConceptDetail('protein oxidation')
+    expect(cd.label).toBe('protein oxidation')
+    expect(cd.conceptId).toBe('concept-protein oxidation')
+    expect(cd.arguments.length).toBeGreaterThan(0)
+    expect(cd.arguments[0]).toHaveProperty('full_argument')
+    expect(cd.arguments[0].id).toMatch(/^doc_\d+_arg_\d+$/)
+    // docStats cover every document; withConcept never exceeds total; sums match
+    const docs = await svc.getDocuments()
+    expect(cd.docStats.length).toBe(docs.length)
+    cd.docStats.forEach(s => expect(s.withConcept).toBeLessThanOrEqual(s.total))
+    const totalWith = cd.docStats.reduce((n, s) => n + s.withConcept, 0)
+    expect(totalWith).toBe(cd.arguments.length)
+  })
+
+  it('returns empty arguments for an unknown concept', async () => {
+    const cd = await svc.getConceptDetail('no-such-concept-xyz')
+    expect(cd.arguments).toHaveLength(0)
+    expect(cd.docStats.every(s => s.withConcept === 0)).toBe(true)
+  })
+})
+
 describe('RealDataService.getHypotheses', () => {
   it('returns 8 hypotheses with required fields', async () => {
     const hypotheses = await svc.getHypotheses()

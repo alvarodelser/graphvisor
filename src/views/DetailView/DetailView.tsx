@@ -2,20 +2,30 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { DetailMiniMap } from './DetailMiniMap'
+import { ConceptMiniMap } from './ConceptMiniMap'
 import { ArgumentMiniGraph } from './ArgumentMiniGraph'
 import { RelationList } from './RelationList'
 import { ArgumentCards } from './ArgumentCards'
 import { RELATION_COLORS } from '../../utils/geometry'
-import type { ArgumentDetail, DocNode, RelationGroup } from '../../types'
+import type { ArgumentDetail, ConceptDetail, DocNode, RelationGroup } from '../../types'
 import styles from './DetailView.module.css'
+
+const ARGUMENT_TYPE_COLORS: Record<string, string> = {
+  mechanistic: '#6366f1', evidence: '#059669', hypothesis: '#d97706', causal: '#ef4444',
+}
+const argTypeColor = (t: string) => ARGUMENT_TYPE_COLORS[t.toLowerCase()] ?? '#6b7280'
 
 const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
   positive: true, negative: true, causal: true, structural: false, concept: false,
 }
 
 export function DetailView() {
-  const { selectedNodeId, setSelectedNode, selectedArgumentId, setSelectedArgumentId } = useStore()
+  const {
+    selectedNodeId, setSelectedNode, selectedArgumentId, setSelectedArgumentId,
+    selectedConceptId, setSelectedConceptId,
+  } = useStore()
   const [detail, setDetail] = useState<ArgumentDetail | null>(null)
+  const [conceptDetail, setConceptDetail] = useState<ConceptDetail | null>(null)
   const [allDocs, setAllDocs] = useState<DocNode[]>([])
   const [visibleGroups, setVisibleGroups] = useState(DEFAULT_GROUPS)
   const [navStack, setNavStack] = useState<string[]>([])
@@ -23,10 +33,24 @@ export function DetailView() {
   useEffect(() => { dataService.getDocuments().then(setAllDocs) }, [])
 
   useEffect(() => {
+    if (selectedConceptId) {
+      const label = selectedConceptId.startsWith('concept-')
+        ? selectedConceptId.slice('concept-'.length)
+        : selectedConceptId
+      dataService.getConceptDetail(label).then(cd => { setConceptDetail(cd); setDetail(null) })
+      return
+    }
+    setConceptDetail(null)
     const id = selectedArgumentId ?? selectedNodeId
     if (!id) return
     dataService.getArgumentDetail(id).then(setDetail)
-  }, [selectedArgumentId, selectedNodeId])
+  }, [selectedConceptId, selectedArgumentId, selectedNodeId])
+
+  const openArgument = (argId: string) => {
+    setSelectedConceptId(null)
+    setSelectedNode(null)
+    setSelectedArgumentId(argId)
+  }
 
   const toggleGroup = (group: RelationGroup) =>
     setVisibleGroups(g => ({ ...g, [group]: !g[group] }))
@@ -51,6 +75,72 @@ export function DetailView() {
     setNavStack(prev => [...prev, detail.argument.id])
     setSelectedArgumentId(null)
     setSelectedNode(blobId)
+  }
+
+  if (conceptDetail) {
+    return (
+      <div className={styles.view}>
+        <div className={styles.content}>
+          <div className={styles.header}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+              <span className="sl" style={{ margin: 0 }}>Concept</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#073b4c' }}>{conceptDetail.label}</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>
+              {conceptDetail.arguments.length} argument{conceptDetail.arguments.length === 1 ? '' : 's'} across the corpus
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, flexShrink: 0, minHeight: 0 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span className="sl" style={{ display: 'block', marginBottom: 6 }}>Arguments with this concept</span>
+              <div style={{
+                maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                {conceptDetail.arguments.map(arg => (
+                  <div
+                    key={arg.id}
+                    onClick={() => openArgument(arg.id)}
+                    style={{
+                      border: '1px solid rgba(7,59,76,0.1)', borderRadius: 6,
+                      padding: '7px 10px', cursor: 'pointer', background: '#fafafa',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f0f4f8' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fafafa' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{
+                        background: argTypeColor(arg.argument_type), color: '#fff',
+                        borderRadius: 10, padding: '1px 7px', fontSize: 9, fontWeight: 700,
+                        textTransform: 'capitalize', flexShrink: 0,
+                      }}>
+                        {arg.argument_type}
+                      </span>
+                      <span style={{
+                        fontSize: 9, color: '#6b7280',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {arg.source_document_title}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+                      {arg.full_argument.length > 200 ? arg.full_argument.slice(0, 200) + '…' : arg.full_argument}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ width: 200, flexShrink: 0 }}>
+              <span className="sl" style={{ display: 'block', marginBottom: 6 }}>
+                Documents by share of arguments
+              </span>
+              <ConceptMiniMap docStats={conceptDetail.docStats} allDocs={allDocs} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!detail) {

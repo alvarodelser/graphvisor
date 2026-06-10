@@ -32,6 +32,9 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
           {item.argCount} argument{item.argCount === 1 ? '' : 's'}
         </div>
+        {sticky && (
+          <button className={styles.detailBtn} onClick={onOpenDetail}>Open in Detail View →</button>
+        )}
       </div>
     )
   }
@@ -84,6 +87,12 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         {edge.full_predicate && (
           <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5, marginTop: 8, fontStyle: 'italic' }}>
             "{edge.full_predicate}"
+          </div>
+        )}
+        {edge.reasoning && (
+          <div style={{ marginTop: 8 }}>
+            <span className="sl" style={{ display: 'block', marginBottom: 2 }}>Reasoning</span>
+            <div style={{ fontSize: 10, color: '#6b7280', lineHeight: 1.5 }}>{edge.reasoning}</div>
           </div>
         )}
         {edge.source_document_title && (

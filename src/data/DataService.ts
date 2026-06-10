@@ -1,4 +1,4 @@
-import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis } from '../types'
+import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat } from '../types'
 import { PCA } from 'ml-pca'
 import corpusJson from './corpus_final_dat.json'
 import hypothesisJson from './hypothesis_L2.json'
@@ -7,6 +7,7 @@ export interface DataServiceInterface {
   getDocuments(): Promise<DocNode[]>
   getGraph(documentIds: string[]): Promise<{ nodes: GraphNode[]; edges: GraphEdge[]; blobs: ArgumentBlob[] }>
   getArgumentDetail(nodeId: string): Promise<ArgumentDetail>
+  getConceptDetail(conceptLabel: string): Promise<ConceptDetail>
   getHypotheses(): Promise<Hypothesis[]>
 }
 
@@ -18,6 +19,7 @@ type RawRelation = {
   object: string
   confidence: number
   source_argument_id: number
+  reasoning?: string
 }
 
 type RawArgument = {
@@ -123,6 +125,7 @@ interface RawEdgeRecord {
   docIdx: number
   argIdx: number        // index of this argument within the document's data array
   full_predicate: string
+  reasoning?: string
 }
 
 function buildGraphData(): {
@@ -167,6 +170,7 @@ function buildGraphData(): {
           docIdx,
           argIdx,
           full_predicate: `${s} ${rel.relation.replace(/_/g, ' ')} ${o}`,
+          reasoning: rel.reasoning,
         })
       })
 
@@ -244,6 +248,7 @@ function buildGraphData(): {
         group: RELATION_GROUP_MAP[re.relation] ?? 'causal',
         full_predicate: re.full_predicate,
         source_document_title: rawDocs[re.docIdx].source,
+        reasoning: re.reasoning,
         docIdx: re.docIdx,
       })
     }
@@ -356,6 +361,7 @@ export class RealDataService implements DataServiceInterface {
         subject: rel.subject.trim(),
         object: rel.object.trim(),
         subject_id: entityId(rel.subject.trim()),
+        reasoning: rel.reasoning,
       }))
 
       const sources = [CACHED_DOCS[docIdx]].filter(Boolean)
@@ -396,6 +402,7 @@ export class RealDataService implements DataServiceInterface {
       subject: re.source,
       object: re.target,
       subject_id: entityId(re.source),
+      reasoning: re.reasoning,
     }))
 
     // Unique source documents that mention this entity
@@ -411,6 +418,34 @@ export class RealDataService implements DataServiceInterface {
       sources,
       argumentBlobs: entityBlobs.get(nodeId) ?? [],
     }
+  }
+
+  // Concepts are grouped by their first parent-concept label (matching the graph).
+  async getConceptDetail(conceptLabel: string): Promise<ConceptDetail> {
+    const args: ConceptArgument[] = []
+    const docStats: ConceptDocStat[] = []
+
+    rawDocs.forEach((doc, docIdx) => {
+      let total = 0
+      let withConcept = 0
+      doc.data.forEach((arg, argIdx) => {
+        total += 1
+        if (arg.concept_level?.parent_concepts?.[0] === conceptLabel) {
+          withConcept += 1
+          args.push({
+            id: `doc_${docIdx}_arg_${argIdx}`,
+            argument_type: arg.argument_type,
+            full_argument: arg.full_argument,
+            confidence: arg.confidence,
+            source_document_id: makeDocId(docIdx),
+            source_document_title: doc.source,
+          })
+        }
+      })
+      docStats.push({ docId: makeDocId(docIdx), total, withConcept })
+    })
+
+    return { conceptId: `concept-${conceptLabel}`, label: conceptLabel, arguments: args, docStats }
   }
 
   getHypotheses(): Promise<Hypothesis[]> {
