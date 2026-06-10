@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { ArgumentDetail, ArgumentRelation, ArgumentBlob } from '../../types'
+import type { ArgumentRelation, ArgumentBlob } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
 
 const ARGUMENT_TYPE_COLORS: Record<string, string> = {
@@ -50,18 +50,20 @@ function groupRelations(relations: ArgumentRelation[], blobs: ArgumentBlob[] | u
 }
 
 interface Props {
-  detail: ArgumentDetail
+  relations: ArgumentRelation[]
+  argumentBlobs?: ArgumentBlob[]
   visibleGroups: Record<string, boolean>
-  onRowClick: (rel: ArgumentRelation) => void
+  onEntityClick?: (entityId: string) => void
   onBlobClick?: (blobId: string) => void
   focalId: string
+  focalLabel?: string
 }
 
-export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, focalId }: Props) {
-  const visible = detail.relations.filter(r => visibleGroups[r.group])
-  const hasArgCol = !!detail.argumentBlobs
-  const groups = groupRelations(visible, detail.argumentBlobs)
-  const colTemplate = hasArgCol ? '140px 90px 1fr 36px' : '90px 1fr 36px'
+export function RelationList({ relations, argumentBlobs, visibleGroups, onEntityClick, onBlobClick, focalId, focalLabel }: Props) {
+  const visible = relations.filter(r => visibleGroups[r.group])
+  const hasArgCol = !!argumentBlobs
+  const groups = groupRelations(visible, argumentBlobs)
+  const colTemplate = hasArgCol ? '140px 1fr 100px 1fr 36px' : '1fr 100px 1fr 36px'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -71,8 +73,9 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
         background: '#fff', borderBottom: '1px solid rgba(7,59,76,0.1)', flexShrink: 0,
       }}>
         {hasArgCol && <span className="sl" style={{ margin: 0 }}>Argument</span>}
+        <span className="sl" style={{ margin: 0 }}>Subject</span>
         <span className="sl" style={{ margin: 0 }}>Relation</span>
-        <span className="sl" style={{ margin: 0 }}>Predicate</span>
+        <span className="sl" style={{ margin: 0 }}>Object</span>
         <span className="sl" style={{ margin: 0 }}>Conf</span>
       </div>
 
@@ -80,7 +83,7 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
         {groups.map((group, gi) => {
           const n = group.relations.length
           const cells: ReactNode[] = []
-          const relCol = hasArgCol ? 2 : 1
+          const subjectCol = hasArgCol ? 2 : 1
 
           if (hasArgCol) {
             cells.push(
@@ -118,11 +121,32 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
           }
 
           group.relations.forEach((rel, ri) => {
-            const isSelf = rel.target_argument_id === focalId
+            const subjectFocal = focalLabel !== undefined && rel.subject === focalLabel
+            const objectFocal  = focalLabel !== undefined && rel.object  === focalLabel
+            const subjectNav   = rel.subject_id && rel.subject_id !== focalId
+            const objectNav    = rel.target_argument_id && rel.target_argument_id !== focalId
+
+            cells.push(
+              <div
+                key={`subj-${ri}`}
+                onClick={() => subjectNav && onEntityClick?.(rel.subject_id!)}
+                style={{
+                  gridColumn: subjectCol, gridRow: ri + 1,
+                  fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
+                  color: subjectFocal ? '#073b4c' : '#374151',
+                  fontWeight: subjectFocal ? 700 : 400,
+                  cursor: subjectNav ? 'pointer' : 'default',
+                }}
+                onMouseEnter={e => { if (subjectNav) e.currentTarget.style.color = '#073b4c' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+              >
+                {rel.subject ?? '—'}
+              </div>
+            )
 
             cells.push(
               <div key={`rel-${ri}`} style={{
-                gridColumn: relCol, gridRow: ri + 1,
+                gridColumn: subjectCol + 1, gridRow: ri + 1,
                 padding: '8px 0', alignSelf: 'start',
               }}>
                 <span style={{
@@ -136,27 +160,28 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
                 </span>
               </div>
             )
+
             cells.push(
               <div
-                key={`pred-${ri}`}
-                onClick={() => { if (!isSelf) onRowClick(rel) }}
+                key={`obj-${ri}`}
+                onClick={() => objectNav && onEntityClick?.(rel.target_argument_id)}
                 style={{
-                  gridColumn: relCol + 1, gridRow: ri + 1,
-                  fontSize: 10, color: '#374151', lineHeight: 1.4,
-                  overflow: 'hidden', display: '-webkit-box',
-                  WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                  padding: '8px 0', minWidth: 0, alignSelf: 'start',
-                  cursor: !isSelf ? 'pointer' : 'default',
+                  gridColumn: subjectCol + 2, gridRow: ri + 1,
+                  fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
+                  color: objectFocal ? '#073b4c' : '#374151',
+                  fontWeight: objectFocal ? 700 : 400,
+                  cursor: objectNav ? 'pointer' : 'default',
                 }}
-                onMouseEnter={e => { if (!isSelf) e.currentTarget.style.background = '#f4f7fa' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '' }}
+                onMouseEnter={e => { if (objectNav) e.currentTarget.style.color = '#073b4c' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
               >
-                "{rel.full_predicate}"
+                {rel.object ?? '—'}
               </div>
             )
+
             cells.push(
               <span key={`conf-${ri}`} style={{
-                gridColumn: relCol + 2, gridRow: ri + 1,
+                gridColumn: subjectCol + 3, gridRow: ri + 1,
                 fontSize: 10, fontWeight: 700, color: '#F4A124',
                 padding: '8px 0', alignSelf: 'start', whiteSpace: 'nowrap',
               }}>

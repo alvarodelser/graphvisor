@@ -353,6 +353,9 @@ export class RealDataService implements DataServiceInterface {
         page_reference: 0,
         full_predicate: `${rel.subject} ${rel.relation.replace(/_/g, ' ')} ${rel.object}`,
         target_argument_id: entityId(rel.object),
+        subject: rel.subject.trim(),
+        object: rel.object.trim(),
+        subject_id: entityId(rel.subject.trim()),
       }))
 
       const sources = [CACHED_DOCS[docIdx]].filter(Boolean)
@@ -380,22 +383,20 @@ export class RealDataService implements DataServiceInterface {
       re => entityId(re.source) === nodeId || entityId(re.target) === nodeId
     )
 
-    const relations: ArgumentRelation[] = involvedRaw.map(re => {
-      const isSource = entityId(re.source) === nodeId
-      const otherLabel = isSource ? re.target : re.source
-      const otherId = entityId(otherLabel)
-      return {
-        relation_type: re.relation.toUpperCase(),
-        confidence: re.confidence,
-        group: RELATION_GROUP_MAP[re.relation] ?? 'causal',
-        source_document_id: makeDocId(re.docIdx),
-        source_document_title: rawDocs[re.docIdx].source,
-        page_reference: 0,
-        full_predicate: re.full_predicate,
-        target_argument_id: otherId,
-        source_argument_id: `doc_${re.docIdx}_arg_${re.argIdx}`,
-      }
-    })
+    const relations: ArgumentRelation[] = involvedRaw.map(re => ({
+      relation_type: re.relation.toUpperCase(),
+      confidence: re.confidence,
+      group: RELATION_GROUP_MAP[re.relation] ?? 'causal',
+      source_document_id: makeDocId(re.docIdx),
+      source_document_title: rawDocs[re.docIdx].source,
+      page_reference: 0,
+      full_predicate: re.full_predicate,
+      target_argument_id: entityId(re.target),
+      source_argument_id: `doc_${re.docIdx}_arg_${re.argIdx}`,
+      subject: re.source,
+      object: re.target,
+      subject_id: entityId(re.source),
+    }))
 
     // Unique source documents that mention this entity
     const docIndices = new Set(involvedRaw.map(re => re.docIdx))

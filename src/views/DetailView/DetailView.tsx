@@ -6,7 +6,7 @@ import { ArgumentMiniGraph } from './ArgumentMiniGraph'
 import { RelationList } from './RelationList'
 import { ArgumentCards } from './ArgumentCards'
 import { RELATION_COLORS } from '../../utils/geometry'
-import type { ArgumentDetail, DocNode, RelationGroup, ArgumentRelation } from '../../types'
+import type { ArgumentDetail, DocNode, RelationGroup } from '../../types'
 import styles from './DetailView.module.css'
 
 const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
@@ -31,11 +31,11 @@ export function DetailView() {
   const toggleGroup = (group: RelationGroup) =>
     setVisibleGroups(g => ({ ...g, [group]: !g[group] }))
 
-  const navigateToArgument = (rel: ArgumentRelation) => {
-    if (!detail || !rel.target_argument_id || rel.target_argument_id === detail.argument.id) return
+  const navigateToEntity = (entityId: string) => {
+    if (!detail || entityId === detail.argument.id) return
     setNavStack(prev => [...prev, detail.argument.id])
     setSelectedArgumentId(null)
-    setSelectedNode(rel.target_argument_id)
+    setSelectedNode(entityId)
   }
 
   const navigateBack = () => {
@@ -90,8 +90,11 @@ export function DetailView() {
         ) : (
           <>
             <div className={styles.header}>
-              <div className="sl">{detail.argument.type}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                <span className="sl" style={{ margin: 0 }}>{detail.argument.type}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#073b4c' }}>{detail.argument.label}</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
                 {detail.argument.source_document_title}
               </div>
               {detail.argument.full_text && (
@@ -152,11 +155,13 @@ export function DetailView() {
           </div>
 
           <RelationList
-            detail={detail}
+            relations={detail.relations}
+            argumentBlobs={detail.argumentBlobs}
             visibleGroups={visibleGroups}
-            onRowClick={navigateToArgument}
+            onEntityClick={navigateToEntity}
             onBlobClick={navigateToBlob}
             focalId={detail.argument.id}
+            focalLabel={detail.argument.type !== 'Argument' ? detail.argument.label : undefined}
           />
         </div>
       </div>

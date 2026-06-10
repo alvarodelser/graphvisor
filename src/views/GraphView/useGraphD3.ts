@@ -95,6 +95,7 @@ export function useGraphD3(
   const zoomKRef = useRef(1)
   const argSimRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>())
   const conceptSimRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>())
+  const conceptPinnedRef = useRef(new Map<string, { x: number; y: number }>())
   const forceLODRef = useRef<() => void>(() => {})
 
   useEffect(() => {
@@ -105,8 +106,9 @@ export function useGraphD3(
     svg.selectAll('*').remove()
     argSimRef.current.clear()
     conceptSimRef.current.clear()
+    conceptPinnedRef.current.clear()
     svg.style('background', '#fafbfc')
-
+    let alive = true
 
     svg.on('click', () => optsRef.current.onCanvasClick?.())
 
@@ -234,11 +236,11 @@ export function useGraphD3(
     const blobG = zoomG.append('g').attr('class', 'blobs')
       .style('display', opts.showBlobs ? '' : 'none')
     blobGRef.current = blobG
-    const conceptEdgeG = zoomG.append('g').attr('class', 'concept-edges')
     const conceptNodeG = zoomG.append('g').attr('class', 'concept-nodes')
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
     const argNodeG = zoomG.append('g').attr('class', 'arg-nodes')
+    const conceptEdgeG = zoomG.append('g').attr('class', 'concept-edges')
 
     // entity → blob IDs it belongs to (for LOD hide logic)
     const entityToBlobIds = new Map<string, string[]>()
@@ -253,27 +255,56 @@ export function useGraphD3(
     type ConceptMeta = { id: string; label: string; blobIds: string[] }
     type ConceptEdge = { id: string; blobId: string; conceptId: string }
 
-    const blobsByConceptKey = new Map<string, ArgumentBlob[]>()
+    // Group blobs by concept label — deduplicates nodes that share a name but have different concept_ids
+    const blobsByConceptLabel = new Map<string, ArgumentBlob[]>()
     for (const blob of opts.blobs) {
-      const key = `concept-${blob.concept_id}`
-      if (!blobsByConceptKey.has(key)) blobsByConceptKey.set(key, [])
-      blobsByConceptKey.get(key)!.push(blob)
+      const label = blob.parent_concepts[0] ?? `concept-${blob.concept_id}`
+      if (!blobsByConceptLabel.has(label)) blobsByConceptLabel.set(label, [])
+      blobsByConceptLabel.get(label)!.push(blob)
     }
     const conceptMetas: ConceptMeta[] = []
-    for (const [key, cblobs] of blobsByConceptKey) {
-      conceptMetas.push({ id: key, label: cblobs[0].parent_concepts[0] ?? key, blobIds: cblobs.map(b => b.id) })
+    for (const [label, cblobs] of blobsByConceptLabel) {
+      conceptMetas.push({ id: `concept-${label}`, label, blobIds: cblobs.map(b => b.id) })
+    }
+    // Map each blob to its merged concept node id
+    const blobConceptId = new Map<string, string>()
+    for (const blob of opts.blobs) {
+      const label = blob.parent_concepts[0] ?? `concept-${blob.concept_id}`
+      blobConceptId.set(blob.id, `concept-${label}`)
     }
     const conceptEdgeData: ConceptEdge[] = opts.blobs.map(b => ({
-      id: `cedge-${b.id}`, blobId: b.id, conceptId: `concept-${b.concept_id}`,
+      id: `cedge-${b.id}`, blobId: b.id, conceptId: blobConceptId.get(b.id)!,
     }))
     const conceptMetaById = new Map(conceptMetas.map(m => [m.id, m]))
 
     const conceptEdgeLines = conceptEdgeG
-      .selectAll<SVGLineElement, ConceptEdge>('line.concept-edge')
-      .data(conceptEdgeData, d => d.id).join('line')
+      .selectAll<SVGPathElement, ConceptEdge>('path.concept-edge')
+      .data(conceptEdgeData, d => d.id).join('path')
       .attr('class', 'concept-edge')
-      .attr('stroke', 'rgba(99,102,241,0.55)').attr('stroke-width', 1.5)
+      .attr('stroke', 'rgba(99,102,241,0.65)').attr('stroke-width', 2.5)
+      .attr('fill', 'none')
       .style('display', 'none')
+
+    // ── LOD helpers ───────────────────────────────────────────────────────────
+    const getGraphCenter = () => {
+      const ps = [...argSimRef.current.values()]
+      if (ps.length === 0) return { cx: 0, cy: 0 }
+      const cx = ps.reduce((s, p) => s + p.x, 0) / ps.length
+      const cy = ps.reduce((s, p) => s + p.y, 0) / ps.length
+      return { cx, cy }
+    }
+    // Cubic bezier from concept (outer orbit) curving inward to argument node
+    const conceptEdgePath = (cx: number, cy: number, ax: number, ay: number, gcx: number, gcy: number) => {
+      const k = zoomKRef.current
+      const dcx = cx - gcx, dcy = cy - gcy
+      const conceptDist = Math.hypot(dcx, dcy) || 1
+      const radX = dcx / conceptDist, radY = dcy / conceptDist
+      // Tangential direction (90° clockwise) for the spiral entry
+      const tanX = -radY, tanY = radX
+      const tOff = 28 / k  // tangential offset at concept end (screen px → graph units)
+      const rOff = 16 / k  // radial pull-back at argument end
+      return `M ${cx} ${cy} C ${cx + tanX * tOff} ${cy + tanY * tOff} ${ax + radX * rOff} ${ay + radY * rOff} ${ax} ${ay}`
+    }
 
     const conceptNodeGroups = conceptNodeG
       .selectAll<SVGGElement, ConceptMeta>('g.concept-node')
@@ -285,6 +316,35 @@ export function useGraphD3(
       g.append('text').attr('y', S + 9).attr('text-anchor', 'middle').attr('pointer-events', 'none')
         .attr('fill', '#6366f1').attr('font-size', '8px').attr('font-weight', '600').text(d.label.slice(0, 18))
     })
+    conceptNodeGroups
+      .style('cursor', 'pointer')
+      .call(
+        d3.drag<SVGGElement, ConceptMeta>()
+          .on('start', (event) => { event.sourceEvent.stopPropagation() })
+          .on('drag', (event, d) => {
+            const state = conceptSimRef.current.get(d.id)
+            if (state) { state.x = event.x; state.y = event.y }
+            conceptPinnedRef.current.set(d.id, { x: event.x, y: event.y })
+          })
+          .on('end', () => {/* position stays pinned */})
+      )
+      .on('mouseenter', function(event, d) {
+        const [mx, my] = d3.pointer(event, svgEl)
+        const firstBlob = optsRef.current.blobs.find(b => d.blobIds.includes(b.id))
+        if (firstBlob) optsRef.current.onHover?.({ type: 'blob', blob: firstBlob, x: mx, y: my })
+      })
+      .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('mouseenter.mute', (_, d) => {
+        const connectedBlobIds = new Set(d.blobIds)
+        argNodeGroups.attr('opacity', (nd: ArgumentBlob) => connectedBlobIds.has(nd.id) ? 1 : 0.06)
+        conceptNodeGroups.attr('opacity', (nd: ConceptMeta) => nd.id === d.id ? 1 : 0.06)
+        conceptEdgeLines.attr('opacity', (ed: ConceptEdge) => d.blobIds.includes(ed.blobId) ? 1 : 0.04)
+      })
+      .on('mouseleave.mute', () => {
+        argNodeGroups.attr('opacity', null)
+        conceptNodeGroups.attr('opacity', null)
+        conceptEdgeLines.attr('opacity', null)
+      })
 
     // ── Blob paths ────────────────────────────────────────────────────────────
     const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
@@ -328,7 +388,7 @@ export function useGraphD3(
       const isConverging = d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS'
 
       if (isStructural) {
-        const lineColor = d.group === 'concept' ? '#74b9d6' : '#64748b'
+        const lineColor = d.group === 'concept' ? '#6366f1' : '#64748b'
         g.append('line')
           .attr('class', 'struct-line')
           .attr('x1', 0).attr('y1', 0)
@@ -521,14 +581,14 @@ export function useGraphD3(
           .attr('opacity', 0)
           .text(d.label)
       } else {
-        g.append('polygon').attr('points', '0,-10 10,0 0,10 -10,0').attr('fill', '#74b9d6')
+        g.append('polygon').attr('points', '0,-10 10,0 0,10 -10,0').attr('fill', '#6366f1')
         g.append('title').text(d.label)
         g.append('text')
           .attr('class', 'node-label')
           .attr('y', 22)
           .attr('text-anchor', 'middle')
           .attr('pointer-events', 'none')
-          .attr('fill', '#74b9d6')
+          .attr('fill', '#6366f1')
           .attr('font-size', '8px')
           .attr('font-weight', '600')
           .attr('opacity', 0)
@@ -665,6 +725,59 @@ export function useGraphD3(
         .text(d.argument_type.slice(0, 1).toUpperCase())
       g.append('title').text(d.argument_type)
     })
+    argNodeGroups
+      .call(
+        d3.drag<SVGGElement, ArgumentBlob>()
+          .on('start', (event, d) => {
+            event.sourceEvent.stopPropagation()
+            if (!event.active) sim.alphaTarget(0.3).restart()
+            const members = d.entityIds
+              .map(id => simNodes.find(n => n.id === id))
+              .filter((n): n is GraphNode => n !== undefined)
+            blobDragCX = members.reduce((s, n) => s + (n.x ?? 0), 0) / (members.length || 1)
+            blobDragCY = members.reduce((s, n) => s + (n.y ?? 0), 0) / (members.length || 1)
+            blobDragStartX = event.x
+            blobDragStartY = event.y
+            blobDragMembers = members.map(n => ({
+              node: n, relX: (n.x ?? 0) - blobDragCX, relY: (n.y ?? 0) - blobDragCY,
+            }))
+            blobDragMembers.forEach(({ node }) => {
+              blobMemberAnchors.delete(node.id)
+              node.fx = node.x; node.fy = node.y
+            })
+          })
+          .on('drag', (event) => {
+            const dx = event.x - blobDragStartX
+            const dy = event.y - blobDragStartY
+            const ncx = blobDragCX + dx
+            const ncy = blobDragCY + dy
+            blobDragMembers.forEach(({ node, relX, relY }) => {
+              node.fx = ncx + relX * 0.25
+              node.fy = ncy + relY * 0.25
+            })
+          })
+          .on('end', (event) => {
+            if (!event.active) sim.alphaTarget(0)
+            blobDragMembers.forEach(({ node }) => {
+              node.vx = 0; node.vy = 0
+              blobMemberAnchors.set(node.id, { node, ax: node.x ?? 0, ay: node.y ?? 0 })
+              node.fx = null; node.fy = null
+            })
+            if (sim.alpha() < 0.1) sim.alpha(0.1).restart()
+            blobDragMembers = []
+          })
+      )
+      .on('mouseenter.mute', (_, d) => {
+        const connectedConceptIds = new Set(conceptEdgeData.filter(e => e.blobId === d.id).map(e => e.conceptId))
+        argNodeGroups.attr('opacity', (nd: ArgumentBlob) => nd.id === d.id ? 1 : 0.06)
+        conceptNodeGroups.attr('opacity', (nd: ConceptMeta) => connectedConceptIds.has(nd.id) ? 1 : 0.06)
+        conceptEdgeLines.attr('opacity', (ed: ConceptEdge) => ed.blobId === d.id ? 1 : 0.04)
+      })
+      .on('mouseleave.mute', () => {
+        argNodeGroups.attr('opacity', null)
+        conceptNodeGroups.attr('opacity', null)
+        conceptEdgeLines.attr('opacity', null)
+      })
 
     // ── LOD: hide entity nodes + arg/concept graph nodes; show LOD nodes on zoom-out ──
     updateLOD = () => {
@@ -675,6 +788,9 @@ export function useGraphD3(
 
       const showBlobs = optsRef.current.showBlobs
       const blobs = optsRef.current.blobs
+      const { nodeTypes } = optsRef.current.filters
+      const entityVisible = nodeTypes.Entity !== false
+      const conceptVisible = nodeTypes.Concept !== false
 
       const collapsedBlobIds = new Set<string>()
       const argPositions = new Map<string, { x: number; y: number }>()
@@ -703,10 +819,11 @@ export function useGraphD3(
           hiddenEntityIds.add(eid)
       }
 
-      // Argument and Concept graph nodes are never shown directly —
-      // only the LOD nodes (argNodeGroups / conceptNodeGroups) represent them.
+      // Concept graph nodes always hidden (use LOD). Argument graph nodes shown
+      // directly only when entity layer is off (no blobs/entity positions available).
       nodeGroups.style('display', (d: GraphNode) => {
-        if (d.type === 'Argument' || d.type === 'Concept') return 'none'
+        if (d.type === 'Concept') return 'none'
+        if (d.type === 'Argument') return entityVisible ? 'none' : null
         return hiddenEntityIds.has(d.id) ? 'none' : null
       })
       edgeGroups.style('display', (d: GraphEdge) => {
@@ -731,7 +848,7 @@ export function useGraphD3(
           argSimRef.current.set(id, { x: pos.x, y: pos.y, vx: 0, vy: 0 })
       }
       argNodeGroups
-        .style('display', (d: ArgumentBlob) => (!showBlobs || !collapsedBlobIds.has(d.id)) ? 'none' : null)
+        .style('display', (d: ArgumentBlob) => (!showBlobs || !entityVisible || !collapsedBlobIds.has(d.id)) ? 'none' : null)
         .attr('transform', (d: ArgumentBlob) => {
           const s = argSimRef.current.get(d.id)
           if (!s) return null
@@ -741,37 +858,48 @@ export function useGraphD3(
       // Sync conceptSim and show/hide LOD concept nodes + edges
       const visibleConceptIds = new Set<string>()
       for (const blob of blobs) {
-        if (collapsedBlobIds.has(blob.id)) visibleConceptIds.add(`concept-${blob.concept_id}`)
+        if (collapsedBlobIds.has(blob.id)) {
+          const cid = blobConceptId.get(blob.id)
+          if (cid) visibleConceptIds.add(cid)
+        }
       }
       const concToDelete = [...conceptSimRef.current.keys()].filter(id => !visibleConceptIds.has(id))
-      concToDelete.forEach(id => conceptSimRef.current.delete(id))
+      concToDelete.forEach(id => { conceptSimRef.current.delete(id); conceptPinnedRef.current.delete(id) })
+      const { cx: gcx, cy: gcy } = getGraphCenter()
       for (const meta of conceptMetas) {
         if (visibleConceptIds.has(meta.id) && !conceptSimRef.current.has(meta.id)) {
+          // Initialise concept node on the orbit: 110 units outward from arg centroid,
+          // in the direction away from the graph center
           const argStates = meta.blobIds.map(bid => argSimRef.current.get(bid))
             .filter((s): s is { x: number; y: number; vx: number; vy: number } => s !== undefined)
-          const cx = argStates.length > 0 ? argStates.reduce((s, a) => s + a.x, 0) / argStates.length : 0
-          const cy = argStates.length > 0 ? argStates.reduce((s, a) => s + a.y, 0) / argStates.length : 0
-          conceptSimRef.current.set(meta.id, { x: cx, y: cy, vx: 0, vy: 0 })
+          const ax = argStates.length > 0 ? argStates.reduce((s, a) => s + a.x, 0) / argStates.length : gcx
+          const ay = argStates.length > 0 ? argStates.reduce((s, a) => s + a.y, 0) / argStates.length : gcy
+          const odx = ax - gcx, ody = ay - gcy
+          const od = Math.hypot(odx, ody) || 1
+          conceptSimRef.current.set(meta.id, { x: ax + (odx / od) * 110, y: ay + (ody / od) * 110, vx: 0, vy: 0 })
         }
       }
       conceptNodeGroups
-        .style('display', (d: ConceptMeta) => visibleConceptIds.has(d.id) ? null : 'none')
+        .style('display', (d: ConceptMeta) => (conceptVisible && visibleConceptIds.has(d.id)) ? null : 'none')
         .attr('transform', (d: ConceptMeta) => {
           const s = conceptSimRef.current.get(d.id)
           if (!s) return null
           return `translate(${s.x},${s.y}) scale(${1 / k})`
         })
       conceptEdgeLines
-        .style('display', (d: ConceptEdge) => collapsedBlobIds.has(d.blobId) ? null : 'none')
-        .attr('x1', (d: ConceptEdge) => conceptSimRef.current.get(d.conceptId)?.x ?? 0)
-        .attr('y1', (d: ConceptEdge) => conceptSimRef.current.get(d.conceptId)?.y ?? 0)
-        .attr('x2', (d: ConceptEdge) => argSimRef.current.get(d.blobId)?.x ?? 0)
-        .attr('y2', (d: ConceptEdge) => argSimRef.current.get(d.blobId)?.y ?? 0)
+        .style('display', (d: ConceptEdge) => (conceptVisible && collapsedBlobIds.has(d.blobId)) ? null : 'none')
+        .attr('d', (d: ConceptEdge) => {
+          const cs = conceptSimRef.current.get(d.conceptId)
+          const as = argSimRef.current.get(d.blobId)
+          if (!cs || !as) return ''
+          return conceptEdgePath(cs.x, cs.y, as.x, as.y, gcx, gcy)
+        })
     }
     forceLODRef.current = () => { cachedK = ''; updateLOD() }
 
     // ── Tick ──────────────────────────────────────────────────────────────────
     sim.on('tick', () => {
+      if (!alive) return
       edgeGroups.each(function(d) {
         const src = d.source as GraphNode
         const tgt = d.target as GraphNode
@@ -811,24 +939,76 @@ export function useGraphD3(
 
         if (argSimRef.current.size > 0) {
           const k = zoomKRef.current
-          for (const [blobId, state] of argSimRef.current) {
+          const ARG_SPRING   = 0.12
+          const LOD_MIN_DIST = 55
+          const LOD_REPEL    = 0.6
+          const DAMP         = 0.72
+          const CONC_ORBIT_R = 110  // hard orbit radius for concept nodes (graph units)
+
+          // Compute blob centroid targets for arg nodes
+          const argTargets = new Map<string, { x: number; y: number }>()
+          for (const [blobId] of argSimRef.current) {
             const blob = optsRef.current.blobs.find(b => b.id === blobId)
             if (!blob) continue
             const pts = blob.entityIds.map(id => nodePositions.get(id))
               .filter((p): p is { x: number; y: number } => p !== undefined)
             if (pts.length === 0) continue
-            state.x = pts.reduce((s, p) => s + p.x, 0) / pts.length
-            state.y = pts.reduce((s, p) => s + p.y, 0) / pts.length
+            argTargets.set(blobId, {
+              x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+              y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+            })
           }
+
+          // Spring: each arg node toward its blob centroid
+          for (const [blobId, state] of argSimRef.current) {
+            const t = argTargets.get(blobId)
+            if (!t) continue
+            state.vx += (t.x - state.x) * ARG_SPRING
+            state.vy += (t.y - state.y) * ARG_SPRING
+          }
+
+          // Pairwise repulsion between arg nodes
+          const argStatesArr = [...argSimRef.current.values()]
+          for (let i = 0; i < argStatesArr.length; i++) {
+            for (let j = i + 1; j < argStatesArr.length; j++) {
+              const a = argStatesArr[i], b = argStatesArr[j]
+              const dx = b.x - a.x, dy = b.y - a.y
+              const dist = Math.hypot(dx, dy) || 0.01
+              if (dist < LOD_MIN_DIST) {
+                const force = LOD_REPEL * (LOD_MIN_DIST - dist) / dist
+                a.vx -= dx * force; a.vy -= dy * force
+                b.vx += dx * force; b.vy += dy * force
+              }
+            }
+          }
+
+          // Integrate + dampen arg nodes
+          for (const state of argStatesArr) {
+            state.vx *= DAMP; state.vy *= DAMP
+            state.x += state.vx; state.y += state.vy
+          }
+
+          // Hard orbit: concept nodes are placed exactly CONC_ORBIT_R from their arg centroid.
+          // Angular position is determined by the direction from the arg centroid to either
+          // the pinned drag position or the node's previous position, preserving user-set angles.
           for (const [cId, cState] of conceptSimRef.current) {
             const meta = conceptMetaById.get(cId)
             if (!meta) continue
-            const argStates = meta.blobIds.map(bid => argSimRef.current.get(bid))
+            const connectedArgStates = meta.blobIds.map(bid => argSimRef.current.get(bid))
               .filter((s): s is { x: number; y: number; vx: number; vy: number } => s !== undefined)
-            if (argStates.length === 0) continue
-            cState.x = argStates.reduce((s, a) => s + a.x, 0) / argStates.length
-            cState.y = argStates.reduce((s, a) => s + a.y, 0) / argStates.length
+            if (connectedArgStates.length === 0) continue
+            const ax = connectedArgStates.reduce((s, a) => s + a.x, 0) / connectedArgStates.length
+            const ay = connectedArgStates.reduce((s, a) => s + a.y, 0) / connectedArgStates.length
+            const ref = conceptPinnedRef.current.get(cId) ?? cState
+            const dx = ref.x - ax, dy = ref.y - ay
+            const dist = Math.hypot(dx, dy) || 1
+            cState.x = ax + (dx / dist) * CONC_ORBIT_R
+            cState.y = ay + (dy / dist) * CONC_ORBIT_R
+            cState.vx = 0; cState.vy = 0
           }
+
+          const { cx: gcxT, cy: gcyT } = getGraphCenter()
+
           argNodeGroups.filter(d => argSimRef.current.has(d.id))
             .attr('transform', d => {
               const s = argSimRef.current.get(d.id)!
@@ -840,10 +1020,12 @@ export function useGraphD3(
               return `translate(${s.x},${s.y}) scale(${1 / k})`
             })
           conceptEdgeLines.filter(d => argSimRef.current.has(d.blobId))
-            .attr('x1', d => conceptSimRef.current.get(d.conceptId)?.x ?? 0)
-            .attr('y1', d => conceptSimRef.current.get(d.conceptId)?.y ?? 0)
-            .attr('x2', d => argSimRef.current.get(d.blobId)?.x ?? 0)
-            .attr('y2', d => argSimRef.current.get(d.blobId)?.y ?? 0)
+            .attr('d', d => {
+              const cs = conceptSimRef.current.get(d.conceptId)
+              const as = argSimRef.current.get(d.blobId)
+              if (!cs || !as) return ''
+              return conceptEdgePath(cs.x, cs.y, as.x, as.y, gcxT, gcyT)
+            })
         }
       }
     })
@@ -913,7 +1095,7 @@ export function useGraphD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { sim.stop(); observer.disconnect() }
+    return () => { alive = false; sim.stop(); observer.disconnect() }
   }, [nodes, edges, opts.filters])
 
   // ── Selection halo ────────────────────────────────────────────────────────

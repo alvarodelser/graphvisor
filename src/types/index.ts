@@ -49,6 +49,9 @@ export interface ArgumentRelation {
   full_predicate: string
   target_argument_id: string
   source_argument_id?: string
+  subject?: string
+  object?: string
+  subject_id?: string
 }
 
 export interface EntityTriple {

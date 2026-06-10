@@ -37,5 +37,5 @@ export const RELATION_COLORS: Record<string, string> = {
   negative: '#ef476f',
   causal: '#ffd166',
   structural: 'rgba(7,59,76,0.2)',
-  concept: '#74b9d6',
+  concept: '#6366f1',
 }

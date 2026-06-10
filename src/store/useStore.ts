@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import type { FilterState, ActiveView, SizeBy } from '../types'
 
 const defaultFilters: FilterState = {
-  nodeTypes: { Argument: true, Entity: true, Concept: true },
-  minConfidence: 0,
+  nodeTypes: { Argument: false, Entity: true, Concept: false },
+  minConfidence: 0.8,
   relationTypes: {
     SUPPORTS: true, CORRELATES_WITH: true, REVEALS: true,
     CONTRADICTS: true,
