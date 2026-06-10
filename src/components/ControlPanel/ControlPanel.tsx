@@ -27,7 +27,7 @@ export function ControlPanel({ isActive, filterContent, legendContent, fabBottom
   useEffect(() => {
     if (!open || !fabRef.current) { setPos(null); return }
     const rect = fabRef.current.getBoundingClientRect()
-    setPos({ x: rect.right + 10, y: Math.max(8, rect.top - 280) })
+    setPos({ x: rect.right + 10, y: Math.max(8, rect.top - 360) })
   }, [open])
 
   useEffect(() => {

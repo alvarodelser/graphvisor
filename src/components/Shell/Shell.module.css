@@ -5,7 +5,7 @@
   box-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
 .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.12em; color: #fff; }
-.tabs { display: flex; gap: 2px; }
+.tabs { display: flex; gap: 2px; flex: 1; }
 .tab {
   background: none; border: none; border-bottom: 2px solid transparent;
   padding: 4px 14px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6);
