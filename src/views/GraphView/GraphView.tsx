@@ -14,13 +14,15 @@ const REL_GROUP_COLORS: Record<string, string> = {
   negative: RELATION_COLORS.negative,
   causal: RELATION_COLORS.causal,
   structural: '#64748b',
+  concept: RELATION_COLORS.concept,
 }
 
 const GROUPED_RELATION_TYPES: { group: string; label: string; types: string[] }[] = [
   { group: 'positive', label: 'Positive', types: ['SUPPORTS', 'CORRELATES_WITH', 'REVEALS'] },
   { group: 'negative', label: 'Negative', types: ['CONTRADICTS'] },
   { group: 'causal',   label: 'Causal',   types: ['CAUSES', 'ASSOCIATED_WITH'] },
-  { group: 'structural', label: 'Structural', types: ['HAS_SUBJECT', 'HAS_OBJECT', 'HAS_CONCEPT'] },
+  { group: 'structural', label: 'Structural', types: ['HAS_SUBJECT', 'HAS_OBJECT'] },
+  { group: 'concept',  label: 'Concept',  types: ['HAS_CONCEPT'] },
 ]
 
 export function GraphView() {
@@ -41,6 +43,10 @@ export function GraphView() {
   const isActive = activeView === 'graph'
 
   useEffect(() => {
+    if (selectedDocumentIds.length === 0) {
+      setNodes([]); setEdges([]); setBlobs([])
+      return
+    }
     dataService.getGraph(selectedDocumentIds).then(({ nodes, edges, blobs }) => {
       setNodes(nodes); setEdges(edges); setBlobs(blobs)
     })
@@ -54,7 +60,7 @@ export function GraphView() {
     selectedArgumentId,
     onNodeClick: (node) => {
       setSelectedNode(node.id)
-      setSelectedArgumentId(null)
+      setSelectedArgumentId(node.type === 'Argument' ? node.id : null)
       setDisplayedItem({ type: 'node', node, x: 0, y: 0 })
       setIsSticky(true)
     },
@@ -175,7 +181,7 @@ export function GraphView() {
       <div>
         <div className="sl">Nodes</div>
         <div style={legendRow}>
-          <span style={{ width: 14, height: 14, background: '#073b4c', borderRadius: 3, flexShrink: 0 }} />
+          <span style={{ width: 14, height: 14, background: 'rgba(7,59,76,0.22)', border: '1px solid rgba(7,59,76,0.4)', borderRadius: 3, flexShrink: 0 }} />
           <span style={legendText}>Argument</span>
         </div>
         <div style={legendRow}>
@@ -225,6 +231,9 @@ export function GraphView() {
             onOpenDetail={() => {
               if (displayedItem?.type === 'blob') {
                 setSelectedArgumentId(displayedItem.blob.id)
+                setSelectedNode(null)
+              } else if (displayedItem?.type === 'node' && displayedItem.node.type === 'Argument') {
+                setSelectedArgumentId(displayedItem.node.id)
                 setSelectedNode(null)
               }
               setActiveView('detail')

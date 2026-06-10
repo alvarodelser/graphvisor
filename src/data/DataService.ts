@@ -1,4 +1,4 @@
-import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, RelationGroup, Hypothesis } from '../types'
+import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis } from '../types'
 import { PCA } from 'ml-pca'
 import corpusJson from './corpus_final_dat.json'
 import hypothesisJson from './hypothesis_L2.json'
@@ -59,6 +59,10 @@ function slugify(s: string): string {
 
 function entityId(label: string): string {
   return 'entity_' + slugify(label)
+}
+
+function conceptId(name: string): string {
+  return 'concept_' + slugify(name)
 }
 
 function makeDocId(i: number): string {
@@ -175,6 +179,8 @@ function buildGraphData(): {
           confidence: arg.confidence,
           source_document_id: makeDocId(docIdx),
           source_document_title: doc.source,
+          concept_id: arg.concept_level.concept_id,
+          parent_concepts: arg.concept_level.parent_concepts,
         })
       }
     })
@@ -189,15 +195,39 @@ function buildGraphData(): {
     }
   }
 
-  // Build GraphNode list
-  const nodes: GraphNode[] = Array.from(entityLabels.entries()).map(([label, { totalConf, count }]) => ({
+  // Build Entity nodes
+  const entityNodes: GraphNode[] = Array.from(entityLabels.entries()).map(([label, { totalConf, count }]) => ({
     id: entityId(label),
     type: 'Entity' as const,
     label,
     confidence: totalConf / count,
   }))
 
-  // Build GraphEdge list — dedupe by (src, tgt, relation), keep highest confidence
+  // Build Concept nodes (one per unique first parent concept)
+  const conceptNodeMap = new Map<string, GraphNode>()
+  for (const blob of blobs) {
+    const mainConcept = blob.parent_concepts[0]
+    if (!mainConcept) continue
+    const id = conceptId(mainConcept)
+    if (!conceptNodeMap.has(id)) {
+      conceptNodeMap.set(id, { id, type: 'Concept', label: mainConcept, confidence: 1 })
+    }
+  }
+
+  // Build Argument nodes (one per blob)
+  const argNodes: GraphNode[] = blobs.map(blob => ({
+    id: blob.id,
+    type: 'Argument' as const,
+    label: blob.argument_type,
+    full_text: blob.full_argument,
+    confidence: blob.confidence,
+    source_document_id: blob.source_document_id,
+    source_document_title: blob.source_document_title,
+  }))
+
+  const nodes: GraphNode[] = [...entityNodes, ...argNodes, ...Array.from(conceptNodeMap.values())]
+
+  // Build semantic GraphEdge list — dedupe by (src, tgt, relation), keep highest confidence
   const edgeMap = new Map<string, GraphEdge & { docIdx: number }>()
   rawEdges.forEach((re, i) => {
     const sid = entityId(re.source)
@@ -219,7 +249,22 @@ function buildGraphData(): {
     }
   })
 
-  const edges = Array.from(edgeMap.values()).map(({ docIdx: _dropped, ...e }) => e)
+  const semanticEdges = Array.from(edgeMap.values()).map(({ docIdx: _dropped, ...e }) => e)
+
+  // Build HAS_CONCEPT edges: Argument node → Concept node
+  const conceptEdges: GraphEdge[] = blobs
+    .filter(blob => blob.parent_concepts[0])
+    .map((blob, i) => ({
+      id: `hc_${i}`,
+      source: blob.id,
+      target: conceptId(blob.parent_concepts[0]),
+      relation_type: 'HAS_CONCEPT',
+      confidence: blob.confidence,
+      group: 'concept' as const,
+      source_document_title: blob.source_document_title,
+    }))
+
+  const edges = [...semanticEdges, ...conceptEdges]
 
   return { nodes, edges, blobs, entityDocs, rawEdges, entityBlobs }
 }
@@ -244,24 +289,34 @@ export class RealDataService implements DataServiceInterface {
       documentIds.map(id => parseInt(id.split('_')[1])).filter(n => !isNaN(n))
     )
 
-    // Keep entities that appear in at least one selected document
-    const relevantIds = new Set(
+    // Entity nodes: keep those appearing in at least one selected document
+    const relevantEntityIds = new Set(
       Array.from(entityDocs.entries())
         .filter(([, docSet]) => [...docSet].some(idx => selectedIdx.has(idx)))
         .map(([label]) => entityId(label))
     )
+
+    // Blobs whose source doc is selected and whose entities are all present
+    const blobs = allBlobs.filter(b => {
+      const docIdx = parseInt(b.source_document_id.split('_')[1])
+      return selectedIdx.has(docIdx) && b.entityIds.every(id => relevantEntityIds.has(id))
+    })
+
+    // Argument nodes: one per included blob
+    const relevantArgIds = new Set(blobs.map(b => b.id))
+
+    // Concept nodes: keep if any included argument references them
+    const relevantConceptIds = new Set(
+      blobs.filter(b => b.parent_concepts[0]).map(b => conceptId(b.parent_concepts[0]))
+    )
+
+    const relevantIds = new Set([...relevantEntityIds, ...relevantArgIds, ...relevantConceptIds])
 
     const nodes = allNodes.filter(n => relevantIds.has(n.id))
     const edges = allEdges.filter(e => {
       const sid = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id
       const tid = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id
       return relevantIds.has(sid) && relevantIds.has(tid)
-    })
-
-    // Keep blobs whose source doc is selected and whose entities are all present
-    const blobs = allBlobs.filter(b => {
-      const docIdx = parseInt(b.source_document_id.split('_')[1])
-      return selectedIdx.has(docIdx) && b.entityIds.every(id => relevantIds.has(id))
     })
 
     return { nodes, edges, blobs }
@@ -302,10 +357,17 @@ export class RealDataService implements DataServiceInterface {
 
       const sources = [CACHED_DOCS[docIdx]].filter(Boolean)
 
-      // EntityIds come from the blob (already computed), or re-derive
-      void blob  // blob available if needed in future
+      void blob
 
-      return { argument: syntheticNode, relations, sources }
+      const entityGraph: EntityTriple[] = rawArg.relations.map(rel => ({
+        subject: rel.subject.trim(),
+        object: rel.object.trim(),
+        relation_type: rel.relation.toUpperCase(),
+        confidence: rel.confidence,
+        group: RELATION_GROUP_MAP[rel.relation] ?? 'causal',
+      }))
+
+      return { argument: syntheticNode, relations, sources, entityGraph }
     }
 
     // Entity node path

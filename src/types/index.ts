@@ -12,7 +12,7 @@ export interface DocNode {
 }
 
 export type GraphNodeType = 'Argument' | 'Entity' | 'Concept'
-export type RelationGroup = 'positive' | 'negative' | 'causal' | 'structural'
+export type RelationGroup = 'positive' | 'negative' | 'causal' | 'structural' | 'concept'
 export type ActiveView = 'corpus' | 'graph' | 'detail' | 'discover'
 export type SizeBy = 'argument_count' | 'uniform' | 'page_count'
 
@@ -51,11 +51,20 @@ export interface ArgumentRelation {
   source_argument_id?: string
 }
 
+export interface EntityTriple {
+  subject: string
+  object: string
+  relation_type: string
+  confidence: number
+  group: RelationGroup
+}
+
 export interface ArgumentDetail {
   argument: GraphNode
   relations: ArgumentRelation[]
   sources: DocNode[]
   argumentBlobs?: ArgumentBlob[]
+  entityGraph?: EntityTriple[]
 }
 
 export interface ArgumentBlob {
@@ -66,6 +75,8 @@ export interface ArgumentBlob {
   confidence: number
   source_document_id: string
   source_document_title: string
+  concept_id: number
+  parent_concepts: string[]
 }
 
 export const RELATION_TYPE_GROUPS: Record<string, RelationGroup> = {

@@ -102,6 +102,7 @@ export function useGraphD3(
     svg.selectAll('*').remove()
     svg.style('background', '#fafbfc')
 
+
     svg.on('click', () => optsRef.current.onCanvasClick?.())
 
     const zoomG = svg.append('g').attr('class', 'zoom-group')
@@ -276,18 +277,18 @@ export function useGraphD3(
 
     edgeGroups.each(function(d) {
       const g = d3.select(this)
-      const isStructural = d.group === 'structural'
+      const isStructural = d.group === 'structural' || d.group === 'concept'
       const isConverging = d.relation_type === 'CONTRADICTS' || d.relation_type === 'INHIBITS'
 
       if (isStructural) {
-        // Plain line — no clip, no animation
+        const lineColor = d.group === 'concept' ? '#74b9d6' : '#64748b'
         g.append('line')
           .attr('class', 'struct-line')
           .attr('x1', 0).attr('y1', 0)
           .attr('x2', 0).attr('y2', 0)
-          .attr('stroke', '#64748b')
-          .attr('stroke-width', 2)
-          .attr('opacity', 0.75)
+          .attr('stroke', lineColor)
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 0.65)
 
       } else if (isConverging) {
         // Two opposing half-chevrons; inner chevrons converge toward midpoint.
@@ -451,18 +452,14 @@ export function useGraphD3(
       if (d.type === 'Argument') {
         const size = 16 + Math.min(deg, 10) * 1.5
         g.append('rect').attr('x', -size / 2).attr('y', -size / 2)
-          .attr('width', size).attr('height', size).attr('rx', 4).attr('fill', '#073b4c')
-        g.append('title').text(d.full_text ?? d.label)
-        const snippet = d.full_text ? d.full_text.slice(0, 28) + '…' : d.id
+          .attr('width', size).attr('height', size).attr('rx', 4)
+          .attr('fill', 'rgba(7,59,76,0.22)').attr('stroke', 'rgba(7,59,76,0.4)').attr('stroke-width', 1)
         g.append('text')
-          .attr('class', 'node-label')
-          .attr('y', size / 2 + 11)
-          .attr('text-anchor', 'middle')
+          .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
           .attr('pointer-events', 'none')
-          .attr('fill', '#073b4c')
-          .attr('font-size', '8px')
-          .attr('opacity', 0)
-          .text(snippet)
+          .attr('fill', 'rgba(7,59,76,0.6)').attr('font-size', `${Math.max(7, size * 0.5)}px`).attr('font-weight', '700')
+          .text(d.label.slice(0, 1).toUpperCase())
+        g.append('title').text(d.full_text ?? d.label)
       } else if (d.type === 'Entity') {
         g.append('circle').attr('r', 8).attr('fill', '#118ab2')
         g.append('title').text(d.label)
@@ -520,12 +517,14 @@ export function useGraphD3(
       const g = d3.select(this)
       const S = 18
       g.append('rect').attr('x', -S/2).attr('y', -S/2)
-        .attr('width', S).attr('height', S).attr('rx', 3).attr('fill', '#073b4c')
+        .attr('width', S).attr('height', S).attr('rx', 3)
+        .attr('fill', 'rgba(7,59,76,0.22)').attr('stroke', 'rgba(7,59,76,0.4)').attr('stroke-width', 1)
       g.append('text')
-        .attr('y', S/2 + 9).attr('text-anchor', 'middle')
-        .attr('font-size', 7).attr('font-weight', 700)
-        .attr('fill', '#073b4c').attr('pointer-events', 'none')
-        .text(d.argument_type.slice(0, 14))
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('pointer-events', 'none')
+        .attr('fill', 'rgba(7,59,76,0.6)').attr('font-size', '9px').attr('font-weight', '700')
+        .text(d.argument_type.slice(0, 1).toUpperCase())
+      g.append('title').text(d.argument_type)
     })
 
     // ── Force simulation ──────────────────────────────────────────────────────
@@ -793,7 +792,7 @@ export function useGraphD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { sim.stop(); observer.disconnect() }
+    return () => { alive = false; sim.stop(); observer.disconnect() }
   }, [nodes, edges, opts.filters])
 
   // ── Selection halo ────────────────────────────────────────────────────────
