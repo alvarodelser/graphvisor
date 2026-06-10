@@ -61,7 +61,7 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
   const visible = detail.relations.filter(r => visibleGroups[r.group])
   const hasArgCol = !!detail.argumentBlobs
   const groups = groupRelations(visible, detail.argumentBlobs)
-  const colTemplate = hasArgCol ? '140px 90px 36px 1fr' : '90px 36px 1fr'
+  const colTemplate = hasArgCol ? '140px 90px 1fr 36px' : '90px 1fr 36px'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -72,8 +72,8 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
       }}>
         {hasArgCol && <span className="sl" style={{ margin: 0 }}>Argument</span>}
         <span className="sl" style={{ margin: 0 }}>Relation</span>
-        <span className="sl" style={{ margin: 0 }}>Conf</span>
         <span className="sl" style={{ margin: 0 }}>Predicate</span>
+        <span className="sl" style={{ margin: 0 }}>Conf</span>
       </div>
 
       <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -137,20 +137,11 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
               </div>
             )
             cells.push(
-              <span key={`conf-${ri}`} style={{
-                gridColumn: relCol + 1, gridRow: ri + 1,
-                fontSize: 10, fontWeight: 700, color: '#F4A124',
-                padding: '8px 0', alignSelf: 'start', whiteSpace: 'nowrap',
-              }}>
-                {rel.confidence.toFixed(2)}
-              </span>
-            )
-            cells.push(
               <div
                 key={`pred-${ri}`}
                 onClick={() => { if (!isSelf) onRowClick(rel) }}
                 style={{
-                  gridColumn: relCol + 2, gridRow: ri + 1,
+                  gridColumn: relCol + 1, gridRow: ri + 1,
                   fontSize: 10, color: '#374151', lineHeight: 1.4,
                   overflow: 'hidden', display: '-webkit-box',
                   WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
@@ -162,6 +153,15 @@ export function RelationList({ detail, visibleGroups, onRowClick, onBlobClick, f
               >
                 "{rel.full_predicate}"
               </div>
+            )
+            cells.push(
+              <span key={`conf-${ri}`} style={{
+                gridColumn: relCol + 2, gridRow: ri + 1,
+                fontSize: 10, fontWeight: 700, color: '#F4A124',
+                padding: '8px 0', alignSelf: 'start', whiteSpace: 'nowrap',
+              }}>
+                {rel.confidence.toFixed(2)}
+              </span>
             )
           })
 

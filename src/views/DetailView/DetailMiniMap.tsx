@@ -1,14 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as d3 from 'd3'
-import { ControlPanel } from '../../components/ControlPanel/ControlPanel'
 import type { ArgumentDetail, DocNode } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
 
 interface Props {
   detail: ArgumentDetail
   allDocs: DocNode[]
-  isActive: boolean
 }
 
 interface TooltipState {
@@ -19,9 +17,13 @@ interface TooltipState {
   relInfo: { group: string; relations: { type: string; confidence: number }[] } | null
 }
 
-export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
+export function DetailMiniMap({ detail, allDocs }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  const focalDocId = detail.argument.source_document_id
+  const relatedDocIds = new Set(detail.relations.map(r => r.source_document_id))
+  const relatedDocs = allDocs.filter(d => relatedDocIds.has(d.id) && d.id !== focalDocId)
 
   useEffect(() => {
     if (!svgRef.current || allDocs.length === 0) return
@@ -104,46 +106,31 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
     }
   }, [detail, allDocs])
 
-  const legendContent = (
-    <>
-      <div>
-        <div className="sl">Documents</div>
-        <div style={row}><span style={{ ...dot, background: '#F4A124', width: 14, height: 14, borderRadius: '50%' }} /><span style={text}>Focal document</span></div>
-        <div style={row}><span style={{ ...dot, background: '#118ab2', width: 8, height: 8, borderRadius: '50%' }} /><span style={text}>Related document</span></div>
-        <div style={row}><span style={{ ...dot, background: '#d1d5db', width: 4, height: 4, borderRadius: '50%' }} /><span style={text}>Unrelated document</span></div>
-      </div>
-      <div>
-        <div className="sl">Relation lines</div>
-        {(['positive', 'negative', 'causal'] as const).map(g => (
-          <div key={g} style={row}>
-            <span style={{ width: 20, height: 3, background: RELATION_COLORS[g], borderRadius: 2, flexShrink: 0 }} />
-            <span style={{ ...text, textTransform: 'capitalize' }}>{g}</span>
-          </div>
-        ))}
-        <div style={{ ...text, color: '#9ca3af', marginTop: 4 }}>Line weight = confidence</div>
-      </div>
-      <div>
-        <div className="sl">Layout</div>
-        <div style={{ ...text, color: '#6b7280', lineHeight: 1.6 }}>
-          <div>Positions = PCA projection</div>
-          <div>Hover dots for details</div>
-        </div>
-      </div>
-    </>
-  )
-
   return (
     <div style={{ position: 'relative', background: '#fafbfc', borderRadius: 8 }}>
       <svg
         ref={svgRef}
-        style={{ width: '100%', height: 180, display: 'block', borderRadius: 8 }}
+        style={{ width: '100%', height: 120, display: 'block', borderRadius: '8px 8px 0 0' }}
       />
-      <ControlPanel
-        isActive={isActive}
-        legendContent={legendContent}
-        fabBottom={8}
-        fabLeft={8}
-      />
+      {relatedDocs.length > 0 && (
+        <div style={{
+          borderTop: '1px solid rgba(7,59,76,0.1)',
+          maxHeight: 72,
+          overflowY: 'auto',
+          padding: '4px 8px',
+          background: '#fafbfc',
+          borderRadius: '0 0 8px 8px',
+        }}>
+          {relatedDocs.map(d => (
+            <div key={d.id} style={{
+              fontSize: 9, color: '#374151', lineHeight: 1.5,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {d.title}
+            </div>
+          ))}
+        </div>
+      )}
 
       {tooltip && createPortal(
         <div className="card" style={{
@@ -196,6 +183,3 @@ export function DetailMiniMap({ detail, allDocs, isActive }: Props) {
   )
 }
 
-const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }
-const dot: React.CSSProperties = { display: 'inline-block', flexShrink: 0 }
-const text: React.CSSProperties = { fontSize: 11, color: '#374151' }

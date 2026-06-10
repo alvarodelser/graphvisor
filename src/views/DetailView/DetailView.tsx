@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { DetailMiniMap } from './DetailMiniMap'
+import { ArgumentMiniGraph } from './ArgumentMiniGraph'
 import { RelationList } from './RelationList'
 import { ArgumentCards } from './ArgumentCards'
 import { RELATION_COLORS } from '../../utils/geometry'
@@ -9,17 +10,15 @@ import type { ArgumentDetail, DocNode, RelationGroup, ArgumentRelation } from '.
 import styles from './DetailView.module.css'
 
 const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
-  positive: true, negative: true, causal: true, structural: false,
+  positive: true, negative: true, causal: true, structural: false, concept: false,
 }
 
 export function DetailView() {
-  const { activeView, selectedNodeId, setSelectedNode, selectedArgumentId, setSelectedArgumentId } = useStore()
+  const { selectedNodeId, setSelectedNode, selectedArgumentId, setSelectedArgumentId } = useStore()
   const [detail, setDetail] = useState<ArgumentDetail | null>(null)
   const [allDocs, setAllDocs] = useState<DocNode[]>([])
   const [visibleGroups, setVisibleGroups] = useState(DEFAULT_GROUPS)
   const [navStack, setNavStack] = useState<string[]>([])
-
-  const isActive = activeView === 'detail'
 
   useEffect(() => { dataService.getDocuments().then(setAllDocs) }, [])
 
@@ -71,29 +70,57 @@ export function DetailView() {
           </button>
         )}
 
-        <div className={styles.header}>
-          <div className="sl">{detail.argument.type}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
-            {detail.argument.source_document_title}
-          </div>
-          {detail.argument.full_text && (
-            <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
-              "{detail.argument.full_text}"
+        {detail.argument.type === 'Argument' ? (
+          <div className={styles.topRow}>
+            <div className={styles.header} style={{ flex: 1, minWidth: 0 }}>
+              <div className="sl">{detail.argument.type}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
+                {detail.argument.source_document_title}
+              </div>
+              {detail.argument.full_text && (
+                <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+                  "{detail.argument.full_text}"
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {detail.argumentBlobs && detail.argumentBlobs.length > 0 && (
-          <ArgumentCards
-            blobs={detail.argumentBlobs}
-            entityLabel={detail.argument.label}
-            onBlobClick={navigateToBlob}
-          />
+            <div className={styles.mapWrapper}>
+              <ArgumentMiniGraph detail={detail} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className={styles.header}>
+              <div className="sl">{detail.argument.type}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
+                {detail.argument.source_document_title}
+              </div>
+              {detail.argument.full_text && (
+                <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+                  "{detail.argument.full_text}"
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexShrink: 0, minHeight: 0 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {detail.argumentBlobs && detail.argumentBlobs.length > 0 && (
+                  <ArgumentCards
+                    blobs={detail.argumentBlobs}
+                    entityLabel={detail.argument.label}
+                    onBlobClick={navigateToBlob}
+                  />
+                )}
+              </div>
+              <div style={{ width: 200, flexShrink: 0 }}>
+                <span className="sl" style={{ display: 'block', marginBottom: 6 }}>
+                  Documents this entity appears in
+                </span>
+                <div className={styles.mapWrapper}>
+                  <DetailMiniMap detail={detail} allDocs={allDocs} />
+                </div>
+              </div>
+            </div>
+          </>
         )}
-
-        <div className={styles.mapWrapper}>
-          <DetailMiniMap detail={detail} allDocs={allDocs} isActive={isActive} />
-        </div>
 
         <div className={styles.listWrapper}>
           {/* Inline relation group filter */}
