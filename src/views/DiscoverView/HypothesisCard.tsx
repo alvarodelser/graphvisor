@@ -4,7 +4,7 @@ interface Props {
   hypothesis: Hypothesis
 }
 
-const MAX_R = 32
+const MAX_R = 28
 const AXES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI]
 
 function toPoints(fractions: number[]): string {
@@ -73,54 +73,37 @@ export function HypothesisCard({ hypothesis }: Props) {
         {hypothesis.hypothesis}
       </p>
 
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <svg width={80} height={80} viewBox={`${-MAX_R - 10} ${-MAX_R - 10} ${(MAX_R + 10) * 2} ${(MAX_R + 10) * 2}`}>
-          {GRID_RINGS.map((pts, i) => (
-            <polygon key={i} points={pts} fill="none" stroke="rgba(7,59,76,0.08)" strokeWidth={0.7} />
-          ))}
-          <polygon points={scorePoints} fill={fillColor} stroke={accentColor} strokeWidth={1.5} />
-          {(['N', 'P', 'I', 'C'] as const).map((label, i) => {
-            const r = MAX_R + 7
-            const x = Math.cos(AXES[i]) * r
-            const y = Math.sin(AXES[i]) * r
-            return (
-              <text
-                key={label}
-                x={x.toFixed(2)}
-                y={(y + 2).toFixed(2)}
-                fontSize={7}
-                fontWeight={700}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#9ca3af"
-                fontFamily="system-ui, sans-serif"
-              >
-                {label}
-              </text>
-            )
-          })}
-        </svg>
-      </div>
-
-      <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
-        {[
-          ['N', scores.novelty],
-          ['P', scores.scientific_plausibility],
-          ['I', scores.potential_impact],
-          ['C', scores.commercial_potential],
-        ].map(([label, val]) => (
-          <span key={label as string} style={{
-            fontSize: 8,
-            fontWeight: 700,
-            background: 'rgba(7,59,76,0.06)',
-            color: '#073b4c',
-            padding: '2px 6px',
-            borderRadius: 6,
-          }}>
-            {label} {val}
-          </span>
+      {/* Radar chart — viewBox sized to fit full-name labels on all 4 axes */}
+      <svg width="100%" viewBox="-105 -58 210 128" style={{ display: 'block', overflow: 'visible' }}>
+        {GRID_RINGS.map((pts, i) => (
+          <polygon key={i} points={pts} fill="none" stroke="rgba(7,59,76,0.08)" strokeWidth={0.7} />
         ))}
-      </div>
+        <polygon points={scorePoints} fill={fillColor} stroke={accentColor} strokeWidth={1.5} />
+
+        {/* Novelty — top */}
+        <text textAnchor="middle" fontFamily="system-ui, sans-serif">
+          <tspan x="0" y="-46" fontSize={6} fill="#9ca3af">Novelty</tspan>
+          <tspan x="0" dy="9" fontSize={9} fontWeight={800} fill={accentColor}>{scores.novelty}</tspan>
+        </text>
+
+        {/* Plausibility — right */}
+        <text textAnchor="start" fontFamily="system-ui, sans-serif">
+          <tspan x="33" y="-5" fontSize={6} fill="#9ca3af">Plausibility</tspan>
+          <tspan x="33" dy="9" fontSize={9} fontWeight={800} fill={accentColor}>{scores.scientific_plausibility}</tspan>
+        </text>
+
+        {/* Impact — bottom */}
+        <text textAnchor="middle" fontFamily="system-ui, sans-serif">
+          <tspan x="0" y="38" fontSize={9} fontWeight={800} fill={accentColor}>{scores.potential_impact}</tspan>
+          <tspan x="0" dy="9" fontSize={6} fill="#9ca3af">Impact</tspan>
+        </text>
+
+        {/* Commercial — left */}
+        <text textAnchor="end" fontFamily="system-ui, sans-serif">
+          <tspan x="-33" y="-5" fontSize={6} fill="#9ca3af">Commercial</tspan>
+          <tspan x="-33" dy="9" fontSize={9} fontWeight={800} fill={accentColor}>{scores.commercial_potential}</tspan>
+        </text>
+      </svg>
     </div>
   )
 }

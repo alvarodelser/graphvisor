@@ -37,12 +37,12 @@ describe('HypothesisCard', () => {
     expect(screen.getByText(/7\.0/)).toBeInTheDocument()
   })
 
-  it('renders score pills N, P, I, C', () => {
+  it('renders full axis labels and scores on radar', () => {
     render(<HypothesisCard hypothesis={advanceHyp} />)
-    expect(screen.getByText('N 9')).toBeInTheDocument()
-    expect(screen.getByText('P 8')).toBeInTheDocument()
-    expect(screen.getByText('I 9')).toBeInTheDocument()
-    expect(screen.getByText('C 8')).toBeInTheDocument()
+    expect(screen.getByText('Novelty')).toBeInTheDocument()
+    expect(screen.getByText('Plausibility')).toBeInTheDocument()
+    expect(screen.getByText('Impact')).toBeInTheDocument()
+    expect(screen.getByText('Commercial')).toBeInTheDocument()
   })
 
   it('renders hypothesis text', () => {
