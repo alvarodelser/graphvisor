@@ -93,6 +93,9 @@ export function useGraphD3(
   const simNodesRef = useRef<GraphNode[]>([])
   const blobGRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
   const zoomKRef = useRef(1)
+  const argSimRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>())
+  const conceptSimRef = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>())
+  const forceLODRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -100,6 +103,8 @@ export function useGraphD3(
     const { width, height } = svgEl.getBoundingClientRect()
     const svg = d3.select(svgEl)
     svg.selectAll('*').remove()
+    argSimRef.current.clear()
+    conceptSimRef.current.clear()
     svg.style('background', '#fafbfc')
 
 
@@ -107,10 +112,13 @@ export function useGraphD3(
 
     const zoomG = svg.append('g').attr('class', 'zoom-group')
     let updateLOD: () => void = () => {}
+    let cachedK = ''
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
       .on('zoom', (e) => {
         zoomG.attr('transform', e.transform)
+        zoomKRef.current = e.transform.k
+        cachedK = ''
         updateLOD()
       })
     svg.call(zoom)
@@ -226,6 +234,8 @@ export function useGraphD3(
     const blobG = zoomG.append('g').attr('class', 'blobs')
       .style('display', opts.showBlobs ? '' : 'none')
     blobGRef.current = blobG
+    const conceptEdgeG = zoomG.append('g').attr('class', 'concept-edges')
+    const conceptNodeG = zoomG.append('g').attr('class', 'concept-nodes')
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
     const argNodeG = zoomG.append('g').attr('class', 'arg-nodes')
@@ -238,6 +248,43 @@ export function useGraphD3(
         entityToBlobIds.get(eid)!.push(blob.id)
       }
     }
+
+    // ── Concept data ──────────────────────────────────────────────────────────
+    type ConceptMeta = { id: string; label: string; blobIds: string[] }
+    type ConceptEdge = { id: string; blobId: string; conceptId: string }
+
+    const blobsByConceptKey = new Map<string, ArgumentBlob[]>()
+    for (const blob of opts.blobs) {
+      const key = `concept-${blob.concept_id}`
+      if (!blobsByConceptKey.has(key)) blobsByConceptKey.set(key, [])
+      blobsByConceptKey.get(key)!.push(blob)
+    }
+    const conceptMetas: ConceptMeta[] = []
+    for (const [key, cblobs] of blobsByConceptKey) {
+      conceptMetas.push({ id: key, label: cblobs[0].parent_concepts[0] ?? key, blobIds: cblobs.map(b => b.id) })
+    }
+    const conceptEdgeData: ConceptEdge[] = opts.blobs.map(b => ({
+      id: `cedge-${b.id}`, blobId: b.id, conceptId: `concept-${b.concept_id}`,
+    }))
+    const conceptMetaById = new Map(conceptMetas.map(m => [m.id, m]))
+
+    const conceptEdgeLines = conceptEdgeG
+      .selectAll<SVGLineElement, ConceptEdge>('line.concept-edge')
+      .data(conceptEdgeData, d => d.id).join('line')
+      .attr('class', 'concept-edge')
+      .attr('stroke', 'rgba(99,102,241,0.55)').attr('stroke-width', 1.5)
+      .style('display', 'none')
+
+    const conceptNodeGroups = conceptNodeG
+      .selectAll<SVGGElement, ConceptMeta>('g.concept-node')
+      .data(conceptMetas, d => d.id).join('g')
+      .attr('class', 'concept-node').style('display', 'none')
+    conceptNodeGroups.each(function(d) {
+      const g = d3.select(this); const S = 13
+      g.append('polygon').attr('points', `0,${-S} ${S},0 0,${S} ${-S},0`).attr('fill', '#6366f1').attr('opacity', 0.85)
+      g.append('text').attr('y', S + 9).attr('text-anchor', 'middle').attr('pointer-events', 'none')
+        .attr('fill', '#6366f1').attr('font-size', '8px').attr('font-weight', '600').text(d.label.slice(0, 18))
+    })
 
     // ── Blob paths ────────────────────────────────────────────────────────────
     const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
@@ -499,34 +546,6 @@ export function useGraphD3(
         if (el && el.getAttribute('data-pinned') === '0') el.setAttribute('opacity', '0')
       })
 
-    // ── Argument LOD nodes (counter-scaled, shown when blobs collapse on zoom-out) ──
-    const argNodeGroups = argNodeG.selectAll<SVGGElement, ArgumentBlob>('g.arg-node')
-      .data(opts.blobs, d => d.id)
-      .join('g')
-      .attr('class', 'arg-node')
-      .style('display', 'none')
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
-      .on('mouseenter', function(event, d) {
-        const [mx, my] = d3.pointer(event, svgEl)
-        optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
-      })
-      .on('mouseleave', () => optsRef.current.onHover?.(null))
-
-    argNodeGroups.each(function(d) {
-      const g = d3.select(this)
-      const S = 18
-      g.append('rect').attr('x', -S/2).attr('y', -S/2)
-        .attr('width', S).attr('height', S).attr('rx', 3)
-        .attr('fill', 'rgba(7,59,76,0.22)').attr('stroke', 'rgba(7,59,76,0.4)').attr('stroke-width', 1)
-      g.append('text')
-        .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
-        .attr('pointer-events', 'none')
-        .attr('fill', 'rgba(7,59,76,0.6)').attr('font-size', '9px').attr('font-weight', '700')
-        .text(d.argument_type.slice(0, 1).toUpperCase())
-      g.append('title').text(d.argument_type)
-    })
-
     // ── Force simulation ──────────────────────────────────────────────────────
     const maxCompSize = sortedComps[0]?.[1] ?? 1
     const sim = d3.forceSimulation<GraphNode>(simNodes)
@@ -627,9 +646,33 @@ export function useGraphD3(
         })
     )
 
-    // ── LOD: collapse blobs to argument nodes on zoom-out ─────────────────────
+    // ── Argument LOD nodes (appear when blobs collapse on zoom-out) ──────────────
+    const argNodeGroups = argNodeG.selectAll<SVGGElement, ArgumentBlob>('g.arg-node')
+      .data(opts.blobs, d => d.id).join('g')
+      .attr('class', 'arg-node').style('display', 'none').style('cursor', 'pointer')
+      .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
+      .on('mouseenter', function(event, d) {
+        const [mx, my] = d3.pointer(event, svgEl)
+        optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
+      })
+      .on('mouseleave', () => optsRef.current.onHover?.(null))
+    argNodeGroups.each(function(d) {
+      const g = d3.select(this); const S = 18
+      g.append('rect').attr('x', -S/2).attr('y', -S/2).attr('width', S).attr('height', S).attr('rx', 3)
+        .attr('fill', 'rgba(7,59,76,0.22)').attr('stroke', 'rgba(7,59,76,0.4)').attr('stroke-width', 1)
+      g.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.6)').attr('font-size', '9px').attr('font-weight', '700')
+        .text(d.argument_type.slice(0, 1).toUpperCase())
+      g.append('title').text(d.argument_type)
+    })
+
+    // ── LOD: hide entity nodes + arg/concept graph nodes; show LOD nodes on zoom-out ──
     updateLOD = () => {
       const k = zoomKRef.current
+      const kKey = k.toFixed(2)
+      if (kKey === cachedK) return
+      cachedK = kKey
+
       const showBlobs = optsRef.current.showBlobs
       const blobs = optsRef.current.blobs
 
@@ -646,7 +689,6 @@ export function useGraphD3(
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
           const spread = Math.max(...pts.map(p => Math.hypot(p.x - cx, p.y - cy)))
-          // Larger blobs (more spread) collapse first as you zoom out
           if ((spread + BLOB_PAD) * 2 * k < 80) {
             collapsedBlobIds.add(blob.id)
             argPositions.set(blob.id, { x: cx, y: cy })
@@ -654,38 +696,79 @@ export function useGraphD3(
         }
       }
 
-      // Entity hidden only if ALL its blob memberships are collapsed
+      // Entities hidden if all their blob memberships collapsed
       const hiddenEntityIds = new Set<string>()
       for (const [eid, blobIds] of entityToBlobIds) {
         if (blobIds.length > 0 && blobIds.every(bid => collapsedBlobIds.has(bid)))
           hiddenEntityIds.add(eid)
       }
 
-      nodeGroups.style('display', (d: GraphNode) => hiddenEntityIds.has(d.id) ? 'none' : null)
-
+      // Argument and Concept graph nodes are never shown directly —
+      // only the LOD nodes (argNodeGroups / conceptNodeGroups) represent them.
+      nodeGroups.style('display', (d: GraphNode) => {
+        if (d.type === 'Argument' || d.type === 'Concept') return 'none'
+        return hiddenEntityIds.has(d.id) ? 'none' : null
+      })
       edgeGroups.style('display', (d: GraphEdge) => {
         const sid = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
         const tid = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
-        return hiddenEntityIds.has(sid) && hiddenEntityIds.has(tid) ? 'none' : null
+        // Hide edges whose both entity endpoints are in collapsed blobs
+        if (hiddenEntityIds.has(sid) && hiddenEntityIds.has(tid)) return 'none'
+        // Hide all edges connected to Argument/Concept nodes (they have no visible endpoints)
+        const srcNode = simNodes.find(n => n.id === sid)
+        const tgtNode = simNodes.find(n => n.id === tid)
+        if (srcNode?.type === 'Argument' || srcNode?.type === 'Concept') return 'none'
+        if (tgtNode?.type === 'Argument' || tgtNode?.type === 'Concept') return 'none'
+        return null
       })
+      blobPaths.style('display', (d: ArgumentBlob) => collapsedBlobIds.has(d.id) ? 'none' : null)
 
-      // Hide collapsed blob outlines; keep visible ones
-      blobPaths.style('display', (d: ArgumentBlob) =>
-        collapsedBlobIds.has(d.id) ? 'none' : null
-      )
-
-      // Position and show/hide argument LOD nodes (counter-scaled to maintain screen size)
+      // Sync argSim and show/hide LOD argument nodes
+      const argToDelete = [...argSimRef.current.keys()].filter(id => !collapsedBlobIds.has(id))
+      argToDelete.forEach(id => argSimRef.current.delete(id))
+      for (const [id, pos] of argPositions) {
+        if (!argSimRef.current.has(id))
+          argSimRef.current.set(id, { x: pos.x, y: pos.y, vx: 0, vy: 0 })
+      }
       argNodeGroups
-        .style('display', (d: ArgumentBlob) => {
-          if (!showBlobs || !collapsedBlobIds.has(d.id)) return 'none'
-          return null
-        })
+        .style('display', (d: ArgumentBlob) => (!showBlobs || !collapsedBlobIds.has(d.id)) ? 'none' : null)
         .attr('transform', (d: ArgumentBlob) => {
-          const pos = argPositions.get(d.id)
-          if (!pos) return null
-          return `translate(${pos.x},${pos.y}) scale(${1 / k})`
+          const s = argSimRef.current.get(d.id)
+          if (!s) return null
+          return `translate(${s.x},${s.y}) scale(${1 / k})`
         })
+
+      // Sync conceptSim and show/hide LOD concept nodes + edges
+      const visibleConceptIds = new Set<string>()
+      for (const blob of blobs) {
+        if (collapsedBlobIds.has(blob.id)) visibleConceptIds.add(`concept-${blob.concept_id}`)
+      }
+      const concToDelete = [...conceptSimRef.current.keys()].filter(id => !visibleConceptIds.has(id))
+      concToDelete.forEach(id => conceptSimRef.current.delete(id))
+      for (const meta of conceptMetas) {
+        if (visibleConceptIds.has(meta.id) && !conceptSimRef.current.has(meta.id)) {
+          const argStates = meta.blobIds.map(bid => argSimRef.current.get(bid))
+            .filter((s): s is { x: number; y: number; vx: number; vy: number } => s !== undefined)
+          const cx = argStates.length > 0 ? argStates.reduce((s, a) => s + a.x, 0) / argStates.length : 0
+          const cy = argStates.length > 0 ? argStates.reduce((s, a) => s + a.y, 0) / argStates.length : 0
+          conceptSimRef.current.set(meta.id, { x: cx, y: cy, vx: 0, vy: 0 })
+        }
+      }
+      conceptNodeGroups
+        .style('display', (d: ConceptMeta) => visibleConceptIds.has(d.id) ? null : 'none')
+        .attr('transform', (d: ConceptMeta) => {
+          const s = conceptSimRef.current.get(d.id)
+          if (!s) return null
+          return `translate(${s.x},${s.y}) scale(${1 / k})`
+        })
+      conceptEdgeLines
+        .style('display', (d: ConceptEdge) => collapsedBlobIds.has(d.blobId) ? null : 'none')
+        .attr('x1', (d: ConceptEdge) => conceptSimRef.current.get(d.conceptId)?.x ?? 0)
+        .attr('y1', (d: ConceptEdge) => conceptSimRef.current.get(d.conceptId)?.y ?? 0)
+        .attr('x2', (d: ConceptEdge) => argSimRef.current.get(d.blobId)?.x ?? 0)
+        .attr('y2', (d: ConceptEdge) => argSimRef.current.get(d.blobId)?.y ?? 0)
     }
+    forceLODRef.current = () => { cachedK = ''; updateLOD() }
 
     // ── Tick ──────────────────────────────────────────────────────────────────
     sim.on('tick', () => {
@@ -725,8 +808,44 @@ export function useGraphD3(
       if (optsRef.current.showBlobs) {
         const nodePositions = new Map(simNodes.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]))
         blobPaths.attr('d', d => computeBlobPath(d, nodePositions) ?? '')
+
+        if (argSimRef.current.size > 0) {
+          const k = zoomKRef.current
+          for (const [blobId, state] of argSimRef.current) {
+            const blob = optsRef.current.blobs.find(b => b.id === blobId)
+            if (!blob) continue
+            const pts = blob.entityIds.map(id => nodePositions.get(id))
+              .filter((p): p is { x: number; y: number } => p !== undefined)
+            if (pts.length === 0) continue
+            state.x = pts.reduce((s, p) => s + p.x, 0) / pts.length
+            state.y = pts.reduce((s, p) => s + p.y, 0) / pts.length
+          }
+          for (const [cId, cState] of conceptSimRef.current) {
+            const meta = conceptMetaById.get(cId)
+            if (!meta) continue
+            const argStates = meta.blobIds.map(bid => argSimRef.current.get(bid))
+              .filter((s): s is { x: number; y: number; vx: number; vy: number } => s !== undefined)
+            if (argStates.length === 0) continue
+            cState.x = argStates.reduce((s, a) => s + a.x, 0) / argStates.length
+            cState.y = argStates.reduce((s, a) => s + a.y, 0) / argStates.length
+          }
+          argNodeGroups.filter(d => argSimRef.current.has(d.id))
+            .attr('transform', d => {
+              const s = argSimRef.current.get(d.id)!
+              return `translate(${s.x},${s.y}) scale(${1 / k})`
+            })
+          conceptNodeGroups.filter(d => conceptSimRef.current.has(d.id))
+            .attr('transform', d => {
+              const s = conceptSimRef.current.get(d.id)!
+              return `translate(${s.x},${s.y}) scale(${1 / k})`
+            })
+          conceptEdgeLines.filter(d => argSimRef.current.has(d.blobId))
+            .attr('x1', d => conceptSimRef.current.get(d.conceptId)?.x ?? 0)
+            .attr('y1', d => conceptSimRef.current.get(d.conceptId)?.y ?? 0)
+            .attr('x2', d => argSimRef.current.get(d.blobId)?.x ?? 0)
+            .attr('y2', d => argSimRef.current.get(d.blobId)?.y ?? 0)
+        }
       }
-      updateLOD()
     })
 
     // ── Label collision detection after sim settles ────────────────────────────
@@ -740,6 +859,8 @@ export function useGraphD3(
     sim.on('tick.labels', () => {
       if (pinningDone || sim.alpha() > 0.04) return
       pinningDone = true
+      cachedK = ''
+      updateLOD()
 
       type LabelRect = { node: GraphNode; x1: number; x2: number; y1: number; y2: number; el: SVGTextElement }
       const rects: LabelRect[] = []
@@ -792,7 +913,7 @@ export function useGraphD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { alive = false; sim.stop(); observer.disconnect() }
+    return () => { sim.stop(); observer.disconnect() }
   }, [nodes, edges, opts.filters])
 
   // ── Selection halo ────────────────────────────────────────────────────────
@@ -831,6 +952,7 @@ export function useGraphD3(
       blobG.style('display', 'none')
       sim.alpha(0.15).restart()
     }
+    forceLODRef.current()
   }, [opts.showBlobs, opts.blobs])
 
   // ── Blob selection highlight ───────────────────────────────────────────────
