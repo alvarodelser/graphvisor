@@ -37,6 +37,7 @@ export function GraphView() {
     selectedNodeId, setSelectedNode,
     setActiveView, filters, setFilters,
     selectedArgumentId, setSelectedArgumentId,
+    selectedConceptId, setSelectedConceptId,
   } = useStore()
 
   const showBlobs = filters.nodeTypes.Argument && filters.nodeTypes.Entity
@@ -59,21 +60,31 @@ export function GraphView() {
     blobs,
     showBlobs,
     selectedArgumentId,
+    selectedConceptId,
     onNodeClick: (node) => {
       setSelectedNode(node.id)
       setSelectedArgumentId(node.type === 'Argument' ? node.id : null)
+      setSelectedConceptId(null)
       setDisplayedItem({ type: 'node', node, x: 0, y: 0 })
       setIsSticky(true)
     },
     onBlobClick: (blob) => {
       setSelectedArgumentId(blob.id)
       setSelectedNode(null)
+      setSelectedConceptId(null)
       setDisplayedItem({ type: 'blob', blob, x: 0, y: 0 })
+      setIsSticky(true)
+    },
+    onConceptClick: (payload) => {
+      setSelectedConceptId(payload.conceptId)
+      setSelectedArgumentId(null)
+      setSelectedNode(null)
+      setDisplayedItem({ type: 'concept', ...payload, x: 0, y: 0 })
       setIsSticky(true)
     },
     onHover: (item) => {
       if (isSticky) {
-        if (item !== null && item.type !== 'blob') setDisplayedItem(item)
+        if (item !== null && item.type !== 'blob' && item.type !== 'concept') setDisplayedItem(item)
       } else {
         setDisplayedItem(item)
       }
@@ -81,6 +92,7 @@ export function GraphView() {
     onCanvasClick: () => {
       setSelectedNode(null)
       setSelectedArgumentId(null)
+      setSelectedConceptId(null)
       setDisplayedItem(null)
       setIsSticky(false)
     },
@@ -259,7 +271,7 @@ export function GraphView() {
           <NodeFloatingCard
             item={displayedItem}
             sticky={isSticky}
-            onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null); setSelectedArgumentId(null) }}
+            onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null); setSelectedArgumentId(null); setSelectedConceptId(null) }}
             onOpenDetail={() => {
               if (displayedItem?.type === 'blob') {
                 setSelectedArgumentId(displayedItem.blob.id)

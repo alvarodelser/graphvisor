@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ringRadius, computeConceptTargets, stepRingBodies, spiralPath, type RingBody } from './conceptOrbit'
+import { ringRadius, computeConceptTargets, stepRingBodies, conceptLinkPath, type RingBody } from './conceptOrbit'
 import { buildGraphModel } from './graphModel'
 import type { GraphNode, GraphEdge, ArgumentBlob } from '../types'
 
@@ -55,10 +55,18 @@ describe('stepRingBodies', () => {
   })
 })
 
-describe('spiralPath', () => {
+describe('conceptLinkPath', () => {
   it('starts at the concept and ends at the argument', () => {
-    const d = spiralPath(100, 0, 50, 0, 0, 0, 1)
+    const d = conceptLinkPath(100, 0, 50, 0, 0, 0)
     expect(d).toMatch(/^M 100 0/)
     expect(d.trim().endsWith('50 0')).toBe(true)
+  })
+
+  it('pulls control points toward the graph center', () => {
+    // center at origin, concept at x=100 -> first control point should be inside (x<100)
+    const d = conceptLinkPath(100, 0, 50, 0, 0, 0)
+    const c1x = Number(d.split('C')[1].trim().split(/[ ,]/)[0])
+    expect(c1x).toBeLessThan(100)
+    expect(c1x).toBeGreaterThan(0)
   })
 })

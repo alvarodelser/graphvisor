@@ -20,6 +20,7 @@ interface AppState {
   sizeBy: SizeBy
   showBlobs: boolean
   selectedArgumentId: string | null
+  selectedConceptId: string | null
   toggleDocumentSelection: (id: string) => void
   setSelectedDocuments: (ids: string[]) => void
   clearSelection: () => void
@@ -30,6 +31,7 @@ interface AppState {
   setSizeBy: (s: SizeBy) => void
   setShowBlobs: (v: boolean) => void
   setSelectedArgumentId: (id: string | null) => void
+  setSelectedConceptId: (id: string | null) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -40,6 +42,7 @@ export const useStore = create<AppState>((set) => ({
   sizeBy: 'argument_count',
   showBlobs: false,
   selectedArgumentId: null,
+  selectedConceptId: null,
   toggleDocumentSelection: (id) =>
     set((s) => ({
       selectedDocumentIds: s.selectedDocumentIds.includes(id)
@@ -55,4 +58,5 @@ export const useStore = create<AppState>((set) => ({
   setSizeBy: (s) => set({ sizeBy: s }),
   setShowBlobs: (v) => set({ showBlobs: v }),
   setSelectedArgumentId: (id) => set({ selectedArgumentId: id }),
+  setSelectedConceptId: (id) => set({ selectedConceptId: id }),
 }))

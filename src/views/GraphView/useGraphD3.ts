@@ -10,7 +10,7 @@ import {
 } from '../../graph/forces'
 import { computeCollapse } from '../../graph/collapse'
 import {
-  ringRadius, computeConceptTargets, stepRingBodies, spiralPath, type RingBody,
+  ringRadius, computeConceptTargets, stepRingBodies, conceptLinkPath, type RingBody,
 } from '../../graph/conceptOrbit'
 import { stepSoftBodies, type SoftBody } from '../../graph/softBodies'
 
@@ -24,13 +24,21 @@ const CHEV_START = -28
 
 const ENTITY_R = 8
 const ARG_NODE_R = 8          // collapsed argument node radius, graph units (= entity size)
-const COLLAPSE_PX = 70
+const COLLAPSE_PX = 140       // on-screen blob size below which an argument collapses
 const ORBIT_MARGIN = 160
+
+// Argument/concept nodes grow as you zoom out so the plot stays readable.
+// scale = 1 at k>=1, rising toward MAX_NODE_SCALE as k shrinks.
+const MAX_NODE_SCALE = 2.6
+const nodeScaleFor = (k: number) => Math.min(MAX_NODE_SCALE, Math.max(1, Math.sqrt(1 / Math.max(k, 1e-3))))
 
 interface HoverPayload { type: 'node'; node: GraphNode; x: number; y: number }
 interface EdgeHoverPayload { type: 'edge'; edge: GraphEdge; sourceNode: GraphNode; targetNode: GraphNode; x: number; y: number }
 interface BlobHoverPayload { type: 'blob'; blob: ArgumentBlob; x: number; y: number }
-export type HoverItem = HoverPayload | EdgeHoverPayload | BlobHoverPayload | null
+interface ConceptHoverPayload { type: 'concept'; conceptId: string; label: string; argCount: number; x: number; y: number }
+export type HoverItem = HoverPayload | EdgeHoverPayload | BlobHoverPayload | ConceptHoverPayload | null
+
+interface ConceptClickPayload { conceptId: string; label: string; argCount: number }
 
 interface Options {
   filters: FilterState
@@ -38,8 +46,10 @@ interface Options {
   blobs: ArgumentBlob[]
   showBlobs: boolean
   selectedArgumentId: string | null
+  selectedConceptId: string | null
   onNodeClick: (node: GraphNode) => void
   onBlobClick: (blob: ArgumentBlob) => void
+  onConceptClick: (payload: ConceptClickPayload) => void
   onHover?: (item: HoverItem) => void
   onCanvasClick?: () => void
 }
@@ -55,6 +65,11 @@ function edgeFill(group: string): string {
   return group === 'structural' ? 'none' : `${RELATION_COLORS[group]}0f`
 }
 
+const BLOB_STROKE = 'rgba(100,116,139,0.12)'
+const BLOB_FILL = 'rgba(100,116,139,0.04)'
+const BLOB_STROKE_SEL = 'rgba(100,116,139,0.6)'
+const BLOB_FILL_SEL = 'rgba(100,116,139,0.13)'
+
 export function useGraphD3(
   svgRef: RefObject<SVGSVGElement | null>,
   nodes: GraphNode[],
@@ -69,6 +84,7 @@ export function useGraphD3(
   const argPinnedRef = useRef(new Map<string, { x: number; y: number }>())
   const conceptBodiesRef = useRef(new Map<string, RingBody>())
   const conceptPinnedRef = useRef(new Map<string, number>())
+  const highlightFnRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -148,7 +164,9 @@ export function useGraphD3(
       g.append('polygon').attr('class', 'chevron-outer')
         .attr('fill', edgeFill(d.group)).attr('stroke', edgeStroke(d.group))
         .attr('stroke-width', 1).attr('stroke-linejoin', 'miter').attr('opacity', 0.85)
-      const inner = g.append('g').attr('clip-path', `url(#edgeclip-${d.id})`).append('g')
+      // inner marching chevrons — the `chevrons-forward` class drives the CSS animation
+      const inner = g.append('g').attr('clip-path', `url(#edgeclip-${d.id})`)
+        .append('g').attr('class', 'chevrons-forward')
       for (let i = 0; i < CHEV_COUNT; i++) {
         const bx = CHEV_START + i * CHEV_SPACING
         inner.append('polyline')
@@ -170,21 +188,15 @@ export function useGraphD3(
     // ── Blobs ─────────────────────────────────────────────────────────────────
     const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
       .data(model.arguments, d => d.id).join('path').attr('class', 'blob')
-      .attr('fill', 'rgba(100,116,139,0.04)').attr('stroke', 'rgba(100,116,139,0.12)')
+      .attr('fill', BLOB_FILL).attr('stroke', BLOB_STROKE)
       .attr('stroke-width', 1.5).attr('pointer-events', 'fill').style('cursor', 'pointer')
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
       .on('mouseenter', function (event, d) {
-        d3.select(this).attr('stroke', 'rgba(100,116,139,0.45)').attr('fill', 'rgba(100,116,139,0.13)')
+        applyArgHighlight(d.id)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
-      .on('mouseleave', function (_, d) {
-        const sel = optsRef.current.selectedArgumentId === d.id
-        d3.select(this)
-          .attr('stroke', sel ? 'rgba(100,116,139,0.6)' : 'rgba(100,116,139,0.12)')
-          .attr('fill', sel ? 'rgba(100,116,139,0.13)' : 'rgba(100,116,139,0.04)')
-        optsRef.current.onHover?.(null)
-      })
+      .on('mouseleave', () => { applySticky(); optsRef.current.onHover?.(null) })
 
     // Blob drag: move members, soft-anchor on release
     interface DragMember { node: GraphNode; relX: number; relY: number }
@@ -248,15 +260,24 @@ export function useGraphD3(
       .style('display', 'none').style('cursor', 'pointer')
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
       .on('mouseenter', function (event, d) {
+        applyArgHighlight(d.id)
+        d3.select(this).select('.arg-label').attr('opacity', 1)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
-      .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('mouseleave', function (_, d) {
+        applySticky()
+        d3.select(this).select('.arg-label').attr('opacity', argLabelVisible.has(d.id) ? 1 : 0)
+        optsRef.current.onHover?.(null)
+      })
       .call(
         d3.drag<SVGGElement, ArgumentBlob>()
-          .on('start', (event) => event.sourceEvent.stopPropagation())
+          .on('start', (event) => {
+            event.sourceEvent.stopPropagation()
+            if (!event.active) sim.alphaTarget(0.2).restart()
+          })
           .on('drag', (event, d) => { argPinnedRef.current.set(d.id, { x: event.x, y: event.y }) })
-          .on('end', () => {/* stays pinned */}),
+          .on('end', (event) => { if (!event.active) sim.alphaTarget(0) }),
       )
     argNodeGroups.each(function (d) {
       const g = d3.select(this)
@@ -266,7 +287,12 @@ export function useGraphD3(
       g.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
         .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.6)')
         .attr('font-size', '9px').attr('font-weight', '700').text(d.argument_type.slice(0, 1).toUpperCase())
-      g.append('title').text(d.argument_type)
+      // start-of-argument label below the node, decluttered (shown on hover regardless)
+      const start = d.full_argument.replace(/\s+/g, ' ').trim().slice(0, 26)
+      g.append('text').attr('class', 'arg-label').attr('y', ARG_NODE_R + 9).attr('text-anchor', 'middle')
+        .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.7)').attr('font-size', '7px')
+        .attr('font-weight', '600').attr('opacity', 0).text(start + (d.full_argument.length > 26 ? '…' : ''))
+      g.append('title').text(d.full_argument)
     })
 
     // ── Concept nodes ───────────────────────────────────────────────────────────
@@ -274,21 +300,44 @@ export function useGraphD3(
     const conceptNodeGroups = conceptNodeG.selectAll<SVGGElement, string>('g.concept-node')
       .data(conceptIds, d => d).join('g').attr('class', 'concept-node').style('display', 'none')
       .style('cursor', 'pointer')
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        optsRef.current.onConceptClick({
+          conceptId: d, label: model.conceptLabels.get(d) ?? d, argCount: (model.conceptArgs.get(d) ?? []).length,
+        })
+      })
+      .on('mouseenter', function (event, d) {
+        applyConceptHighlight(d)
+        d3.select(this).select('.concept-label').attr('opacity', 1)
+        const [mx, my] = d3.pointer(event, svgEl)
+        optsRef.current.onHover?.({
+          type: 'concept', conceptId: d, label: model.conceptLabels.get(d) ?? d,
+          argCount: (model.conceptArgs.get(d) ?? []).length, x: mx, y: my,
+        })
+      })
+      .on('mouseleave', function (_, d) {
+        applySticky()
+        d3.select(this).select('.concept-label').attr('opacity', conceptLabelVisible.has(d) ? 1 : 0)
+        optsRef.current.onHover?.(null)
+      })
       .call(
         d3.drag<SVGGElement, string>()
-          .on('start', (event) => event.sourceEvent.stopPropagation())
+          .on('start', (event) => {
+            event.sourceEvent.stopPropagation()
+            if (!event.active) sim.alphaTarget(0.2).restart()
+          })
           .on('drag', (event, d) => {
             const center = { x: width / 2, y: height / 2 }
             conceptPinnedRef.current.set(d, Math.atan2(event.y - center.y, event.x - center.x))
           })
-          .on('end', () => {/* stays pinned */}),
+          .on('end', (event) => { if (!event.active) sim.alphaTarget(0) }),
       )
     conceptNodeGroups.each(function (d) {
       const g = d3.select(this); const S = 9
       g.append('polygon').attr('points', `0,${-S} ${S},0 0,${S} ${-S},0`).attr('fill', '#6366f1').attr('opacity', 0.85)
-      g.append('text').attr('y', S + 8).attr('text-anchor', 'middle').attr('pointer-events', 'none')
-        .attr('fill', '#6366f1').attr('font-size', '8px').attr('font-weight', '600')
-        .text((model.conceptLabels.get(d) ?? '').slice(0, 18))
+      g.append('text').attr('class', 'concept-label').attr('y', S + 8).attr('text-anchor', 'middle')
+        .attr('pointer-events', 'none').attr('fill', '#6366f1').attr('font-size', '8px').attr('font-weight', '600')
+        .attr('opacity', 0).text((model.conceptLabels.get(d) ?? '').slice(0, 18))
     })
 
     const conceptEdgeData = model.arguments
@@ -297,6 +346,90 @@ export function useGraphD3(
     const conceptEdgeLines = conceptEdgeG.selectAll<SVGPathElement, typeof conceptEdgeData[number]>('path.concept-edge')
       .data(conceptEdgeData, d => d.id).join('path').attr('class', 'concept-edge')
       .attr('stroke', 'rgba(99,102,241,0.65)').attr('stroke-width', 2.5).attr('fill', 'none').style('display', 'none')
+
+    // ── Highlight (hover + sticky) ──────────────────────────────────────────────
+    const edgeEndId = (e: GraphEdge, w: 'source' | 'target') => {
+      const v = e[w]
+      return typeof v === 'string' ? v : (v as GraphNode).id
+    }
+    function applyConceptHighlight(cid: string) {
+      const relatedArgs = new Set(model.conceptArgs.get(cid) ?? [])
+      nodeGroups.attr('opacity', 0.12)
+      edgeGroups.attr('opacity', 0.05)
+      blobPaths.attr('opacity', d => relatedArgs.has(d.id) ? 1 : 0.12)
+        .attr('stroke', BLOB_STROKE).attr('fill', BLOB_FILL)
+      argNodeGroups.attr('opacity', d => relatedArgs.has(d.id) ? 1 : 0.12)
+      conceptNodeGroups.attr('opacity', d => d === cid ? 1 : 0.12)
+      conceptEdgeLines.attr('opacity', d => d.conceptId === cid ? 1 : 0.04)
+    }
+    function applyArgHighlight(aid: string) {
+      const members = new Set(model.argMembers.get(aid) ?? [])
+      const cid = model.argConcept.get(aid)
+      nodeGroups.attr('opacity', d => members.has(d.id) ? 1 : 0.12)
+      edgeGroups.attr('opacity', d =>
+        members.has(edgeEndId(d, 'source')) && members.has(edgeEndId(d, 'target')) ? 1 : 0.05)
+      blobPaths.attr('opacity', d => d.id === aid ? 1 : 0.12)
+        .attr('stroke', d => d.id === aid ? BLOB_STROKE_SEL : BLOB_STROKE)
+        .attr('fill', d => d.id === aid ? BLOB_FILL_SEL : BLOB_FILL)
+      argNodeGroups.attr('opacity', d => d.id === aid ? 1 : 0.12)
+      conceptNodeGroups.attr('opacity', d => d === cid ? 1 : 0.12)
+      conceptEdgeLines.attr('opacity', d => d.argId === aid ? 1 : 0.04)
+    }
+    function clearHighlight() {
+      nodeGroups.attr('opacity', null)
+      edgeGroups.attr('opacity', null)
+      argNodeGroups.attr('opacity', null)
+      conceptNodeGroups.attr('opacity', null)
+      conceptEdgeLines.attr('opacity', null)
+      const sel = optsRef.current.selectedArgumentId
+      blobPaths.attr('opacity', null)
+        .attr('stroke', d => d.id === sel ? BLOB_STROKE_SEL : BLOB_STROKE)
+        .attr('fill', d => d.id === sel ? BLOB_FILL_SEL : BLOB_FILL)
+    }
+    function applySticky() {
+      const cId = optsRef.current.selectedConceptId
+      const aId = optsRef.current.selectedArgumentId
+      if (cId) applyConceptHighlight(cId)
+      else if (aId) applyArgHighlight(aId)
+      else clearHighlight()
+    }
+    highlightFnRef.current = applySticky
+
+    // ── Label declutter (arguments + concepts) ──────────────────────────────────
+    const argLabelVisible = new Set<string>()
+    const conceptLabelVisible = new Set<string>()
+    const ringState = { cx: width / 2, cy: height / 2, r: 0 }
+    let lastLabelK = -1
+    let labelTick = 0
+    function recomputeLabels() {
+      const k = zoomKRef.current
+      argLabelVisible.clear()
+      const shownA: Array<{ x: number; y: number }> = []
+      const gapA = 64 / k
+      for (const [id, b] of [...argBodiesRef.current.entries()].sort((a, c) => a[0] < c[0] ? -1 : 1)) {
+        if (shownA.every(p => Math.hypot(p.x - b.x, p.y - b.y) > gapA)) {
+          argLabelVisible.add(id); shownA.push({ x: b.x, y: b.y })
+        }
+      }
+      conceptLabelVisible.clear()
+      const shownC: Array<{ x: number; y: number }> = []
+      const gapC = 80 / k
+      for (const [id, body] of [...conceptBodiesRef.current.entries()].sort((a, c) => a[0] < c[0] ? -1 : 1)) {
+        const x = ringState.cx + Math.cos(body.angle) * ringState.r
+        const y = ringState.cy + Math.sin(body.angle) * ringState.r
+        if (shownC.every(p => Math.hypot(p.x - x, p.y - y) > gapC)) {
+          conceptLabelVisible.add(id); shownC.push({ x, y })
+        }
+      }
+    }
+    function applyLabels() {
+      argNodeGroups.each(function (d) {
+        d3.select(this).select('.arg-label').attr('opacity', argLabelVisible.has(d.id) ? 1 : 0)
+      })
+      conceptNodeGroups.each(function (d) {
+        d3.select(this).select('.concept-label').attr('opacity', conceptLabelVisible.has(d) ? 1 : 0)
+      })
+    }
 
     // ── Simulation ──────────────────────────────────────────────────────────────
     const sim = d3.forceSimulation<GraphNode>(simNodes)
@@ -327,6 +460,7 @@ export function useGraphD3(
     sim.on('tick', () => {
       if (!alive) return
       const k = zoomKRef.current
+      const nodeScale = nodeScaleFor(k)
       const showBlobs = optsRef.current.showBlobs
       const entityVisible = optsRef.current.filters.nodeTypes.Entity
       const conceptVisible = optsRef.current.filters.nodeTypes.Concept
@@ -399,12 +533,13 @@ export function useGraphD3(
         .style('display', d => (showBlobs && entityVisible && collapse.collapsedArgIds.has(d.id)) ? null : 'none')
         .attr('transform', d => {
           const b = argBodiesRef.current.get(d.id)
-          return b ? `translate(${b.x},${b.y})` : null
+          return b ? `translate(${b.x},${b.y}) scale(${nodeScale})` : null
         })
 
       // Concepts on the global ring
       const center = graphCenter()
       const radius = ringRadius(positions.values(), center, ORBIT_MARGIN)
+      ringState.cx = center.x; ringState.cy = center.y; ringState.r = radius
       const { visibleConceptIds, targetAngles } = computeConceptTargets(
         model, collapse.collapsedArgIds, collapse.argCentroids, center)
       for (const id of visibleConceptIds)
@@ -423,7 +558,7 @@ export function useGraphD3(
         .style('display', d => (showBlobs && conceptVisible && visibleConceptIds.has(d)) ? null : 'none')
         .attr('transform', d => {
           const p = conceptPos(d)
-          return p ? `translate(${p.x},${p.y})` : null
+          return p ? `translate(${p.x},${p.y}) scale(${nodeScale})` : null
         })
       conceptEdgeLines
         .style('display', d => (showBlobs && conceptVisible
@@ -432,8 +567,16 @@ export function useGraphD3(
           const cp = conceptPos(d.conceptId)
           const ap = argBodiesRef.current.get(d.argId)
           if (!cp || !ap) return ''
-          return spiralPath(cp.x, cp.y, ap.x, ap.y, center.x, center.y, k)
+          return conceptLinkPath(cp.x, cp.y, ap.x, ap.y, center.x, center.y)
         })
+
+      // Decluttered labels — recompute on zoom change or periodically (positions drift)
+      labelTick++
+      if (k !== lastLabelK || labelTick % 12 === 0) {
+        lastLabelK = k
+        recomputeLabels()
+        applyLabels()
+      }
     })
 
     const observer = new ResizeObserver(() => {
@@ -464,15 +607,8 @@ export function useGraphD3(
   // ── showBlobs / blob list change → reheat ──────────────────────────────────────
   useEffect(() => { simRef.current?.alpha(0.3).restart() }, [opts.showBlobs, opts.blobs])
 
-  // ── Argument selection highlight ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!svgRef.current) return
-    const svg = d3.select(svgRef.current)
-    const argId = optsRef.current.selectedArgumentId
-    svg.selectAll<SVGPathElement, ArgumentBlob>('path.blob')
-      .attr('stroke', d => d.id === argId ? 'rgba(100,116,139,0.6)' : 'rgba(100,116,139,0.12)')
-      .attr('fill', d => d.id === argId ? 'rgba(100,116,139,0.13)' : 'rgba(100,116,139,0.04)')
-  }, [opts.selectedArgumentId])
+  // ── Sticky highlight (selection-driven) ─────────────────────────────────────────
+  useEffect(() => { highlightFnRef.current() }, [opts.selectedArgumentId, opts.selectedConceptId])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

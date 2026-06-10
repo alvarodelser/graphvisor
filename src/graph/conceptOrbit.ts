@@ -99,17 +99,15 @@ export function stepRingBodies(
   }
 }
 
-// Cubic-bezier spiral: tangential offset at the concept (ring) end, curving
-// inward to the argument node. tOff/rOff are screen px converted to graph units via k.
-export function spiralPath(
+// Concept→argument link, bundled through the graph center: both control points
+// are pulled toward the center so links from all concepts travel inward together
+// before fanning out to their arguments.
+export function conceptLinkPath(
   cx: number, cy: number, ax: number, ay: number,
-  gcx: number, gcy: number, k: number,
+  gcx: number, gcy: number,
 ): string {
-  const dcx = cx - gcx, dcy = cy - gcy
-  const dist = Math.hypot(dcx, dcy) || 1
-  const radX = dcx / dist, radY = dcy / dist
-  const tanX = -radY, tanY = radX
-  const tOff = 28 / k
-  const rOff = 16 / k
-  return `M ${cx} ${cy} C ${cx + tanX * tOff} ${cy + tanY * tOff} ${ax + radX * rOff} ${ay + radY * rOff} ${ax} ${ay}`
+  const pull = 0.6
+  const c1x = cx + (gcx - cx) * pull, c1y = cy + (gcy - cy) * pull
+  const c2x = ax + (gcx - ax) * pull, c2y = ay + (gcy - ay) * pull
+  return `M ${cx} ${cy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ax} ${ay}`
 }

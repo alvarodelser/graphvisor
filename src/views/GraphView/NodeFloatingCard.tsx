@@ -17,6 +17,25 @@ interface Props {
 }
 
 export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Props) {
+  if (item.type === 'concept') {
+    return (
+      <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
+        {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+        <div className={styles.header}>
+          <span style={{ background: '#6366f1', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 8, fontWeight: 700 }}>
+            CONCEPT
+          </span>
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#073b4c', marginTop: 6, lineHeight: 1.4 }}>
+          {item.label}
+        </div>
+        <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
+          {item.argCount} argument{item.argCount === 1 ? '' : 's'}
+        </div>
+      </div>
+    )
+  }
+
   if (item.type === 'blob') {
     const { blob } = item
     const snippet = blob.full_argument.length > 160
