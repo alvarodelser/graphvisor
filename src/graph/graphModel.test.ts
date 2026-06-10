@@ -49,6 +49,27 @@ describe('buildGraphModel', () => {
     expect(m.entityArgs.get('b')!.sort()).toEqual(['arg0', 'arg1'])
   })
 
+  it('drops entities with no surviving relations but keeps the argument as node-only', () => {
+    const ns = [entity('a'), entity('b'), entity('d'), entity('e'), entity('x')]
+    const es = [edge('e1', 'a', 'b'), edge('e3', 'd', 'e')] // x has no edge
+    const bs = [blob('arg0', ['a', 'b']), blob('arg2', ['d', 'e'], 'C2'), blob('argX', ['x'])]
+    const mm = buildGraphModel(ns, es, bs)
+    expect(mm.entities.map(n => n.id).sort()).toEqual(['a', 'b', 'd', 'e']) // x dropped
+    expect(mm.entityIds.has('x')).toBe(false)
+    expect(mm.argMembers.get('arg0')).toEqual(['a', 'b'])
+    expect(mm.argMembers.get('argX')).toEqual([])         // node-only argument
+    expect(mm.arguments.map(a => a.id)).toContain('argX')  // still present
+  })
+
+  it('keeps an argument whose members partially survive, with only the survivors', () => {
+    const ns = [entity('a'), entity('b'), entity('z')]
+    const es = [edge('e1', 'a', 'b')] // z has no surviving edge
+    const bs = [blob('arg0', ['a', 'b', 'z'])]
+    const mm = buildGraphModel(ns, es, bs)
+    expect(mm.argMembers.get('arg0')).toEqual(['a', 'b']) // z excluded
+    expect(mm.entityIds.has('z')).toBe(false)
+  })
+
   it('groups concepts by label and maps to arguments', () => {
     const c1 = m.argConcept.get('arg0')!
     expect(m.argConcept.get('arg1')).toBe(c1)        // same label C1 -> merged

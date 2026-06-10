@@ -30,12 +30,19 @@ export function buildGraphModel(
   edges: GraphEdge[],
   blobs: ArgumentBlob[],
 ): GraphModel {
-  const entities = nodes.filter(n => n.type === 'Entity')
-  const entityIds = new Set(entities.map(n => n.id))
+  const allEntityIds = new Set(nodes.filter(n => n.type === 'Entity').map(n => n.id))
 
   const entEdges = edges.filter(
-    e => entityIds.has(edgeEnd(e, 'source')) && entityIds.has(edgeEnd(e, 'target')),
+    e => allEntityIds.has(edgeEnd(e, 'source')) && allEntityIds.has(edgeEnd(e, 'target')),
   )
+
+  // Plot only entities that still have at least one surviving relation. An entity
+  // whose every relation was filtered out (e.g. all below the confidence
+  // threshold) is dropped along with those relations.
+  const connected = new Set<string>()
+  entEdges.forEach(e => { connected.add(edgeEnd(e, 'source')); connected.add(edgeEnd(e, 'target')) })
+  const entities = nodes.filter(n => n.type === 'Entity' && connected.has(n.id))
+  const entityIds = new Set(entities.map(n => n.id))
 
   const adjacency = new Map<string, Set<string>>()
   const adjacentEdges = new Map<string, Set<string>>()
@@ -78,13 +85,16 @@ export function buildGraphModel(
     (a, b) => (chainSizes.get(b)! - chainSizes.get(a)!) || (a < b ? -1 : 1),
   )
 
-  // Arguments: keep only those whose members are all present entities
-  const args = blobs.filter(b => b.entityIds.every(id => entityIds.has(id)))
+  // Keep every argument. Its members are the entities of its relations that
+  // survived filtering; an argument left with no members is "node-only" and is
+  // rendered directly as an argument node rather than a blob.
+  const args = blobs
   const argMembers = new Map<string, string[]>()
   const entityArgs = new Map<string, string[]>()
   args.forEach(a => {
-    argMembers.set(a.id, [...a.entityIds])
-    a.entityIds.forEach(eid => {
+    const members = a.entityIds.filter(id => entityIds.has(id))
+    argMembers.set(a.id, members)
+    members.forEach(eid => {
       if (!entityArgs.has(eid)) entityArgs.set(eid, [])
       entityArgs.get(eid)!.push(a.id)
     })

@@ -12,9 +12,10 @@ const blob = (id: string, entityIds: string[]): ArgumentBlob => ({
 })
 
 describe('computeCollapse', () => {
-  // arg0 = {a,b} tight (collapses), arg1 = {c,d} far apart (stays expanded)
+  // arg0 = {a,b} tight (collapses), arg1 = {c,d} far apart (stays expanded).
+  // Every entity needs a surviving edge or the model drops it; e1 is the bridge.
   const nodes = [entity('a'), entity('b'), entity('c'), entity('d')]
-  const edges = [edge('e1', 'b', 'c')] // bridge edge between the two arguments
+  const edges = [edge('e0', 'a', 'b'), edge('e1', 'b', 'c'), edge('e2', 'c', 'd')]
   const blobs = [blob('arg0', ['a', 'b']), blob('arg1', ['c', 'd'])]
   const model = buildGraphModel(nodes, edges, blobs)
   const positions = new Map([

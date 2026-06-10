@@ -119,6 +119,11 @@ export function useGraphD3(
       })
       .map(e => ({ ...e }))
 
+    // Arguments left with no surviving members render as standalone nodes at all zooms
+    const nodeOnlyArgIds = model.arguments
+      .filter(a => (model.argMembers.get(a.id)?.length ?? 0) === 0)
+      .map(a => a.id)
+
     const centers = computeChainCenters(model, width, height)
     // Pre-position each entity near its chain center
     simNodes.forEach(n => {
@@ -151,16 +156,24 @@ export function useGraphD3(
     // ── Zoom ─────────────────────────────────────────────────────────────────
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
-      .on('zoom', (e) => { zoomG.attr('transform', e.transform); zoomKRef.current = e.transform.k })
+      .on('zoom', (e) => {
+        zoomG.attr('transform', e.transform)
+        zoomKRef.current = e.transform.k
+        scheduleRender()   // recompute LOD live during zoom, even when the sim is idle
+      })
     svg.call(zoom)
 
     // ── Edge groups (chevron style) ───────────────────────────────────────────
+    // Cache each edge's clip-path polygon node so the tick can update it without
+    // a per-frame document query (`#edgeclip-…`), which was a scroll-perf hot spot.
+    const clipPolyById = new Map<string, SVGPolygonElement>()
     const edgeGroups = edgeG.selectAll<SVGGElement, GraphEdge>('g.edge-group')
       .data(simEdges, d => d.id).join('g').attr('class', 'edge-group').style('cursor', 'pointer')
     edgeGroups.each(function (d) {
       const g = d3.select(this)
-      defs.append('clipPath').attr('id', `edgeclip-${d.id}`).attr('clipPathUnits', 'userSpaceOnUse')
+      const clipPoly = defs.append('clipPath').attr('id', `edgeclip-${d.id}`).attr('clipPathUnits', 'userSpaceOnUse')
         .append('polygon').attr('points', chevronOuterPoints(0))
+      clipPolyById.set(d.id, clipPoly.node()!)
       g.append('polygon').attr('class', 'chevron-outer')
         .attr('fill', edgeFill(d.group)).attr('stroke', edgeStroke(d.group))
         .attr('stroke-width', 1).attr('stroke-linejoin', 'miter').attr('opacity', 0.85)
@@ -454,27 +467,46 @@ export function useGraphD3(
       sel.attr('transform', `translate(${x1},${y1}) rotate(${angle})`)
       const pts = chevronOuterPoints(len)
       sel.select('.chevron-outer').attr('points', pts)
-      d3.select(`#edgeclip-${id} polygon`).attr('points', pts)
+      const cp = clipPolyById.get(id)
+      if (cp) cp.setAttribute('points', pts)
     }
 
-    sim.on('tick', () => {
+    // Persistent positions map (updated in place each frame — no per-frame alloc).
+    const posMap = new Map<string, { x: number; y: number }>()
+    let rafPending = false
+    function scheduleRender() {
+      if (rafPending) return
+      rafPending = true
+      requestAnimationFrame(() => { rafPending = false; renderFrame() })
+    }
+
+    function renderFrame() {
       if (!alive) return
       const k = zoomKRef.current
       const nodeScale = nodeScaleFor(k)
       const showBlobs = optsRef.current.showBlobs
       const entityVisible = optsRef.current.filters.nodeTypes.Entity
       const conceptVisible = optsRef.current.filters.nodeTypes.Concept
+      const center = graphCenter()
 
-      const positions = new Map(simNodes.map(n => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]))
+      for (const n of simNodes) {
+        let p = posMap.get(n.id)
+        if (!p) { p = { x: 0, y: 0 }; posMap.set(n.id, p) }
+        p.x = n.x ?? 0; p.y = n.y ?? 0
+      }
 
       const collapse = showBlobs
-        ? computeCollapse(model, positions, k, COLLAPSE_PX)
+        ? computeCollapse(model, posMap, k, COLLAPSE_PX)
         : {
           collapsedArgIds: new Set<string>(), hiddenEntityIds: new Set<string>(),
           argCentroids: new Map<string, { x: number; y: number }>(),
           resolveEndpoint: (id: string) => id,
           visibleEdges: [] as ReturnType<typeof computeCollapse>['visibleEdges'],
         }
+
+      // Args drawn as nodes = collapsed-by-zoom plus always node-only (0 members)
+      const nodeArgIds = new Set(collapse.collapsedArgIds)
+      if (showBlobs) for (const id of nodeOnlyArgIds) nodeArgIds.add(id)
 
       // Entity nodes
       nodeGroups
@@ -484,7 +516,7 @@ export function useGraphD3(
       // Edges: position visible (resolved) ones, hide the rest
       const resolvedById = new Map(collapse.visibleEdges.map(v => [v.edge.id, v]))
       const posOf = (id: string) =>
-        positions.get(id) ?? collapse.argCentroids.get(id) ?? argBodiesRef.current.get(id)
+        posMap.get(id) ?? collapse.argCentroids.get(id) ?? argBodiesRef.current.get(id)
       edgeGroups.each(function (d) {
         const sel = d3.select(this)
         if (!showBlobs) {
@@ -502,12 +534,12 @@ export function useGraphD3(
         drawChevron(sel, sp.x, sp.y, tp.x, tp.y, d.id)
       })
 
-      // Blobs (expanded only)
+      // Blobs (non-node arguments that still have members)
       if (showBlobs) {
-        blobPaths.style('display', d => collapse.collapsedArgIds.has(d.id) ? 'none' : null)
+        blobPaths.style('display', d => nodeArgIds.has(d.id) ? 'none' : null)
           .attr('d', d => {
             const pts = (model.argMembers.get(d.id) ?? [])
-              .map(id => positions.get(id))
+              .map(id => posMap.get(id))
               .filter((p): p is { x: number; y: number } => !!p)
               .map(p => [p.x, p.y] as [number, number])
             return computeBlobPath(pts) ?? ''
@@ -516,32 +548,37 @@ export function useGraphD3(
         blobPaths.style('display', 'none')
       }
 
-      // Argument soft-body nodes (collapsed)
+      // Argument soft-body nodes (collapsed + node-only). Node-only args have no
+      // member centroid, so they target the graph center and spread via repulsion.
       const argTargets = new Map<string, { x: number; y: number }>()
-      for (const id of collapse.collapsedArgIds) argTargets.set(id, collapse.argCentroids.get(id)!)
-      for (const id of collapse.collapsedArgIds)
+      for (const id of nodeArgIds)
+        argTargets.set(id, collapse.argCentroids.get(id) ?? { x: center.x, y: center.y })
+      for (const id of nodeArgIds)
         if (!argBodiesRef.current.has(id)) {
-          const c = collapse.argCentroids.get(id)!
-          argBodiesRef.current.set(id, { id, x: c.x, y: c.y, vx: 0, vy: 0 })
+          const t = argTargets.get(id)!
+          argBodiesRef.current.set(id, { id, x: t.x, y: t.y, vx: 0, vy: 0 })
         }
       for (const id of [...argBodiesRef.current.keys()])
-        if (!collapse.collapsedArgIds.has(id)) { argBodiesRef.current.delete(id); argPinnedRef.current.delete(id) }
+        if (!nodeArgIds.has(id)) { argBodiesRef.current.delete(id); argPinnedRef.current.delete(id) }
       stepSoftBodies(argBodiesRef.current, {
         targets: argTargets, pinned: argPinnedRef.current, repelDist: 26, repelStrength: 0.5,
       })
       argNodeGroups
-        .style('display', d => (showBlobs && entityVisible && collapse.collapsedArgIds.has(d.id)) ? null : 'none')
+        .style('display', d => (showBlobs && entityVisible && nodeArgIds.has(d.id)) ? null : 'none')
         .attr('transform', d => {
           const b = argBodiesRef.current.get(d.id)
           return b ? `translate(${b.x},${b.y}) scale(${nodeScale})` : null
         })
 
       // Concepts on the global ring
-      const center = graphCenter()
-      const radius = ringRadius(positions.values(), center, ORBIT_MARGIN)
+      const radius = ringRadius(posMap.values(), center, ORBIT_MARGIN)
       ringState.cx = center.x; ringState.cy = center.y; ringState.r = radius
-      const { visibleConceptIds, targetAngles } = computeConceptTargets(
-        model, collapse.collapsedArgIds, collapse.argCentroids, center)
+      const argPos = new Map<string, { x: number; y: number }>()
+      for (const id of nodeArgIds) {
+        const b = argBodiesRef.current.get(id)
+        if (b) argPos.set(id, { x: b.x, y: b.y })
+      }
+      const { visibleConceptIds, targetAngles } = computeConceptTargets(model, nodeArgIds, argPos, center)
       for (const id of visibleConceptIds)
         if (!conceptBodiesRef.current.has(id))
           conceptBodiesRef.current.set(id, { id, angle: targetAngles.get(id) ?? 0, vAngle: 0 })
@@ -562,7 +599,7 @@ export function useGraphD3(
         })
       conceptEdgeLines
         .style('display', d => (showBlobs && conceptVisible
-          && collapse.collapsedArgIds.has(d.argId) && visibleConceptIds.has(d.conceptId)) ? null : 'none')
+          && nodeArgIds.has(d.argId) && visibleConceptIds.has(d.conceptId)) ? null : 'none')
         .attr('d', d => {
           const cp = conceptPos(d.conceptId)
           const ap = argBodiesRef.current.get(d.argId)
@@ -577,7 +614,8 @@ export function useGraphD3(
         recomputeLabels()
         applyLabels()
       }
-    })
+    }
+    sim.on('tick', renderFrame)
 
     const observer = new ResizeObserver(() => {
       const { width: w, height: h } = svgEl.getBoundingClientRect()
