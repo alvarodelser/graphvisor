@@ -33,3 +33,16 @@
   margin-top: 10px;
 }
 .detailBtn:hover { background: #e8940f; }
+
+/* On phones the card becomes a bottom sheet so it never crowds a narrow canvas */
+@media (max-width: 640px) {
+  .card {
+    top: auto;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+}

@@ -23,7 +23,7 @@
 
 .panel {
   position: fixed;
-  width: 240px;
+  width: min(240px, calc(100vw - 24px));
   z-index: 400;
   display: flex;
   flex-direction: column;

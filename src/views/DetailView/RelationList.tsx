@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { ArgumentRelation, ArgumentBlob } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
@@ -60,13 +61,33 @@ interface Props {
 }
 
 export function RelationList({ relations, argumentBlobs, visibleGroups, onEntityClick, onBlobClick, focalId, focalLabel }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggleReasoning = (key: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 640)
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth <= 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const visible = relations.filter(r => visibleGroups[r.group])
   const hasArgCol = !!argumentBlobs
   const groups = groupRelations(visible, argumentBlobs)
-  const colTemplate = hasArgCol ? '140px 1fr 100px 1fr 36px' : '1fr 100px 1fr 36px'
+  const colTemplate = hasArgCol ? '140px 1fr 90px 1fr 40px 1.6fr' : '1fr 90px 1fr 40px 1.6fr'
+  // On phones keep full column widths but let the table scroll horizontally.
+  const minTableW = narrow ? (hasArgCol ? 620 : 480) : undefined
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowX: narrow ? 'auto' : 'hidden' }}>
+      <div style={{ minWidth: minTableW, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div style={{
         display: 'grid', gridTemplateColumns: colTemplate,
         gap: '0 8px', padding: '4px 12px',
@@ -77,6 +98,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
         <span className="sl" style={{ margin: 0 }}>Relation</span>
         <span className="sl" style={{ margin: 0 }}>Object</span>
         <span className="sl" style={{ margin: 0 }}>Conf</span>
+        <span className="sl" style={{ margin: 0 }}>Reasoning</span>
       </div>
 
       <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -91,7 +113,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 key="arg"
                 onClick={() => group.blobId && onBlobClick?.(group.blobId)}
                 style={{
-                  gridColumn: 1, gridRow: `1 / ${2 * n + 1}`,
+                  gridColumn: 1, gridRow: `1 / ${n + 1}`,
                   padding: '8px 6px',
                   borderRight: '1px solid rgba(7,59,76,0.06)',
                   cursor: group.blobId ? 'pointer' : 'default',
@@ -126,7 +148,9 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
             const subjectNav   = rel.subject_id && rel.subject_id !== focalId
             const objectNav    = rel.target_argument_id && rel.target_argument_id !== focalId
 
-            const contentRow = 2 * ri + 1
+            const contentRow = ri + 1
+            const reasonKey = `${gi}-${ri}`
+            const isExpanded = expanded.has(reasonKey)
 
             cells.push(
               <div
@@ -191,17 +215,24 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
               </span>
             )
 
-            if (rel.reasoning) {
-              cells.push(
-                <div key={`reason-${ri}`} style={{
-                  gridColumn: `${subjectCol} / -1`, gridRow: contentRow + 1,
+            cells.push(
+              <div
+                key={`reason-${ri}`}
+                onClick={() => rel.reasoning && toggleReasoning(reasonKey)}
+                style={{
+                  gridColumn: subjectCol + 4, gridRow: contentRow,
                   fontSize: 9, color: '#9ca3af', fontStyle: 'italic', lineHeight: 1.4,
-                  padding: '0 0 8px 0',
-                }}>
-                  {rel.reasoning}
-                </div>
-              )
-            }
+                  padding: '8px 0', alignSelf: 'start',
+                  cursor: rel.reasoning ? 'pointer' : 'default',
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: isExpanded ? 'unset' : 3,
+                  overflow: 'hidden',
+                }}
+              >
+                {rel.reasoning ?? '—'}
+              </div>
+            )
           })
 
           return (
@@ -224,6 +255,8 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
           </div>
         )}
       </div>
+      </div>
+     </div>
     </div>
   )
 }

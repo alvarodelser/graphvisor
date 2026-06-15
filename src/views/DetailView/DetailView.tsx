@@ -91,7 +91,7 @@ export function DetailView() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, flexShrink: 0, minHeight: 0 }}>
+          <div className={styles.splitRow}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span className="sl" style={{ display: 'block', marginBottom: 6 }}>Arguments with this concept</span>
               <div style={{
@@ -131,7 +131,7 @@ export function DetailView() {
               </div>
             </div>
 
-            <div style={{ width: 200, flexShrink: 0 }}>
+            <div className={styles.sideCol}>
               <span className="sl" style={{ display: 'block', marginBottom: 6 }}>
                 Documents by share of arguments
               </span>
@@ -193,7 +193,7 @@ export function DetailView() {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 12, flexShrink: 0, minHeight: 0 }}>
+            <div className={styles.splitRow}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {detail.argumentBlobs && detail.argumentBlobs.length > 0 && (
                   <ArgumentCards
@@ -203,7 +203,7 @@ export function DetailView() {
                   />
                 )}
               </div>
-              <div style={{ width: 200, flexShrink: 0 }}>
+              <div className={styles.sideCol}>
                 <span className="sl" style={{ display: 'block', marginBottom: 6 }}>
                   Documents this entity appears in
                 </span>

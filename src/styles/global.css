@@ -1,5 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body, #root { height: 100%; }
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
@@ -7,6 +9,9 @@ body {
   background: #e8edf2;
   color: #374151;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 .card {
