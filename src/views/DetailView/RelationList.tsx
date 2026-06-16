@@ -14,8 +14,9 @@ function argTypeColor(type: string): string {
   return ARGUMENT_TYPE_COLORS[type.toLowerCase()] ?? '#6b7280'
 }
 
+// Amber causation needs dark text for contrast; the rest read on white.
 const GROUP_TEXT_COLOR: Record<string, string> = {
-  positive: '#fff', negative: '#fff', causal: '#073b4c', structural: '#073b4c',
+  causation: '#073b4c',
 }
 
 interface RelGroup {

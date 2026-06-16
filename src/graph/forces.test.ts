@@ -6,7 +6,7 @@ import type { GraphNode, GraphEdge, ArgumentBlob } from '../types'
 const entity = (id: string, x = 0, y = 0): GraphNode =>
   ({ id, type: 'Entity', label: id, confidence: 1, x, y, vx: 0, vy: 0 })
 const edge = (id: string, s: string, t: string): GraphEdge =>
-  ({ id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causal' })
+  ({ id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causation' })
 const blob = (id: string, entityIds: string[]): ArgumentBlob => ({
   id, entityIds, full_argument: 'x', argument_type: 'mechanistic', confidence: 0.9,
   source_document_id: 'doc_0', source_document_title: 'doc', concept_id: 1, parent_concepts: ['C1'],

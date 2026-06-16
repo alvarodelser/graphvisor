@@ -20,7 +20,7 @@ export interface Topic {
 }
 
 export type GraphNodeType = 'Argument' | 'Entity' | 'Concept'
-export type RelationGroup = 'positive' | 'negative' | 'causal' | 'structural' | 'concept'
+export type RelationGroup = 'evidence' | 'correlation' | 'causation' | 'definition' | 'concept'
 export type ActiveView = 'corpus' | 'graph' | 'detail' | 'discover'
 export type SizeBy = 'argument_count' | 'impact' | 'uniform'
 export type CorpusViewMode = 'map' | 'topics' | 'timeline'
@@ -113,18 +113,6 @@ export interface ArgumentBlob {
   source_document_title: string
   concept_id: number
   parent_concepts: string[]
-}
-
-export const RELATION_TYPE_GROUPS: Record<string, RelationGroup> = {
-  SUPPORTS: 'positive',
-  CORRELATES_WITH: 'positive',
-  REVEALS: 'positive',
-  CONTRADICTS: 'negative',
-  CAUSES: 'causal',
-  ASSOCIATED_WITH: 'causal',
-  HAS_SUBJECT: 'structural',
-  HAS_OBJECT: 'structural',
-  HAS_CONCEPT: 'structural',
 }
 
 export interface Hypothesis {

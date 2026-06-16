@@ -1,9 +1,10 @@
-import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
+import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
 import { PCA } from 'ml-pca'
 import { kmeans } from 'ml-kmeans'
 import corpusJson from './corpus_final_dat.json'
 import hypothesisJson from './hypothesis_L2.json'
 import { pickK, mostFrequentLabel, buildTopics } from '../views/CorpusView/topics'
+import { relationGroupOf } from '../graph/relations'
 
 export interface DataServiceInterface {
   getDocuments(): Promise<DocNode[]>
@@ -104,23 +105,6 @@ function conceptId(name: string): string {
 
 function makeDocId(i: number): string {
   return `doc_${i}`
-}
-
-const RELATION_GROUP_MAP: Record<string, RelationGroup> = {
-  analogous_to:   'positive',
-  associated_with:'causal',
-  causes:         'causal',
-  correlates_with:'positive',
-  decreases:      'negative',
-  describes:      'structural',
-  increases:      'positive',
-  induces:        'causal',
-  inhibits:       'negative',
-  is_defined_as:  'structural',
-  may_cause:      'causal',
-  reveals:        'positive',
-  suggests:       'positive',
-  supports:       'positive',
 }
 
 // ── Pre-compute from raw JSON ──────────────────────────────────────────────────
@@ -281,7 +265,7 @@ function buildGraphData(): {
         target: tid,
         relation_type: re.relation.toUpperCase(),
         confidence: re.confidence,
-        group: RELATION_GROUP_MAP[re.relation] ?? 'causal',
+        group: relationGroupOf(re.relation),
         full_predicate: re.full_predicate,
         source_document_title: rawDocs[re.docIdx].source,
         reasoning: re.reasoning,
@@ -388,7 +372,7 @@ export class RealDataService implements DataServiceInterface {
       const relations: ArgumentRelation[] = rawArg.relations.map(rel => ({
         relation_type: rel.relation.toUpperCase(),
         confidence: rel.confidence,
-        group: RELATION_GROUP_MAP[rel.relation] ?? 'causal',
+        group: relationGroupOf(rel.relation),
         source_document_id: makeDocId(docIdx),
         source_document_title: rawDoc.source,
         page_reference: 0,
@@ -409,7 +393,7 @@ export class RealDataService implements DataServiceInterface {
         object: rel.object.trim(),
         relation_type: rel.relation.toUpperCase(),
         confidence: rel.confidence,
-        group: RELATION_GROUP_MAP[rel.relation] ?? 'causal',
+        group: relationGroupOf(rel.relation),
       }))
 
       return { argument: syntheticNode, relations, sources, entityGraph }
@@ -428,7 +412,7 @@ export class RealDataService implements DataServiceInterface {
     const relations: ArgumentRelation[] = involvedRaw.map(re => ({
       relation_type: re.relation.toUpperCase(),
       confidence: re.confidence,
-      group: RELATION_GROUP_MAP[re.relation] ?? 'causal',
+      group: relationGroupOf(re.relation),
       source_document_id: makeDocId(re.docIdx),
       source_document_title: rawDocs[re.docIdx].source,
       page_reference: 0,

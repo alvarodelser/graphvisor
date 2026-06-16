@@ -12,6 +12,21 @@
   text-align: left; flex-shrink: 0;
 }
 .breadcrumb:hover { text-decoration: underline; }
+
+.navBar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-width: 0; }
+.navBtn {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 45%;
+  background: #fff; border: 1px solid rgba(17,138,178,0.35); border-radius: 8px;
+  padding: 4px 10px; cursor: pointer; color: #118ab2;
+  font-size: 11px; font-weight: 600; min-width: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.navBtn:hover:not(:disabled) { background: #eef6fa; border-color: #118ab2; }
+.navBtn:disabled { opacity: 0.35; cursor: default; color: #9ca3af; border-color: rgba(7,59,76,0.12); }
+.navArrow { flex-shrink: 0; font-size: 13px; line-height: 1; }
+.navLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navSpacer { flex: 1; }
+.navCount { font-size: 9px; color: #9ca3af; font-weight: 600; flex-shrink: 0; }
 .topRow { display: flex; gap: 12px; flex-shrink: 0; align-items: flex-start; }
 .mapWrapper { width: 200px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
   box-shadow: 0 0 0 1px rgba(17,138,178,0.18), 0 2px 6px rgba(7,59,76,0.06); }

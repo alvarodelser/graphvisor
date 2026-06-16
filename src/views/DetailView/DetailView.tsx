@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { DetailMiniMap } from './DetailMiniMap'
@@ -16,8 +16,12 @@ const ARGUMENT_TYPE_COLORS: Record<string, string> = {
 const argTypeColor = (t: string) => ARGUMENT_TYPE_COLORS[t.toLowerCase()] ?? '#6b7280'
 
 const DEFAULT_GROUPS: Record<RelationGroup, boolean> = {
-  positive: true, negative: true, causal: true, structural: false, concept: false,
+  evidence: true, correlation: true, causation: true, definition: true, concept: false,
 }
+
+type NavKind = 'node' | 'argument' | 'concept'
+interface NavEntry { id: string; kind: NavKind; label: string }
+interface NavState { entries: NavEntry[]; cursor: number }
 
 export function DetailView() {
   const {
@@ -28,7 +32,10 @@ export function DetailView() {
   const [conceptDetail, setConceptDetail] = useState<ConceptDetail | null>(null)
   const [allDocs, setAllDocs] = useState<DocNode[]>([])
   const [visibleGroups, setVisibleGroups] = useState(DEFAULT_GROUPS)
-  const [navStack, setNavStack] = useState<string[]>([])
+  const [nav, setNav] = useState<NavState>({ entries: [], cursor: -1 })
+  // When a back/forward navigation drives the next load, we don't want to
+  // record it as a brand-new history entry. This holds the id we expect.
+  const pendingHistoryRef = useRef<string | null>(null)
 
   useEffect(() => { dataService.getDocuments().then(setAllDocs) }, [])
 
@@ -46,6 +53,65 @@ export function DetailView() {
     dataService.getArgumentDetail(id).then(setDetail)
   }, [selectedConceptId, selectedArgumentId, selectedNodeId])
 
+  // Record every settled view into history. New selections (whether from an
+  // external view or an in-detail link) append after the cursor and truncate
+  // any forward entries — exactly like a browser. Back/forward loads are
+  // flagged via pendingHistoryRef so they don't re-record.
+  useEffect(() => {
+    // Only record once the loaded detail actually matches the current
+    // selection — otherwise a stale render would store the wrong label.
+    let entry: NavEntry | null = null
+    if (selectedConceptId) {
+      const expected = selectedConceptId.startsWith('concept-')
+        ? selectedConceptId.slice('concept-'.length)
+        : selectedConceptId
+      if (!conceptDetail || conceptDetail.label !== expected) return
+      entry = { id: selectedConceptId, kind: 'concept', label: conceptDetail.label }
+    } else {
+      const id = selectedArgumentId ?? selectedNodeId
+      if (!id || !detail || detail.argument.id !== id) return
+      const a = detail.argument
+      const label = a.type === 'Argument' ? (a.source_document_title ?? 'Argument') : a.label
+      entry = { id, kind: selectedArgumentId ? 'argument' : 'node', label }
+    }
+    const settled = entry
+    if (pendingHistoryRef.current === settled.id) {
+      pendingHistoryRef.current = null
+      return
+    }
+    setNav(prev => {
+      if (prev.entries[prev.cursor]?.id === settled.id) return prev
+      const kept = prev.entries.slice(0, prev.cursor + 1)
+      return { entries: [...kept, settled], cursor: kept.length }
+    })
+  }, [detail, conceptDetail, selectedConceptId, selectedArgumentId, selectedNodeId])
+
+  const applyEntry = (entry: NavEntry) => {
+    pendingHistoryRef.current = entry.id
+    if (entry.kind === 'concept') {
+      setSelectedNode(null); setSelectedArgumentId(null); setSelectedConceptId(entry.id)
+    } else if (entry.kind === 'argument') {
+      setSelectedConceptId(null); setSelectedNode(null); setSelectedArgumentId(entry.id)
+    } else {
+      setSelectedConceptId(null); setSelectedArgumentId(null); setSelectedNode(entry.id)
+    }
+  }
+
+  const prevEntry = nav.cursor > 0 ? nav.entries[nav.cursor - 1] : null
+  const nextEntry = nav.cursor < nav.entries.length - 1 ? nav.entries[nav.cursor + 1] : null
+
+  const goBack = () => {
+    if (!prevEntry) return
+    setNav(prev => ({ ...prev, cursor: prev.cursor - 1 }))
+    applyEntry(prevEntry)
+  }
+
+  const goForward = () => {
+    if (!nextEntry) return
+    setNav(prev => ({ ...prev, cursor: prev.cursor + 1 }))
+    applyEntry(nextEntry)
+  }
+
   const openArgument = (argId: string) => {
     setSelectedConceptId(null)
     setSelectedNode(null)
@@ -57,30 +123,38 @@ export function DetailView() {
 
   const navigateToEntity = (entityId: string) => {
     if (!detail || entityId === detail.argument.id) return
-    setNavStack(prev => [...prev, detail.argument.id])
     setSelectedArgumentId(null)
     setSelectedNode(entityId)
   }
 
-  const navigateBack = () => {
-    if (navStack.length === 0) return
-    const prevId = navStack[navStack.length - 1]
-    setNavStack(s => s.slice(0, -1))
-    setSelectedArgumentId(null)
-    setSelectedNode(prevId)
-  }
-
   const navigateToBlob = (blobId: string) => {
     if (!detail) return
-    setNavStack(prev => [...prev, detail.argument.id])
     setSelectedArgumentId(null)
     setSelectedNode(blobId)
   }
+
+  const navBar = (prevEntry || nextEntry) ? (
+    <div className={styles.navBar}>
+      <button className={styles.navBtn} onClick={goBack} disabled={!prevEntry}
+        title={prevEntry ? `Back to ${prevEntry.label}` : undefined}>
+        <span className={styles.navArrow}>←</span>
+        <span className={styles.navLabel}>{prevEntry?.label ?? 'Back'}</span>
+      </button>
+      <button className={styles.navBtn} onClick={goForward} disabled={!nextEntry}
+        title={nextEntry ? `Forward to ${nextEntry.label}` : undefined}>
+        <span className={styles.navLabel}>{nextEntry?.label ?? 'Forward'}</span>
+        <span className={styles.navArrow}>→</span>
+      </button>
+      <span className={styles.navSpacer} />
+      <span className={styles.navCount}>{nav.cursor + 1} / {nav.entries.length}</span>
+    </div>
+  ) : null
 
   if (conceptDetail) {
     return (
       <div className={styles.view}>
         <div className={styles.content}>
+          {navBar}
           <div className={styles.header}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
               <span className="sl" style={{ margin: 0 }}>Concept</span>
@@ -154,11 +228,7 @@ export function DetailView() {
   return (
     <div className={styles.view}>
       <div className={styles.content}>
-        {navStack.length > 0 && (
-          <button onClick={navigateBack} className={styles.breadcrumb}>
-            ← {navStack.length > 1 ? `${navStack.length} levels back` : 'Back'}
-          </button>
-        )}
+        {navBar}
 
         {detail.argument.type === 'Argument' ? (
           <div className={styles.topRow}>
@@ -222,7 +292,7 @@ export function DetailView() {
               {detail.relations.length} relations
             </span>
             <div style={{ flex: 1 }} />
-            {(['positive', 'negative', 'causal'] as const).map(group => (
+            {(['evidence', 'correlation', 'causation', 'definition'] as const).map(group => (
               <button
                 key={group}
                 onClick={() => toggleGroup(group)}

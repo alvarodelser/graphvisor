@@ -5,7 +5,7 @@ import type { GraphNode, GraphEdge, ArgumentBlob } from '../types'
 
 const entity = (id: string): GraphNode => ({ id, type: 'Entity', label: id, confidence: 1 })
 const edge = (id: string, s: string, t: string): GraphEdge =>
-  ({ id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causal' })
+  ({ id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causation' })
 const blob = (id: string, entityIds: string[], concept: string): ArgumentBlob => ({
   id, entityIds, full_argument: 'x', argument_type: 'mechanistic', confidence: 0.9,
   source_document_id: 'doc_0', source_document_title: 'doc', concept_id: 1, parent_concepts: [concept],
@@ -68,5 +68,25 @@ describe('conceptLinkPath', () => {
     const c1x = Number(d.split('C')[1].trim().split(/[ ,]/)[0])
     expect(c1x).toBeLessThan(100)
     expect(c1x).toBeGreaterThan(0)
+  })
+
+  it('never folds back: control points advance monotonically along the heading', () => {
+    // concept and argument radially aligned with the argument BETWEEN concept
+    // and center. A naive pull-both-toward-center bundle overshoots past the
+    // argument and curls the curve back on itself here.
+    const [cx, cy, ax, ay] = [200, 0, 60, 0]
+    const d = conceptLinkPath(cx, cy, ax, ay, 0, 0)
+    const nums = d.replace('M', '').replace('C', ' ').trim().split(/[ ,]+/).map(Number)
+    const [sx, sy, c1x, c1y, c2x, c2y, ex, ey] = nums
+    const ux = ex - sx, uy = ey - sy
+    const proj = (x: number, y: number) => (x - sx) * ux + (y - sy) * uy
+    const L2 = ux * ux + uy * uy
+    const p1 = proj(c1x, c1y), p2 = proj(c2x, c2y)
+    // non-decreasing projection within [0, L²] ⇒ the cubic never reverses
+    // direction along the concept→argument axis (no >90° fold-back). The old
+    // pull-both-toward-center bundle overshot here with p2 = 24640 > L² = 19600.
+    expect(p1).toBeGreaterThanOrEqual(0)
+    expect(p2).toBeGreaterThanOrEqual(p1)
+    expect(p2).toBeLessThanOrEqual(L2)
   })
 })

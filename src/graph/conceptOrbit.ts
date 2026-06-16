@@ -102,12 +102,31 @@ export function stepRingBodies(
 // Concept→argument link, bundled through the graph center: both control points
 // are pulled toward the center so links from all concepts travel inward together
 // before fanning out to their arguments.
+//
+// To stop the curve folding back on itself (the case where the argument sits
+// between its concept and the center, so the pulled control points overshoot
+// PAST the argument), each control point's component ALONG the concept→argument
+// heading is clamped into a monotonic [0, L] range. The perpendicular component
+// — the actual inward bow that creates the bundled look — is kept untouched, so
+// ordinary links are unchanged and only the overshooting ones are reined in.
 export function conceptLinkPath(
   cx: number, cy: number, ax: number, ay: number,
   gcx: number, gcy: number,
 ): string {
+  const ux = ax - cx, uy = ay - cy
+  const L = Math.hypot(ux, uy) || 1
+  const nx = ux / L, ny = uy / L          // unit heading: concept → argument
   const pull = 0.6
-  const c1x = cx + (gcx - cx) * pull, c1y = cy + (gcy - cy) * pull
-  const c2x = ax + (gcx - ax) * pull, c2y = ay + (gcy - ay) * pull
+
+  // Classic toward-center control points, then split into along/perp and clamp
+  // the along-axis progress so it is monotonic and never runs past the argument.
+  const fold = (px: number, py: number, loAlong: number): [number, number, number] => {
+    const along = (px - cx) * nx + (py - cy) * ny
+    const perpx = px - cx - along * nx, perpy = py - cy - along * ny
+    const a = Math.max(loAlong, Math.min(L, along))
+    return [cx + nx * a + perpx, cy + ny * a + perpy, a]
+  }
+  const [c1x, c1y, a1] = fold(cx + (gcx - cx) * pull, cy + (gcy - cy) * pull, 0)
+  const [c2x, c2y] = fold(ax + (gcx - ax) * pull, ay + (gcy - ay) * pull, a1)
   return `M ${cx} ${cy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ax} ${ay}`
 }

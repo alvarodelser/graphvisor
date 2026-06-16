@@ -6,7 +6,7 @@ function entity(id: string): GraphNode {
   return { id, type: 'Entity', label: id, confidence: 1 }
 }
 function edge(id: string, s: string, t: string): GraphEdge {
-  return { id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causal' }
+  return { id, source: s, target: t, relation_type: 'CAUSES', confidence: 0.8, group: 'causation' }
 }
 function blob(id: string, entityIds: string[], concept = 'C1'): ArgumentBlob {
   return {

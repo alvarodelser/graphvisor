@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { RefObject } from 'react'
 import type { GraphNode, GraphEdge, FilterState, ArgumentBlob } from '../../types'
-import { RELATION_COLORS } from '../../utils/geometry'
+import { buildEdgeShape, positionEdgeShape, type EdgeShape } from './edgeStyles'
 import { buildGraphModel } from '../../graph/graphModel'
 import { computeBlobPath } from '../../graph/blobGeometry'
 import {
@@ -10,22 +10,51 @@ import {
 } from '../../graph/forces'
 import { computeCollapse } from '../../graph/collapse'
 import {
-  ringRadius, computeConceptTargets, stepRingBodies, conceptLinkPath, type RingBody,
+  ringRadius, stepRingBodies, conceptLinkPath, type RingBody,
 } from '../../graph/conceptOrbit'
+import { computeWedgeLayout } from '../../graph/wedgeLayout'
 import { stepSoftBodies, type SoftBody } from '../../graph/softBodies'
 
-// ── Chevron geometry (unchanged style) ─────────────────────────────────────────
-const CHEV_HALF_H = 6
-const CHEV_TIP_OFFSET = 8
-const CHEV_SPACING = 20
-const CHEV_TIP_REACH = 8
-const CHEV_COUNT = 28
-const CHEV_START = -28
-
 const ENTITY_R = 8
-const ARG_NODE_R = 8          // collapsed argument node radius, graph units (= entity size)
-const COLLAPSE_PX = 140       // on-screen blob size below which an argument collapses
-const ORBIT_MARGIN = 160
+// Argument collapses to a card when k·√(entityCount) < COLLAPSE_K. Low value ⇒
+// entities stay visible at normal zoom; arguments only collapse once well zoomed
+// out, and bigger (more-entity) arguments persist longer than small ones.
+const COLLAPSE_K = 0.6
+// Radial-hierarchy rings (graph units beyond the entity cloud). Collapsed
+// argument cards sit on the inner ring at their concept's wedge angle; concept
+// arcs sit further out so links travel inward without crossing.
+const ARG_RING_MARGIN = 110
+const CONCEPT_GAP = 110
+
+// Argument card (blob-style rounded rectangle holding the argument text)
+const ARG_CARD_W = 96         // graph units
+const ARG_CARD_H = 34
+const ARG_CARD_RX = 9
+const ARG_TEXT_CHARS = 16     // chars per wrapped line
+const ARG_TEXT_LINES = 2      // max lines of argument text shown inside the card
+const ARG_LINE_H = 8          // line height, graph units
+const ARG_REPEL = 60          // soft-body separation for the larger cards
+
+// Greedy word-wrap into at most `maxLines` lines of ~`maxChars`, ellipsising overflow.
+function wrapArgText(raw: string, maxChars: number, maxLines: number): string[] {
+  const words = raw.replace(/\s+/g, ' ').trim().split(' ')
+  const lines: string[] = []
+  let cur = ''
+  let wi = 0
+  for (; wi < words.length; wi++) {
+    const next = cur ? `${cur} ${words[wi]}` : words[wi]
+    if (next.length <= maxChars) { cur = next; continue }
+    if (cur) { lines.push(cur); cur = '' }
+    if (lines.length >= maxLines) break
+    cur = words[wi].length > maxChars ? words[wi].slice(0, maxChars) : words[wi]
+  }
+  if (cur && lines.length < maxLines) { lines.push(cur); wi++ }
+  if (wi < words.length && lines.length > 0) {
+    const last = lines[lines.length - 1]
+    lines[lines.length - 1] = `${last.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`
+  }
+  return lines
+}
 
 // Argument/concept nodes grow as you zoom out so the plot stays readable.
 // scale = 1 at k>=1, rising toward MAX_NODE_SCALE as k shrinks.
@@ -52,17 +81,6 @@ interface Options {
   onConceptClick: (payload: ConceptClickPayload) => void
   onHover?: (item: HoverItem) => void
   onCanvasClick?: () => void
-}
-
-function chevronOuterPoints(len: number): string {
-  const bodyEnd = Math.max(0, len - CHEV_TIP_OFFSET)
-  return `0,${-CHEV_HALF_H} ${bodyEnd},${-CHEV_HALF_H} ${len},0 ${bodyEnd},${CHEV_HALF_H} 0,${CHEV_HALF_H}`
-}
-function edgeStroke(group: string): string {
-  return group === 'structural' ? '#64748b' : RELATION_COLORS[group]
-}
-function edgeFill(group: string): string {
-  return group === 'structural' ? 'none' : `${RELATION_COLORS[group]}0f`
 }
 
 const BLOB_STROKE = 'rgba(100,116,139,0.12)'
@@ -102,14 +120,18 @@ export function useGraphD3(
     svg.on('click', () => optsRef.current.onCanvasClick?.())
 
     // ── Model ────────────────────────────────────────────────────────────────
-    const { minConfidence, relationTypes, nodeTypes } = optsRef.current.filters
+    const { minConfidence, relationTypes } = optsRef.current.filters
     const fEdges = edges.filter(e =>
       e.confidence >= minConfidence && relationTypes[e.relation_type] !== false)
     const model = buildGraphModel(nodes, fEdges, optsRef.current.blobs)
+    // Deterministic radial-hierarchy angles for the collapsed view: each concept
+    // owns an arc sector; collapsed cards sit at their wedge angle inside it.
+    const wedge = computeWedgeLayout(model)
 
-    const simNodes: GraphNode[] = model.entities
-      .filter(() => nodeTypes.Entity)
-      .map(n => ({ ...n }))
+    // Entities are ALWAYS simulated so arguments keep meaningful positions (their
+    // member centroid) even when entity nodes are hidden. The Entity filter only
+    // controls on-screen visibility, handled per-frame in renderFrame.
+    const simNodes: GraphNode[] = model.entities.map(n => ({ ...n }))
     const simNodeIds = new Set(simNodes.map(n => n.id))
     const simEdges: GraphEdge[] = model.edges
       .filter(e => {
@@ -166,27 +188,14 @@ export function useGraphD3(
     // ── Edge groups (chevron style) ───────────────────────────────────────────
     // Cache each edge's clip-path polygon node so the tick can update it without
     // a per-frame document query (`#edgeclip-…`), which was a scroll-perf hot spot.
-    const clipPolyById = new Map<string, SVGPolygonElement>()
+    // Cache each edge's shape handle (clip polygon node + variant) so the tick
+    // can update geometry without a per-frame document query.
+    const edgeShapeById = new Map<string, EdgeShape>()
     const edgeGroups = edgeG.selectAll<SVGGElement, GraphEdge>('g.edge-group')
       .data(simEdges, d => d.id).join('g').attr('class', 'edge-group').style('cursor', 'pointer')
     edgeGroups.each(function (d) {
       const g = d3.select(this)
-      const clipPoly = defs.append('clipPath').attr('id', `edgeclip-${d.id}`).attr('clipPathUnits', 'userSpaceOnUse')
-        .append('polygon').attr('points', chevronOuterPoints(0))
-      clipPolyById.set(d.id, clipPoly.node()!)
-      g.append('polygon').attr('class', 'chevron-outer')
-        .attr('fill', edgeFill(d.group)).attr('stroke', edgeStroke(d.group))
-        .attr('stroke-width', 1).attr('stroke-linejoin', 'miter').attr('opacity', 0.85)
-      // inner marching chevrons — the `chevrons-forward` class drives the CSS animation
-      const inner = g.append('g').attr('clip-path', `url(#edgeclip-${d.id})`)
-        .append('g').attr('class', 'chevrons-forward')
-      for (let i = 0; i < CHEV_COUNT; i++) {
-        const bx = CHEV_START + i * CHEV_SPACING
-        inner.append('polyline')
-          .attr('points', `${bx},${-CHEV_HALF_H} ${bx + CHEV_TIP_REACH},0 ${bx},${CHEV_HALF_H}`)
-          .attr('fill', 'none').attr('stroke', RELATION_COLORS[d.group])
-          .attr('stroke-width', 3).attr('opacity', 0.65)
-      }
+      edgeShapeById.set(d.id, buildEdgeShape(g, defs, d))
       g.append('title').text(`${d.relation_type} · ${d.confidence.toFixed(2)}`)
     })
     edgeGroups
@@ -274,13 +283,11 @@ export function useGraphD3(
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
       .on('mouseenter', function (event, d) {
         applyArgHighlight(d.id)
-        d3.select(this).select('.arg-label').attr('opacity', 1)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
-      .on('mouseleave', function (_, d) {
+      .on('mouseleave', function () {
         applySticky()
-        d3.select(this).select('.arg-label').attr('opacity', argLabelVisible.has(d.id) ? 1 : 0)
         optsRef.current.onHover?.(null)
       })
       .call(
@@ -292,19 +299,20 @@ export function useGraphD3(
           .on('drag', (event, d) => { argPinnedRef.current.set(d.id, { x: event.x, y: event.y }) })
           .on('end', (event) => { if (!event.active) sim.alphaTarget(0) }),
       )
+    // Blob-style rounded card holding a couple of wrapped lines of the argument.
     argNodeGroups.each(function (d) {
       const g = d3.select(this)
-      g.append('rect').attr('x', -ARG_NODE_R).attr('y', -ARG_NODE_R)
-        .attr('width', ARG_NODE_R * 2).attr('height', ARG_NODE_R * 2).attr('rx', 3)
-        .attr('fill', 'rgba(7,59,76,0.22)').attr('stroke', 'rgba(7,59,76,0.4)').attr('stroke-width', 1)
-      g.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
-        .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.6)')
-        .attr('font-size', '9px').attr('font-weight', '700').text(d.argument_type.slice(0, 1).toUpperCase())
-      // start-of-argument label below the node, decluttered (shown on hover regardless)
-      const start = d.full_argument.replace(/\s+/g, ' ').trim().slice(0, 26)
-      g.append('text').attr('class', 'arg-label').attr('y', ARG_NODE_R + 9).attr('text-anchor', 'middle')
-        .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.7)').attr('font-size', '7px')
-        .attr('font-weight', '600').attr('opacity', 0).text(start + (d.full_argument.length > 26 ? '…' : ''))
+      g.append('rect').attr('x', -ARG_CARD_W / 2).attr('y', -ARG_CARD_H / 2)
+        .attr('width', ARG_CARD_W).attr('height', ARG_CARD_H).attr('rx', ARG_CARD_RX)
+        .attr('fill', 'rgba(7,59,76,0.06)').attr('stroke', 'rgba(7,59,76,0.32)').attr('stroke-width', 1.5)
+      const lines = wrapArgText(d.full_argument, ARG_TEXT_CHARS, ARG_TEXT_LINES)
+      const y0 = -((lines.length - 1) * ARG_LINE_H) / 2
+      const text = g.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('pointer-events', 'none').attr('fill', 'rgba(7,59,76,0.85)')
+        .attr('font-size', '7px').attr('font-weight', '600')
+      lines.forEach((ln, i) => {
+        text.append('tspan').attr('x', 0).attr('y', y0 + i * ARG_LINE_H).text(ln)
+      })
       g.append('title').text(d.full_argument)
     })
 
@@ -408,22 +416,15 @@ export function useGraphD3(
     }
     highlightFnRef.current = applySticky
 
-    // ── Label declutter (arguments + concepts) ──────────────────────────────────
-    const argLabelVisible = new Set<string>()
+    // ── Label declutter (concepts) ──────────────────────────────────────────────
+    // Argument text now lives inside the card itself, so only concept ring labels
+    // need decluttering.
     const conceptLabelVisible = new Set<string>()
     const ringState = { cx: width / 2, cy: height / 2, r: 0 }
     let lastLabelK = -1
     let labelTick = 0
     function recomputeLabels() {
       const k = zoomKRef.current
-      argLabelVisible.clear()
-      const shownA: Array<{ x: number; y: number }> = []
-      const gapA = 64 / k
-      for (const [id, b] of [...argBodiesRef.current.entries()].sort((a, c) => a[0] < c[0] ? -1 : 1)) {
-        if (shownA.every(p => Math.hypot(p.x - b.x, p.y - b.y) > gapA)) {
-          argLabelVisible.add(id); shownA.push({ x: b.x, y: b.y })
-        }
-      }
       conceptLabelVisible.clear()
       const shownC: Array<{ x: number; y: number }> = []
       const gapC = 80 / k
@@ -436,9 +437,6 @@ export function useGraphD3(
       }
     }
     function applyLabels() {
-      argNodeGroups.each(function (d) {
-        d3.select(this).select('.arg-label').attr('opacity', argLabelVisible.has(d.id) ? 1 : 0)
-      })
       conceptNodeGroups.each(function (d) {
         d3.select(this).select('.concept-label').attr('opacity', conceptLabelVisible.has(d) ? 1 : 0)
       })
@@ -461,14 +459,8 @@ export function useGraphD3(
       sel: d3.Selection<SVGGElement, unknown, null, undefined>,
       x1: number, y1: number, x2: number, y2: number, id: string,
     ) {
-      const dx = x2 - x1, dy = y2 - y1
-      const len = Math.hypot(dx, dy)
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI)
-      sel.attr('transform', `translate(${x1},${y1}) rotate(${angle})`)
-      const pts = chevronOuterPoints(len)
-      sel.select('.chevron-outer').attr('points', pts)
-      const cp = clipPolyById.get(id)
-      if (cp) cp.setAttribute('points', pts)
+      const shape = edgeShapeById.get(id)
+      if (shape) positionEdgeShape(sel, shape, x1, y1, x2, y2)
     }
 
     // Persistent positions map (updated in place each frame — no per-frame alloc).
@@ -484,9 +476,13 @@ export function useGraphD3(
       if (!alive) return
       const k = zoomKRef.current
       const nodeScale = nodeScaleFor(k)
-      const showBlobs = optsRef.current.showBlobs
+      const argumentsVisible = optsRef.current.filters.nodeTypes.Argument
       const entityVisible = optsRef.current.filters.nodeTypes.Entity
       const conceptVisible = optsRef.current.filters.nodeTypes.Concept
+      // Blob shapes (and the zoom-collapse machinery) only make sense when both
+      // arguments AND their member entities are on screen. With entities hidden,
+      // every argument renders directly as a card instead.
+      const showBlobs = argumentsVisible && entityVisible
       const center = graphCenter()
 
       for (const n of simNodes) {
@@ -496,7 +492,7 @@ export function useGraphD3(
       }
 
       const collapse = showBlobs
-        ? computeCollapse(model, posMap, k, COLLAPSE_PX)
+        ? computeCollapse(model, posMap, k, COLLAPSE_K)
         : {
           collapsedArgIds: new Set<string>(), hiddenEntityIds: new Set<string>(),
           argCentroids: new Map<string, { x: number; y: number }>(),
@@ -504,21 +500,32 @@ export function useGraphD3(
           visibleEdges: [] as ReturnType<typeof computeCollapse>['visibleEdges'],
         }
 
-      // Args drawn as nodes = collapsed-by-zoom plus always node-only (0 members)
-      const nodeArgIds = new Set(collapse.collapsedArgIds)
-      if (showBlobs) for (const id of nodeOnlyArgIds) nodeArgIds.add(id)
+      // Which arguments render as cards:
+      //  • blob mode   → collapsed-by-zoom args plus always-node-only (0 members)
+      //  • entities off → ALL arguments (their members aren't drawn, so a blob
+      //                   would be empty) so arguments never disappear
+      let nodeArgIds: Set<string>
+      if (showBlobs) {
+        nodeArgIds = new Set(collapse.collapsedArgIds)
+        for (const id of nodeOnlyArgIds) nodeArgIds.add(id)
+      } else if (argumentsVisible) {
+        nodeArgIds = new Set(model.arguments.map(a => a.id))
+      } else {
+        nodeArgIds = new Set<string>()
+      }
 
-      // Entity nodes
+      // Entity nodes (hidden entirely when the Entity type is off)
       nodeGroups
-        .style('display', d => collapse.hiddenEntityIds.has(d.id) ? 'none' : null)
+        .style('display', d => (!entityVisible || collapse.hiddenEntityIds.has(d.id)) ? 'none' : null)
         .attr('transform', d => `translate(${d.x},${d.y})`)
 
-      // Edges: position visible (resolved) ones, hide the rest
+      // Edges: entity-entity relations only show when entities are on screen.
       const resolvedById = new Map(collapse.visibleEdges.map(v => [v.edge.id, v]))
       const posOf = (id: string) =>
         posMap.get(id) ?? collapse.argCentroids.get(id) ?? argBodiesRef.current.get(id)
       edgeGroups.each(function (d) {
         const sel = d3.select(this)
+        if (!entityVisible) { sel.style('display', 'none'); return }
         if (!showBlobs) {
           const s = d.source as GraphNode, t = d.target as GraphNode
           if (s.x == null || t.x == null) return
@@ -548,37 +555,53 @@ export function useGraphD3(
         blobPaths.style('display', 'none')
       }
 
-      // Argument soft-body nodes (collapsed + node-only). Node-only args have no
-      // member centroid, so they target the graph center and spread via repulsion.
+      // Argument soft-body targets: every collapsed card flies OUT to its concept
+      // wedge — angle from the deterministic layout, radius just beyond the entity
+      // cloud. Grouping by concept is what keeps the concept→argument links from
+      // crossing. New bodies are seeded at their entity centroid so they visibly
+      // travel from the cluster to the wedge (the collapse reflow).
+      const cloudR = ringRadius(posMap.values(), center, 0)
+      const argRingR = cloudR + ARG_RING_MARGIN
+      const memberCentroid = (id: string): { x: number; y: number } | null => {
+        let sx = 0, sy = 0, cnt = 0
+        for (const mid of model.argMembers.get(id) ?? []) {
+          const p = posMap.get(mid)
+          if (p) { sx += p.x; sy += p.y; cnt++ }
+        }
+        return cnt ? { x: sx / cnt, y: sy / cnt } : null
+      }
       const argTargets = new Map<string, { x: number; y: number }>()
-      for (const id of nodeArgIds)
-        argTargets.set(id, collapse.argCentroids.get(id) ?? { x: center.x, y: center.y })
+      for (const id of nodeArgIds) {
+        const ang = wedge.argAngle.get(id) ?? 0
+        argTargets.set(id, { x: center.x + Math.cos(ang) * argRingR, y: center.y + Math.sin(ang) * argRingR })
+      }
       for (const id of nodeArgIds)
         if (!argBodiesRef.current.has(id)) {
-          const t = argTargets.get(id)!
-          argBodiesRef.current.set(id, { id, x: t.x, y: t.y, vx: 0, vy: 0 })
+          const seed = memberCentroid(id) ?? argTargets.get(id)!
+          argBodiesRef.current.set(id, { id, x: seed.x, y: seed.y, vx: 0, vy: 0 })
         }
       for (const id of [...argBodiesRef.current.keys()])
         if (!nodeArgIds.has(id)) { argBodiesRef.current.delete(id); argPinnedRef.current.delete(id) }
       stepSoftBodies(argBodiesRef.current, {
-        targets: argTargets, pinned: argPinnedRef.current, repelDist: 26, repelStrength: 0.5,
+        targets: argTargets, pinned: argPinnedRef.current, repelDist: ARG_REPEL, repelStrength: 0.5,
       })
       argNodeGroups
-        .style('display', d => (showBlobs && entityVisible && nodeArgIds.has(d.id)) ? null : 'none')
+        .style('display', d => (argumentsVisible && nodeArgIds.has(d.id)) ? null : 'none')
         .attr('transform', d => {
           const b = argBodiesRef.current.get(d.id)
           return b ? `translate(${b.x},${b.y}) scale(${nodeScale})` : null
         })
 
-      // Concepts on the global ring
-      const radius = ringRadius(posMap.values(), center, ORBIT_MARGIN)
+      // Concept arcs sit on the outer ring, each pinned to its deterministic
+      // sector centre (not chasing argument centroids). A concept is shown when
+      // at least one of its arguments is currently a card. The ring sits beyond
+      // the argument ring so links always travel inward.
+      const radius = argRingR + CONCEPT_GAP
       ringState.cx = center.x; ringState.cy = center.y; ringState.r = radius
-      const argPos = new Map<string, { x: number; y: number }>()
-      for (const id of nodeArgIds) {
-        const b = argBodiesRef.current.get(id)
-        if (b) argPos.set(id, { x: b.x, y: b.y })
-      }
-      const { visibleConceptIds, targetAngles } = computeConceptTargets(model, nodeArgIds, argPos, center)
+      const visibleConceptIds = new Set<string>()
+      for (const [cid, argIds] of model.conceptArgs)
+        if (argIds.some(a => nodeArgIds.has(a))) visibleConceptIds.add(cid)
+      const targetAngles = wedge.conceptAngle
       for (const id of visibleConceptIds)
         if (!conceptBodiesRef.current.has(id))
           conceptBodiesRef.current.set(id, { id, angle: targetAngles.get(id) ?? 0, vAngle: 0 })
@@ -592,13 +615,13 @@ export function useGraphD3(
         return { x: center.x + Math.cos(b.angle) * radius, y: center.y + Math.sin(b.angle) * radius }
       }
       conceptNodeGroups
-        .style('display', d => (showBlobs && conceptVisible && visibleConceptIds.has(d)) ? null : 'none')
+        .style('display', d => (argumentsVisible && conceptVisible && visibleConceptIds.has(d)) ? null : 'none')
         .attr('transform', d => {
           const p = conceptPos(d)
           return p ? `translate(${p.x},${p.y}) scale(${nodeScale})` : null
         })
       conceptEdgeLines
-        .style('display', d => (showBlobs && conceptVisible
+        .style('display', d => (argumentsVisible && conceptVisible
           && nodeArgIds.has(d.argId) && visibleConceptIds.has(d.conceptId)) ? null : 'none')
         .attr('d', d => {
           const cp = conceptPos(d.conceptId)

@@ -10,19 +10,19 @@ import type { GraphNode, GraphEdge, ArgumentBlob } from '../../types'
 import styles from './GraphView.module.css'
 
 const REL_GROUP_COLORS: Record<string, string> = {
-  positive: RELATION_COLORS.positive,
-  negative: RELATION_COLORS.negative,
-  causal: RELATION_COLORS.causal,
-  structural: '#64748b',
+  evidence: RELATION_COLORS.evidence,
+  correlation: RELATION_COLORS.correlation,
+  causation: RELATION_COLORS.causation,
+  definition: RELATION_COLORS.definition,
   concept: RELATION_COLORS.concept,
 }
 
 const GROUPED_RELATION_TYPES: { group: string; label: string; types: string[] }[] = [
-  { group: 'positive',   label: 'Positive',   types: ['SUPPORTS', 'CORRELATES_WITH', 'REVEALS'] },
-  { group: 'negative',   label: 'Negative',   types: ['CONTRADICTS'] },
-  { group: 'causal',     label: 'Causal',     types: ['CAUSES', 'ASSOCIATED_WITH'] },
-  { group: 'structural', label: 'Structural', types: ['HAS_SUBJECT', 'HAS_OBJECT'] },
-  { group: 'concept',    label: 'Concept',    types: ['HAS_CONCEPT'] },
+  { group: 'evidence',    label: 'Evidence',    types: ['SUPPORTS', 'REVEALS', 'SUGGESTS', 'CONTRADICTS'] },
+  { group: 'correlation', label: 'Correlation', types: ['CORRELATES_WITH', 'ASSOCIATED_WITH', 'ANALOGOUS_TO'] },
+  { group: 'causation',   label: 'Causation',   types: ['CAUSES', 'INCREASES', 'DECREASES', 'INHIBITS', 'INDUCES', 'MAY_CAUSE'] },
+  { group: 'definition',  label: 'Definition',  types: ['DESCRIBES', 'IS_DEFINED_AS'] },
+  { group: 'concept',     label: 'Concept',     types: ['HAS_CONCEPT'] },
 ]
 
 export function GraphView() {
@@ -239,17 +239,21 @@ export function GraphView() {
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: REL_GROUP_COLORS[group], marginBottom: 4 }}>{label}</div>
             {types.map(type => {
               const active = filters.relationTypes[type] !== false
-              const isStructLike = group === 'structural' || group === 'concept'
-              const lineColor = REL_GROUP_COLORS[group]
+              const color = REL_GROUP_COLORS[group]
               return (
                 <div key={type} style={{ ...legendRow, opacity: active ? 1 : 0.3, marginBottom: 4 }}>
-                  {isStructLike ? (
+                  {group === 'concept' ? (
                     <svg width="22" height="12" style={{ flexShrink: 0 }}>
-                      <line x1="0" y1="6" x2="22" y2="6" stroke={lineColor} strokeWidth="1.5" opacity="0.65" />
+                      <line x1="0" y1="6" x2="22" y2="6" stroke={color} strokeWidth="1.5" opacity="0.65" />
+                    </svg>
+                  ) : group === 'correlation' ? (
+                    // symmetric: arrowhead at both ends
+                    <svg width="22" height="12" style={{ flexShrink: 0 }}>
+                      <polygon points="0,6 6,1 16,1 22,6 16,11 6,11" fill={`${color}22`} stroke={color} strokeWidth="1" />
                     </svg>
                   ) : (
                     <svg width="22" height="12" style={{ flexShrink: 0 }}>
-                      <polygon points="0,1 14,1 20,6 14,11 0,11" fill={`${REL_GROUP_COLORS[group]}22`} stroke={REL_GROUP_COLORS[group]} strokeWidth="1" />
+                      <polygon points="0,1 14,1 20,6 14,11 0,11" fill={`${color}22`} stroke={color} strokeWidth="1" />
                     </svg>
                   )}
                   <span style={{ ...legendText, fontSize: 10 }}>{type.replace(/_/g, ' ').toLowerCase()}</span>

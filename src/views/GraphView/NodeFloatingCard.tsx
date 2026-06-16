@@ -66,22 +66,24 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
 
   if (item.type === 'edge') {
     const { edge, sourceNode, targetNode } = item
+    const subjectText = sourceNode?.full_text ? `"${sourceNode.full_text.slice(0, 60)}…"` : sourceNode?.label ?? '?'
+    const objectText  = targetNode?.full_text ? `"${targetNode.full_text.slice(0, 60)}…"` : targetNode?.label ?? '?'
     return (
       <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
         {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
         <div className={styles.edgeHeader}>
-          <span style={{ background: RELATION_COLORS[edge.group], color: edge.group === 'causal' ? '#073b4c' : '#fff', borderRadius: 4, padding: '2px 8px', fontSize: 9, fontWeight: 700 }}>
-            {edge.relation_type}
-          </span>
+          <span className="sl" style={{ margin: 0 }}>Relation</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>{edge.confidence.toFixed(2)}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#073b4c', lineHeight: 1.4 }}>
-            {sourceNode?.full_text ? `"${sourceNode.full_text.slice(0, 60)}…"` : sourceNode?.label ?? '?'}
+            {subjectText}
           </div>
-          <div style={{ fontSize: 16, color: '#9ca3af', flexShrink: 0, paddingTop: 1 }}>→</div>
+          <span style={{ background: RELATION_COLORS[edge.group], color: edge.group === 'causation' ? '#073b4c' : '#fff', borderRadius: 20, padding: '2px 7px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {edge.relation_type}
+          </span>
           <div style={{ flex: 1, fontSize: 10, fontWeight: 600, color: '#073b4c', lineHeight: 1.4 }}>
-            {targetNode?.full_text ? `"${targetNode.full_text.slice(0, 60)}…"` : targetNode?.label ?? '?'}
+            {objectText}
           </div>
         </div>
         {edge.full_predicate && (
