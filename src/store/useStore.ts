@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FilterState, ActiveView, SizeBy } from '../types'
+import type { FilterState, ActiveView, SizeBy, CorpusViewMode } from '../types'
 
 const defaultFilters: FilterState = {
   nodeTypes: { Argument: false, Entity: true, Concept: false },
@@ -16,6 +16,7 @@ interface AppState {
   selectedDocumentIds: string[]
   selectedNodeId: string | null
   activeView: ActiveView
+  corpusViewMode: CorpusViewMode
   filters: FilterState
   sizeBy: SizeBy
   showBlobs: boolean
@@ -27,6 +28,7 @@ interface AppState {
   selectAll: (ids: string[]) => void
   setSelectedNode: (id: string | null) => void
   setActiveView: (view: ActiveView) => void
+  setCorpusViewMode: (mode: CorpusViewMode) => void
   setFilters: (partial: Partial<FilterState>) => void
   setSizeBy: (s: SizeBy) => void
   setShowBlobs: (v: boolean) => void
@@ -38,6 +40,7 @@ export const useStore = create<AppState>((set) => ({
   selectedDocumentIds: [],
   selectedNodeId: null,
   activeView: 'corpus',
+  corpusViewMode: 'map',
   filters: defaultFilters,
   sizeBy: 'argument_count',
   showBlobs: false,
@@ -54,6 +57,7 @@ export const useStore = create<AppState>((set) => ({
   selectAll: (ids) => set({ selectedDocumentIds: ids }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setActiveView: (view) => set({ activeView: view }),
+  setCorpusViewMode: (mode) => set({ corpusViewMode: mode }),
   setFilters: (partial) => set((s) => ({ filters: { ...s.filters, ...partial } })),
   setSizeBy: (s) => set({ sizeBy: s }),
   setShowBlobs: (v) => set({ showBlobs: v }),
