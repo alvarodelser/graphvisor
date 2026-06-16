@@ -1,7 +1,9 @@
-import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat } from '../types'
+import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, RelationGroup, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
 import { PCA } from 'ml-pca'
+import { kmeans } from 'ml-kmeans'
 import corpusJson from './corpus_final_dat.json'
 import hypothesisJson from './hypothesis_L2.json'
+import { pickK, mostFrequentLabel, buildTopics } from '../views/CorpusView/topics'
 
 export interface DataServiceInterface {
   getDocuments(): Promise<DocNode[]>
@@ -9,6 +11,7 @@ export interface DataServiceInterface {
   getArgumentDetail(nodeId: string): Promise<ArgumentDetail>
   getConceptDetail(conceptLabel: string): Promise<ConceptDetail>
   getHypotheses(): Promise<Hypothesis[]>
+  getTopics(): Promise<Topic[]>
 }
 
 // ── Raw JSON types ────────────────────────────────────────────────────────────
@@ -38,6 +41,7 @@ type RawDoc = {
   source: string
   year: string
   abstract: string
+  citations: number
   data: RawArgument[]
   doc_embbeding: number[]
 }
@@ -51,6 +55,37 @@ const PCA_SCORES: Array<{ pca_x: number; pca_y: number }> = (() => {
   const pca = new PCA(embeddings)
   const projected = pca.predict(embeddings, { nComponents: 2 }).to2DArray()
   return projected.map((row: number[]) => ({ pca_x: row[0], pca_y: row[1] }))
+})()
+
+// ── Topic clustering from stored embeddings ──────────────────────────────────
+const TOPIC_DATA: { assignments: number[]; topics: Topic[] } = (() => {
+  const n = rawDocs.length
+  const embeddings = rawDocs.map(d => d.doc_embbeding)
+  const k = pickK(n)
+  const { clusters } = kmeans(embeddings, k, { seed: 42 })
+
+  // Per-cluster label from member docs' parent_concepts (fallback: top terms)
+  const labels = new Map<number, string>()
+  for (let c = 0; c < k; c++) {
+    const memberConcepts: string[][] = []
+    const memberTerms: string[][] = []
+    rawDocs.forEach((doc, i) => {
+      if (clusters[i] !== c) return
+      memberConcepts.push(doc.data.flatMap(a => a.concept_level?.parent_concepts ?? []))
+      const termCounts: Record<string, number> = {}
+      doc.data.forEach(arg => arg.relations.forEach(rel => {
+        termCounts[rel.subject] = (termCounts[rel.subject] || 0) + 1
+        termCounts[rel.object] = (termCounts[rel.object] || 0) + 1
+      }))
+      memberTerms.push(Object.entries(termCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([t]) => t))
+    })
+    const conceptLabel = mostFrequentLabel(memberConcepts)
+    labels.set(c, conceptLabel || mostFrequentLabel(memberTerms) || `Topic ${c + 1}`)
+  }
+
+  const docMeta = rawDocs.map((doc, i) => ({ id: makeDocId(i), argument_count: doc.data.length }))
+  const topics = buildTopics(Array.from(clusters), docMeta, labels)
+  return { assignments: Array.from(clusters), topics }
 })()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -110,7 +145,8 @@ function buildDocs(): DocNode[] {
       year: parseInt(doc.year, 10),
       ...(PCA_SCORES[i] ?? { pca_x: 0, pca_y: 0 }),
       argument_count: doc.data.length,
-      page_count: 0,
+      citations: doc.citations,
+      topic_id: TOPIC_DATA.assignments[i],
       top_terms,
       termCounts,
     }
@@ -450,6 +486,10 @@ export class RealDataService implements DataServiceInterface {
 
   getHypotheses(): Promise<Hypothesis[]> {
     return Promise.resolve(hypothesisJson as Hypothesis[])
+  }
+
+  async getTopics(): Promise<Topic[]> {
+    return TOPIC_DATA.topics
   }
 }
 
