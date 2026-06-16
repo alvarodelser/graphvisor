@@ -5,16 +5,25 @@ export interface DocNode {
   pca_x: number
   pca_y: number
   argument_count: number
-  page_count: number
+  citations: number
+  topic_id: number
   top_terms: string[]
   termCounts: Record<string, number>
   x?: number; y?: number; vx?: number; vy?: number; fx?: number | null; fy?: number | null
 }
 
+export interface Topic {
+  id: number
+  label: string
+  docIds: string[]
+  argCount: number
+}
+
 export type GraphNodeType = 'Argument' | 'Entity' | 'Concept'
 export type RelationGroup = 'positive' | 'negative' | 'causal' | 'structural' | 'concept'
 export type ActiveView = 'corpus' | 'graph' | 'detail' | 'discover'
-export type SizeBy = 'argument_count' | 'uniform' | 'page_count'
+export type SizeBy = 'argument_count' | 'impact' | 'uniform'
+export type CorpusViewMode = 'map' | 'topics' | 'timeline'
 
 export interface GraphNode {
   id: string
