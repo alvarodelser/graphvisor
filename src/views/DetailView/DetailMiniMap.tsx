@@ -174,7 +174,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
           )}
 
           <div style={{ fontSize: 10, color: '#9ca3af', borderTop: '1px solid rgba(7,59,76,0.06)', paddingTop: 4, marginTop: 2 }}>
-            {tooltip.doc.page_count} pages · {tooltip.doc.argument_count} arguments
+            {tooltip.doc.citations} citations · {tooltip.doc.argument_count} arguments
           </div>
         </div>,
         document.body
