@@ -6,6 +6,10 @@ import type { DocNode } from '../../types'
 interface Props {
   docs: DocNode[]
   height: number
+  /** Optional external x mapping so the timeline beeswarm and stream align. */
+  xScale?: (year: number) => number
+  padLeft?: number
+  padRight?: number
 }
 
 interface TooltipState {
@@ -56,7 +60,7 @@ function makeSpline(pts: { x: number; val: number }[]): (x: number) => number {
   }
 }
 
-export function CorpusStatsPanel({ docs, height }: Props) {
+export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, padRight }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
@@ -98,7 +102,11 @@ export function CorpusStatsPanel({ docs, height }: Props) {
     const { width } = el.getBoundingClientRect()
     if (width < 40) return
 
-    const PAD = { top: 12, bottom: 24, left: 32, right: 88 }
+    const PAD = {
+      top: 12, bottom: 24,
+      left: padLeft ?? 32,
+      right: padRight ?? 88,
+    }
     const chartW = width  - PAD.left - PAD.right
     const chartH = height - PAD.top  - PAD.bottom
 
@@ -124,7 +132,11 @@ export function CorpusStatsPanel({ docs, height }: Props) {
     })
 
     const yMax = d3.max(series, s => d3.max(s.vals) ?? 0) ?? 1
-    const xScale = d3.scaleLinear().domain([yearStart, yearEnd]).range([0, chartW])
+    const xScale = extXScale
+      ? d3.scaleLinear()
+          .domain([yearStart, yearEnd])
+          .range([extXScale(yearStart) - PAD.left, extXScale(yearEnd) - PAD.left])
+      : d3.scaleLinear().domain([yearStart, yearEnd]).range([0, chartW])
     const yScale = d3.scaleLinear().domain([0, yMax * 1.12]).range([chartH, 0])
 
     const chart = svg.append('g').attr('transform', `translate(${PAD.left},${PAD.top})`)
@@ -279,7 +291,7 @@ export function CorpusStatsPanel({ docs, height }: Props) {
     const ro = new ResizeObserver(draw)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [terms, years, yearTermCounts, height])
+  }, [terms, years, yearTermCounts, height, extXScale, padLeft, padRight])
 
   if (terms.length === 0) {
     return (
