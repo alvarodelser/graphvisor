@@ -44,12 +44,12 @@ export function useCorpusD3(
     xScaleRef.current = xScale
     yScaleRef.current = yScale
 
-    const sizeVals = docs.map(dd => opts.sizeBy === 'argument_count' ? dd.argument_count : dd.page_count)
+    const sizeVals = docs.map(dd => opts.sizeBy === 'argument_count' ? dd.argument_count : dd.citations)
     const sizeExt = d3.extent(sizeVals) as [number, number]
     const sizeScale = opts.sizeBy === 'uniform' ? null : d3.scaleLinear().domain(sizeExt).range([4, 9])
     const getRadius = (d: DocNode) => {
       if (!sizeScale) return 6
-      const val = opts.sizeBy === 'argument_count' ? d.argument_count : d.page_count
+      const val = opts.sizeBy === 'argument_count' ? d.argument_count : d.citations
       return sizeScale(val)
     }
 
