@@ -5,16 +5,34 @@
   box-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
 .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.12em; color: #fff; }
-.tabs { display: flex; gap: 2px; flex: 1; }
+.tabs { display: flex; gap: 2px; flex: 1; align-items: center; }
+
 .tab {
-  background: none; border: none; border-bottom: 2px solid transparent;
-  padding: 4px 14px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6);
+  position: relative;
+  background: none; border: none;
+  padding: 4px 14px 6px;
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6);
   cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: color 0.2s ease;
 }
-.tab.active  { color: #fff; border-bottom-color: #F4A124; }
+.tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 14px; right: 14px;
+  height: 2px; background: #F4A124;
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+.tab.active { color: #fff; }
+.tab.active::after { transform: scaleX(1); }
 .tab.dimmed  { opacity: 0.4; cursor: not-allowed; }
+.sep {
+  align-self: center; line-height: 1;
+  color: rgba(100, 200, 230, 0.22); font-size: 22px;
+  user-select: none; pointer-events: none;
+}
 .badge {
-  background: #F4A124; color: #073b4c; border-radius: 10px;
+  background: #F4A124; color: #ef476f; border-radius: 10px;
   padding: 1px 6px; font-size: 9px; font-weight: 700;
 }
 .dot {
@@ -39,8 +57,9 @@
 @media (max-width: 640px) {
   .topBar { padding: 0 8px; gap: 6px; }
   .logo { display: none; }
-  .tabs { gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex-shrink: 0; padding: 4px 8px; font-size: 11px; gap: 4px; }
+  .sep { display: none; }
   .cta { padding: 5px 10px; font-size: 10px; flex-shrink: 0; }
 }

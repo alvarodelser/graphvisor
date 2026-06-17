@@ -80,7 +80,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
       .attr('cy', d => yScale(d.pca_y))
       .attr('r', d => d.id === focalId ? 7 : relatedMap.has(d.id) ? 4 : 2)
       .attr('fill', d =>
-        d.id === focalId ? '#F4A124'
+        d.id === focalId ? '#ef476f'
         : relatedMap.has(d.id) ? '#118ab2'
         : '#d1d5db')
       .style('cursor', d => (d.id === focalId || relatedMap.has(d.id)) ? 'pointer' : 'default')
@@ -101,7 +101,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
     if (focalDoc) {
       dotG.append('circle')
         .attr('cx', xScale(focalDoc.pca_x)).attr('cy', yScale(focalDoc.pca_y))
-        .attr('r', 11).attr('fill', 'none').attr('stroke', '#F4A124').attr('stroke-width', 2)
+        .attr('r', 11).attr('fill', 'none').attr('stroke', '#ef476f').attr('stroke-width', 2)
         .attr('pointer-events', 'none')
     }
   }, [detail, allDocs])
@@ -147,7 +147,7 @@ export function DetailMiniMap({ detail, allDocs }: Props) {
           </div>
 
           {tooltip.isFocal && (
-            <div style={{ fontSize: 10, color: '#F4A124', fontWeight: 600, marginBottom: 4 }}>
+            <div style={{ fontSize: 10, color: '#ef476f', fontWeight: 600, marginBottom: 4 }}>
               Source document
             </div>
           )}

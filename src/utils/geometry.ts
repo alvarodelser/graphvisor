@@ -36,7 +36,7 @@ export function computeRadialTiers(
 // encoded — each of the four groups gets one distinct hue, plus concept.
 export const RELATION_COLORS: Record<string, string> = {
   evidence: '#3b82f6',     // blue  — "A is a tool for discovering B"
-  correlation: '#8b5cf6',  // violet — "A and B behave similarly"
+  correlation: '#10b981',  // green — "A and B behave similarly"
   causation: '#f59e0b',    // amber — "A influences B"
   definition: '#6b7280',   // gray  — "A explains B"
   concept: '#6366f1',

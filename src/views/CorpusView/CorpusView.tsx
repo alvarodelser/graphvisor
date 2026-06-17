@@ -44,7 +44,7 @@ export function CorpusView() {
       <div>
         <div className="sl">Selection</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#073b4c' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#ef476f' }}>
             {selectedDocumentIds.length} / {filteredDocs.length} selected
           </span>
         </div>

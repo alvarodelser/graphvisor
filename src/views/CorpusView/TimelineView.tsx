@@ -24,6 +24,52 @@ const STATS_H = 220
 const SELECTED = '#ef476f'
 const UNSELECTED = '#74b9d6'
 
+// ── Range helpers ────────────────────────────────────────────────────────────
+
+function mergeRanges(ranges: [number, number][]): [number, number][] {
+  if (ranges.length === 0) return []
+  const sorted = [...ranges].sort((a, b) => a[0] - b[0])
+  const result: [number, number][] = [[sorted[0][0], sorted[0][1]]]
+  for (let i = 1; i < sorted.length; i++) {
+    const last = result[result.length - 1]
+    if (sorted[i][0] <= last[1] + 1) last[1] = Math.max(last[1], sorted[i][1])
+    else result.push([sorted[i][0], sorted[i][1]])
+  }
+  return result
+}
+
+function subtractRange(ranges: [number, number][], sub: [number, number]): [number, number][] {
+  const result: [number, number][] = []
+  for (const [s, e] of ranges) {
+    if (sub[1] < s || sub[0] > e) result.push([s, e])
+    else {
+      if (s < sub[0]) result.push([s, sub[0] - 1])
+      if (e > sub[1]) result.push([sub[1] + 1, e])
+    }
+  }
+  return result
+}
+
+function deriveRangesFromIds(selectedIds: Set<string>, docs: DocNode[], uniqueYears: number[]): [number, number][] {
+  const selectedYears = new Set<number>()
+  docs.forEach(d => { if (selectedIds.has(d.id)) selectedYears.add(d.year) })
+  if (selectedYears.size === 0) return []
+  const docYearSet = new Set(uniqueYears)
+  const sorted = [...selectedYears].sort((a, b) => a - b)
+  const spans: [number, number][] = []
+  let start = sorted[0]; let end = sorted[0]
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]; const curr = sorted[i]
+    const gapHasDocs = Array.from({ length: curr - prev - 1 }, (_, k) => prev + k + 1).some(y => docYearSet.has(y))
+    if (!gapHasDocs) { end = curr }
+    else { spans.push([start, end]); start = curr; end = curr }
+  }
+  spans.push([start, end])
+  return spans
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function TimelineView({ docs, selectedIds }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -33,6 +79,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
   const [tooltip, setTooltip] = useState<{ doc: DocNode; x: number; y: number } | null>(null)
   const [hoveredYear, setHoveredYear] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [selectedYearRanges, setSelectedYearRanges] = useState<[number, number][]>([])
   const { selectedDocumentIds, setSelectedDocuments, toggleDocumentSelection, sizeBy } = useStore()
 
   useLayoutEffect(() => {
@@ -90,36 +137,29 @@ export function TimelineView({ docs, selectedIds }: Props) {
     [docs, yearScale],
   )
 
-  const selectedYearSet = useMemo(() => {
-    const s = new Set<number>()
-    docs.forEach(d => { if (selectedIds.has(d.id)) s.add(d.year) })
-    return s
-  }, [docs, selectedIds])
-
-  // Stable refs so drag callbacks never go stale
+  // Stable refs so D3 drag callbacks always read current values
   const selectedDocumentIdsRef = useRef(selectedDocumentIds)
   selectedDocumentIdsRef.current = selectedDocumentIds
-  const selectedIdsRef = useRef(selectedIds)
-  selectedIdsRef.current = selectedIds
   const docsRef = useRef(docs)
   docsRef.current = docs
+  const uniqueYearsRef = useRef(uniqueYears)
+  uniqueYearsRef.current = uniqueYears
+  const selectedYearRangesRef = useRef(selectedYearRanges)
+  selectedYearRangesRef.current = selectedYearRanges
+  // Prevents the selectedIds→ranges sync from overwriting ranges set by a drag
+  const internalUpdateRef = useRef(false)
+
+  // When selectedIds changes from outside (map/topics view, clear, select-all),
+  // re-derive year ranges so the timeline reflects the external selection.
+  useEffect(() => {
+    if (internalUpdateRef.current) { internalUpdateRef.current = false; return }
+    setSelectedYearRanges(deriveRangesFromIds(selectedIds, docsRef.current, uniqueYearsRef.current))
+  }, [selectedIds])
 
   useEffect(() => {
     if (!svgRef.current || width === 0) return
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-
-    // Selected-year bands (behind circles)
-    if (selectedYearSet.size > 0) {
-      const hl = svg.append('g').attr('pointer-events', 'none')
-      selectedYearSet.forEach(year => {
-        hl.append('rect')
-          .attr('x', yearScale.scale(year) - colW / 2)
-          .attr('width', colW)
-          .attr('y', 0).attr('height', BEESWARM_H)
-          .attr('fill', SELECTED).attr('opacity', 0.1)
-      })
-    }
 
     // Document circles
     svg.append('g').selectAll('circle')
@@ -152,7 +192,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
       span === 0 ? yMin : yMin + (px - left) / (right - left) * span
 
     let dragStartX = 0
-    let dragMode: 'replace' | 'add' | 'deselect' = 'replace'
+    let dragMode: 'replace' | 'add' | 'subtract' = 'replace'
     let dragActive = false
 
     const dragBehavior = d3.drag<SVGRectElement, unknown>()
@@ -163,11 +203,11 @@ export function TimelineView({ docs, selectedIds }: Props) {
         setIsDragging(true)
 
         const startYear = Math.round(invertYear(mx))
-        const docsAtYear = docsRef.current.filter(d => d.year === startYear)
-        const allSelected = docsAtYear.length > 0 && docsAtYear.every(d => selectedIdsRef.current.has(d.id))
+        const shiftKey = (event.sourceEvent as MouseEvent).shiftKey
+        const insideRange = selectedYearRangesRef.current.some(([s, e]) => startYear >= s && startYear <= e)
 
-        if ((event.sourceEvent as MouseEvent).shiftKey && allSelected) dragMode = 'deselect'
-        else if ((event.sourceEvent as MouseEvent).shiftKey) dragMode = 'add'
+        if (shiftKey && insideRange) dragMode = 'subtract'
+        else if (shiftKey) dragMode = 'add'
         else dragMode = 'replace'
       })
       .on('drag', function(event) {
@@ -197,12 +237,20 @@ export function TimelineView({ docs, selectedIds }: Props) {
         const mx = d3.pointer(event, this)[0]
         const y0 = Math.round(invertYear(Math.min(dragStartX, mx)))
         const y1 = Math.round(invertYear(Math.max(dragStartX, mx)))
-        const docsInRange = docsRef.current.filter(d => d.year >= y0 && d.year <= y1).map(d => d.id)
-        const prev = selectedDocumentIdsRef.current
+        const dragRange: [number, number] = [y0, y1]
+        const current = selectedYearRangesRef.current
 
-        if (dragMode === 'replace') setSelectedDocuments(docsInRange)
-        else if (dragMode === 'add') setSelectedDocuments([...new Set([...prev, ...docsInRange])])
-        else setSelectedDocuments(prev.filter(id => !docsInRange.includes(id)))
+        let newRanges: [number, number][]
+        if (dragMode === 'replace') newRanges = [dragRange]
+        else if (dragMode === 'add') newRanges = mergeRanges([...current, dragRange])
+        else newRanges = subtractRange(current, dragRange)
+
+        internalUpdateRef.current = true
+        setSelectedYearRanges(newRanges)
+        const docIds = docsRef.current
+          .filter(d => newRanges.some(([s, e]) => d.year >= s && d.year <= e))
+          .map(d => d.id)
+        setSelectedDocuments(docIds)
       })
 
     svg.append('rect')
@@ -216,7 +264,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
       .on('mouseleave', () => setHoveredYear(null))
       .call(dragBehavior as any)
 
-  }, [docs, layout, sizeScale, selectedIds, selectedYearSet, colW, width, yearScale,
+  }, [docs, layout, sizeScale, selectedIds, colW, width, yearScale,
       setSelectedDocuments, toggleDocumentSelection, setIsDragging])
 
   const crosshairX = hoveredYear !== null ? yearScale.scale(hoveredYear) : null
@@ -235,11 +283,12 @@ export function TimelineView({ docs, selectedIds }: Props) {
             height={RANGE_BAR_H - 8}
             fill="rgba(7,59,76,0.05)" rx={3}
           />
-          {/* Selected-year filled blocks */}
-          {allYears.filter(y => selectedYearSet.has(y)).map(year => (
+          {/* Selected spans — solid blocks spanning the full dragged range */}
+          {selectedYearRanges.map(([start, end], i) => (
             <rect
-              key={year}
-              x={yearScale.scale(year) - colW / 2} width={colW}
+              key={i}
+              x={yearScale.scale(start) - colW / 2}
+              width={yearScale.scale(end) - yearScale.scale(start) + colW}
               y={2} height={RANGE_BAR_H - 4}
               fill={SELECTED} opacity={0.45} rx={1}
             />
@@ -278,13 +327,6 @@ export function TimelineView({ docs, selectedIds }: Props) {
       {/* ── Shared year axis ─────────────────────────────────────────────────── */}
       {width > 0 && (
         <svg style={{ width: '100%', height: AXIS_H, display: 'block', overflow: 'visible' }}>
-          {allYears.filter(y => selectedYearSet.has(y)).map(year => (
-            <rect key={`sel-${year}`}
-              x={yearScale.scale(year) - colW / 2} width={colW}
-              y={0} height={AXIS_H}
-              fill={SELECTED} opacity={0.07}
-            />
-          ))}
           {allYears.map(year => {
             const x = yearScale.scale(year)
             const active = year === hoveredYear
@@ -319,12 +361,26 @@ export function TimelineView({ docs, selectedIds }: Props) {
         disabled={isDragging}
       />
 
+      {/* ── Persistent selected-span backgrounds (beeswarm → area chart top) ── */}
+      {width > 0 && selectedYearRanges.map(([start, end], i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: yearScale.scale(start) - colW / 2,
+          width: yearScale.scale(end) - yearScale.scale(start) + colW,
+          top: HEADER_H + RANGE_BAR_H,
+          height: BEESWARM_H + AXIS_H + STATS_H,
+          background: `rgba(239,71,111,0.055)`,
+          pointerEvents: 'none',
+          zIndex: 2,
+        }} />
+      ))}
+
       {/* ── Full-height drag range overlay (DOM-managed, zero React re-renders) ─ */}
       <div ref={dragOverlayRef} style={{
         position: 'absolute',
         top: HEADER_H,
         height: overlayH,
-        background: 'rgba(7,59,76,0.07)',
+        background: 'rgba(244,161,36,0.12)',
         pointerEvents: 'none',
         zIndex: 3,
         opacity: 0,
@@ -339,7 +395,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
           top: HEADER_H,
           height: overlayH,
           width: 1,
-          background: 'rgba(7,59,76,0.2)',
+          background: 'rgba(244,161,36,0.4)',
           pointerEvents: 'none',
           zIndex: 4,
         }} />
