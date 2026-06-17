@@ -28,8 +28,8 @@ describe('computeCollapse', () => {
     ['c', { x: 500, y: 0 }], ['d', { x: 600, y: 0 }],
     ['e', { x: 700, y: 0 }], ['f', { x: 800, y: 0 }],
   ])
-  // collapseK = 1.7: arg0 (√2 ≈ 1.41 < 1.7) collapses; arg1 (√4 = 2.0 ≥ 1.7) stays
-  const r = computeCollapse(model, positions, 1, 1.7)
+  // collapse arguments with ≤ 3 entities: arg0 (2) collapses; arg1 (4) stays
+  const r = computeCollapse(model, positions, count => count <= 3)
 
   it('collapses the smaller-count argument but not the larger', () => {
     expect(r.collapsedArgIds.has('arg0')).toBe(true)
@@ -59,7 +59,7 @@ describe('computeCollapse', () => {
     const blobs2 = [blob('arg0', ['a', 'b'])]
     const m2 = buildGraphModel(nodes2, edges2, blobs2)
     const pos2 = new Map([['a', { x: 0, y: 0 }], ['b', { x: 5, y: 0 }]])
-    const r2 = computeCollapse(m2, pos2, 1, 1.7)   // √2 < 1.7 ⇒ arg0 collapses
+    const r2 = computeCollapse(m2, pos2, () => true)   // arg0 collapses
     expect(r2.visibleEdges.find(v => v.edge.id === 'e1')).toBeUndefined()
   })
 

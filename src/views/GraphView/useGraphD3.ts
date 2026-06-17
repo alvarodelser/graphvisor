@@ -11,15 +11,13 @@ import {
 import { computeCollapse } from '../../graph/collapse'
 
 const ENTITY_R = 8
-// Argument collapses to a card when k·√(entityCount) < COLLAPSE_K. Low value ⇒
-// entities stay visible at normal zoom; arguments only collapse once well zoomed
-// out, and bigger (more-entity) arguments persist longer than small ones.
-const COLLAPSE_K = 1.0
-// While zooming through the band where arguments collapse, slow the wheel to a
-// quarter speed so the transition is deliberate (a soft "detent").
-const COLLAPSE_SLOW_LO = COLLAPSE_K * 0.4
-const COLLAPSE_SLOW_HI = COLLAPSE_K
-const COLLAPSE_SLOW_FACTOR = 0.25
+// Zoom hard-locks at LOCK_K. Up to there the wheel zooms normally; once locked,
+// further scroll-out drives a separate collapse progress (0→1) that collapses
+// arguments to cards smallest-first, and scroll-in reverses it before zooming
+// back in. So past the lock the scroll controls collapse directly, not zoom.
+const LOCK_K = 0.45
+const ZOOM_MAX = 4
+const COLLAPSE_WHEEL_STEP = 0.0016   // collapse progress per wheel-pixel past the lock
 
 // Argument card (blob-style rounded rectangle holding the argument text)
 const ARG_CARD_W = 96         // graph units
@@ -92,6 +90,7 @@ export function useGraphD3(
   const optsRef = useRef(opts)
   optsRef.current = opts
   const zoomKRef = useRef(1)
+  const collapseRef = useRef(0)   // 0→1 collapse progress, driven by scroll past the lock
   const highlightFnRef = useRef<() => void>(() => {})
 
   useEffect(() => {
@@ -110,6 +109,9 @@ export function useGraphD3(
     const fEdges = edges.filter(e =>
       e.confidence >= minConfidence && relationTypes[e.relation_type] !== false)
     const model = buildGraphModel(nodes, fEdges, optsRef.current.blobs)
+    // Largest argument (by member count) — collapse progress is normalised to it
+    // so progress = 1 collapses everything.
+    const maxMembers = Math.max(1, ...model.arguments.map(a => model.argMembers.get(a.id)?.length ?? 0))
 
     // Entities are ALWAYS simulated so arguments keep meaningful positions (their
     // member centroid) even when entity nodes are hidden. The Entity filter only
@@ -154,21 +156,53 @@ export function useGraphD3(
 
     // ── Zoom ─────────────────────────────────────────────────────────────────
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.15, 4])
-      // Default d3 wheelDelta, scaled to a quarter while passing through the
-      // argument-collapse band so the scroll "locks" / slows there.
-      .wheelDelta((event: WheelEvent) => {
-        const base = -event.deltaY * (event.deltaMode === 1 ? 0.05 : event.deltaMode ? 1 : 0.002) * (event.ctrlKey ? 10 : 1)
-        const k = zoomKRef.current
-        const inBand = k >= COLLAPSE_SLOW_LO && k <= COLLAPSE_SLOW_HI
-        return base * (inBand ? COLLAPSE_SLOW_FACTOR : 1)
-      })
+      .scaleExtent([LOCK_K, ZOOM_MAX])
+      // We drive the wheel ourselves (below) so it can switch between zooming and
+      // collapsing; d3 keeps handling drag-pan and double-click.
+      .filter((e: Event) => e.type !== 'wheel' && !(e as MouseEvent).ctrlKey && !(e as MouseEvent).button)
       .on('zoom', (e) => {
         zoomG.attr('transform', e.transform)
         zoomKRef.current = e.transform.k
         scheduleRender()   // recompute LOD live during zoom, even when the sim is idle
       })
     svg.call(zoom)
+
+    // Wheel: zoom until the lock, then the SAME scroll drives collapse progress.
+    let collapseCool: ReturnType<typeof setTimeout> | undefined
+    function onWheel(e: WheelEvent) {
+      e.preventDefault()
+      const out = e.deltaY > 0
+      const atLock = zoomKRef.current <= LOCK_K + 1e-4
+      if ((atLock && out) || (collapseRef.current > 0 && !out)) {
+        const step = Math.min(0.2, Math.abs(e.deltaY) * (e.deltaMode === 1 ? 0.03 : COLLAPSE_WHEEL_STEP))
+        collapseRef.current = Math.max(0, Math.min(1, collapseRef.current + (out ? step : -step)))
+        // Reheat so the (alpha-scaled) separation force actively pushes the newly
+        // collapsed cards apart; cool back down shortly after scrolling stops.
+        sim.alphaTarget(0.3).restart()
+        clearTimeout(collapseCool)
+        collapseCool = setTimeout(() => sim.alphaTarget(0), 300)
+        scheduleRender()
+      } else {
+        zoom.scaleBy(svg, Math.pow(2, -e.deltaY * 0.002), d3.pointer(e, svgEl))
+      }
+    }
+    svgEl.addEventListener('wheel', onWheel, { passive: false })
+
+    // ── Collapse hint ─────────────────────────────────────────────────────────
+    // Screen-fixed pill (NOT in zoomG) that appears once zoom is locked, telling
+    // the user that scrolling further collapses arguments; its bar tracks progress.
+    const HINT_W = 244, HINT_H = 40, HINT_PROG_W = HINT_W - 40
+    const hintG = svg.append('g').attr('class', 'collapse-hint').attr('pointer-events', 'none')
+      .attr('transform', `translate(${width / 2}, ${height - 34})`)
+      .style('opacity', 0).style('transition', 'opacity 180ms')
+    hintG.append('rect').attr('x', -HINT_W / 2).attr('y', -HINT_H / 2).attr('width', HINT_W).attr('height', HINT_H)
+      .attr('rx', HINT_H / 2).attr('fill', 'rgba(7,59,76,0.92)')
+    hintG.append('text').attr('class', 'hint-label').attr('text-anchor', 'middle').attr('y', -3)
+      .attr('fill', '#fff').attr('font-size', '12px').attr('font-weight', '600')
+    hintG.append('rect').attr('x', -HINT_PROG_W / 2).attr('y', 8).attr('width', HINT_PROG_W).attr('height', 4)
+      .attr('rx', 2).attr('fill', 'rgba(255,255,255,0.22)')
+    const hintFill = hintG.append('rect').attr('x', -HINT_PROG_W / 2).attr('y', 8).attr('width', 0).attr('height', 4)
+      .attr('rx', 2).attr('fill', '#F4A124')
 
     // ── Edge groups (chevron style) ───────────────────────────────────────────
     // Cache each edge's clip-path polygon node so the tick can update it without
@@ -331,9 +365,9 @@ export function useGraphD3(
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id).strength(d => d.confidence * 0.4))
       .force('charge', d3.forceManyBody<GraphNode>().strength(-220).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(14).strength(0.7))
-      .force('chainHome', chainHomeForce(model, centers, simNodes))
       .force('argLayout', argLayoutForce(model, simNodes))
       .force('bridge', bridgePullForce(model, simNodes))
+      .force('chainHome', chainHomeForce(model, centers, simNodes))
       .force('blobRepel', blobRepulsionForce(model, simNodes))
 
     // ── Per-tick render ──────────────────────────────────────────────────────────
@@ -420,8 +454,26 @@ export function useGraphD3(
         p.x = n.x ?? 0; p.y = n.y ?? 0
       }
 
+      // Collapse progress (0→1, scroll-driven past the lock) collapses arguments
+      // smallest-first: an argument with √count ≤ progress·√maxCount is a card.
+      const collapseC = collapseRef.current
+      const collapseEdge = collapseC * Math.sqrt(maxMembers)
+
+      // Collapse hint: visible once locked or mid-collapse; bar tracks progress,
+      // label shows the current size threshold (args with ≤ N entities collapse).
+      const atLock = k <= LOCK_K + 1e-4
+      const showHint = showBlobs && (atLock || collapseC > 0.001)
+      hintG.style('opacity', showHint ? 1 : 0)
+      if (showHint) {
+        hintFill.attr('width', HINT_PROG_W * collapseC)
+        const threshN = Math.floor(collapseEdge * collapseEdge)
+        const label = collapseC >= 0.999 ? `All arguments collapsed (≤ ${maxMembers})`
+          : threshN >= 1 ? `Collapsing arguments ≤ ${threshN} ${threshN === 1 ? 'entity' : 'entities'}`
+            : 'Scroll to collapse arguments'
+        hintG.select('.hint-label').text(label)
+      }
       const collapse = showBlobs
-        ? computeCollapse(model, posMap, k, COLLAPSE_K)
+        ? computeCollapse(model, posMap, count => Math.sqrt(count) <= collapseEdge)
         : {
           collapsedArgIds: new Set<string>(), hiddenEntityIds: new Set<string>(),
           argCentroids: new Map<string, { x: number; y: number }>(),
@@ -530,11 +582,12 @@ export function useGraphD3(
       if (w < 10 || h < 10) return
       sim.alpha(0.1).restart()
       d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
+      hintG.attr('transform', `translate(${w / 2}, ${h - 34})`)
     })
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { alive = false; sim.stop(); observer.disconnect(); if (particleRaf) cancelAnimationFrame(particleRaf) }
+    return () => { alive = false; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
   }, [nodes, edges, opts.filters])
 
   // ── Selection halo ───────────────────────────────────────────────────────────

@@ -119,36 +119,22 @@
   border-radius: 9px;
   transition: background 0.15s;
 }
-.concept::before {
-  content: "";
-  position: absolute;
-  left: 1px; top: 50%;
-  width: 3px; height: 0;
-  border-radius: 2px;
-  background: var(--accent);
-  transform: translateY(-50%);
-  transition: height 0.18s ease;
-}
 .concept:hover { background: rgba(7, 59, 76, 0.035); }
-.concept[data-selected="true"] { background: rgba(239, 71, 111, 0.10); }
-.concept[data-selected="true"]::before { height: 64%; }
-.concept[data-partial="true"]::before { height: 40%; background: rgba(244, 161, 36, 0.5); }
-.concept[data-related="true"] {
-  box-shadow: inset 0 0 0 1px rgba(91, 84, 201, 0.45);
-}
 
 .caretBtn {
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
   border: none;
   background: transparent;
-  padding: 2px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 .caret {
-  font-size: 9px;
-  line-height: 1;
+  display: block;
   color: var(--muted);
   transition: transform 0.18s ease, color 0.15s;
 }
@@ -187,11 +173,6 @@
   padding: 1px 6px;
   border-radius: 999px;
 }
-.concept[data-selected="true"] .count,
-.concept[data-partial="true"] .count {
-  color: #ef476f;
-  background: rgba(239, 71, 111, 0.16);
-}
 
 /* ── Children + connector guide ─────────────────────────────────── */
 .children {
@@ -217,9 +198,6 @@
   width: 11px; height: 1px;
   background: var(--line);
 }
-.arg:hover { background: rgba(7, 59, 76, 0.045); }
-.arg[data-selected="true"] { background: rgba(244, 161, 36, 0.15); }
-
 .argLabel {
   flex: 1;
   min-width: 0;

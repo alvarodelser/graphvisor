@@ -16,17 +16,15 @@ const endId = (e: GraphEdge, which: 'source' | 'target'): string => {
   return typeof v === 'string' ? v : (v as GraphNode).id
 }
 
-// An argument collapses to a card when `k · √(entityCount) < collapseK`. The
-// decision is driven by ENTITY COUNT — how much the argument holds — not the
-// on-screen pixel spread of its blob, so it is predictable regardless of how
-// the members happen to be spaced. Bigger arguments (more entities) stay
-// expanded to a further zoom-out; small ones collapse first. A low collapseK
-// keeps entities visible at normal zoom and only collapses once well zoomed out.
+// Whether each argument is collapsed is decided by `shouldCollapse(entityCount)`,
+// supplied by the caller. The decision is driven by ENTITY COUNT — how much the
+// argument holds — not the on-screen pixel spread of its blob, so it's
+// predictable regardless of how the members happen to be spaced. Callers
+// typically collapse small arguments first and large ones last.
 export function computeCollapse(
   model: GraphModel,
   positions: Map<string, { x: number; y: number }>,
-  k: number,
-  collapseK = 0.6,
+  shouldCollapse: (entityCount: number) => boolean,
 ): CollapseResult {
   const collapsedArgIds = new Set<string>()
   const argCentroids = new Map<string, { x: number; y: number }>()
@@ -38,7 +36,7 @@ export function computeCollapse(
     if (pts.length === 0) continue
     const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
     const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
-    if (k * Math.sqrt(pts.length) < collapseK) {
+    if (shouldCollapse(pts.length)) {
       collapsedArgIds.add(arg.id)
       argCentroids.set(arg.id, { x: cx, y: cy })
     }

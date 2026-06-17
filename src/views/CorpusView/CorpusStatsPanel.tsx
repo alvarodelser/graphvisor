@@ -155,25 +155,18 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
       .attr('stroke', 'rgba(7,59,76,0.06)')
       .attr('stroke-dasharray', '3 4')
 
-    // Exclusive band areas
-    series.forEach((s, si) => {
-      const bandData = xs.map((x, xi) => {
-        const top = s.vals[xi]
-        let bottom = 0
-        for (let j = 0; j < series.length; j++) {
-          if (j === si) continue
-          const v = series[j].vals[xi]
-          if (v < top && v > bottom) bottom = v
-        }
-        return { x, top, bottom }
-      })
+    // Filled areas — drawn largest-average first so smaller series render in front.
+    // Each series fills independently from 0 to its own value; no floor-computation
+    // that jumps at crossover points.
+    const byAvg = [...series].sort((a, b) => (d3.mean(b.vals) ?? 0) - (d3.mean(a.vals) ?? 0))
+    byAvg.forEach(s => {
       chart.append('path')
-        .datum(bandData)
-        .attr('d', d3.area<typeof bandData[0]>()
-          .x(d => xScale(d.x)).y1(d => yScale(d.top)).y0(d => yScale(d.bottom))
+        .datum(xs.map((x, xi) => ({ x, y: s.vals[xi] })))
+        .attr('d', d3.area<{ x: number; y: number }>()
+          .x(d => xScale(d.x)).y1(d => yScale(d.y)).y0(yScale(0))
           .curve(d3.curveCatmullRom.alpha(0.5)))
         .attr('fill', s.color)
-        .attr('opacity', 0.82)
+        .attr('opacity', 0.72)
     })
 
     // Lines

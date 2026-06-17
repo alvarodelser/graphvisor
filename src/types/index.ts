@@ -25,6 +25,13 @@ export type ActiveView = 'corpus' | 'graph' | 'detail' | 'discover'
 export type SizeBy = 'argument_count' | 'impact' | 'uniform'
 export type CorpusViewMode = 'map' | 'topics' | 'timeline'
 
+// What the concept hierarchy side panel has selected, used to scope the graph.
+// A flat set of argument ids (built by checking individual arguments and/or
+// whole concepts). Everything is selected by default.
+export interface SelectedScope {
+  argumentIds: string[]
+}
+
 export interface GraphNode {
   id: string
   type: GraphNodeType
