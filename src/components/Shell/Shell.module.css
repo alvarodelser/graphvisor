@@ -20,11 +20,11 @@
   position: absolute;
   bottom: 0; left: 14px; right: 14px;
   height: 2px; background: #F4A124;
-  transform: translateX(-100%);
+  transform: scaleX(0);
   transition: transform 0.2s ease;
 }
 .tab.active { color: #fff; }
-.tab.active::after { transform: translateX(0); }
+.tab.active::after { transform: scaleX(1); }
 .tab.dimmed  { opacity: 0.4; cursor: not-allowed; }
 .sep {
   align-self: center; line-height: 1;
