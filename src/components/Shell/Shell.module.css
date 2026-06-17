@@ -32,7 +32,7 @@
   user-select: none; pointer-events: none;
 }
 .badge {
-  background: #F4A124; color: #ef476f; border-radius: 10px;
+  background: #ef476f; color: #fff; border-radius: 10px;
   padding: 1px 6px; font-size: 9px; font-weight: 700;
 }
 .dot {

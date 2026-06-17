@@ -68,7 +68,7 @@
   color: var(--muted);
   font-feature-settings: "tnum" 1;
 }
-.selcount[data-active="true"] { color: #ef476f; }
+.selcount[data-active="true"] { color: var(--accent); }
 .actions { display: flex; gap: 4px; }
 .miniBtn {
   font-size: 9.5px;
