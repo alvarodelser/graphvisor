@@ -101,9 +101,10 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange }: Props) {
                 data-partial={someOn}
                 data-related={related.has(concept.id)}
               >
-                <button className={styles.caretBtn} onClick={() => toggleExpand(concept.id)} aria-label="expand">
-                  <svg className={`${styles.caret} ${open ? styles.caretOpen : ''}`} viewBox="0 0 12 12" width="11" height="11">
-                    <path d="M4.5 2.5 L8 6 L4.5 9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <button className={styles.caretBtn} onClick={() => toggleExpand(concept.id)} aria-label={open ? 'collapse' : 'expand'}>
+                  <svg className={`${styles.caret} ${open ? styles.caretOpen : ''}`} viewBox="0 0 12 12" width="12" height="12">
+                    <path d="M2.5 6 H9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    {!open && <path d="M6 2.5 V9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />}
                   </svg>
                 </button>
                 <TriCheckbox checked={allOn} indeterminate={someOn}

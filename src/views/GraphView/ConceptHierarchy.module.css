@@ -136,9 +136,9 @@
 .caret {
   display: block;
   color: var(--muted);
-  transition: transform 0.18s ease, color 0.15s;
+  transition: color 0.15s;
 }
-.caretOpen { transform: rotate(90deg); color: var(--concept); }
+.caretOpen { color: var(--concept); }
 
 .conceptMain {
   flex: 1;

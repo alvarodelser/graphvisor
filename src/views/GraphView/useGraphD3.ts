@@ -361,8 +361,21 @@ export function useGraphD3(
     highlightFnRef.current = applySticky
 
     // ── Simulation ──────────────────────────────────────────────────────────────
+    // Links WITHIN an argument keep its entities cohesive (strong); links BETWEEN
+    // arguments (no shared argument) are kept weak so cross-argument relations
+    // don't drag the clusters together and fight the separation.
+    const INTRA_ARG_LINK = 0.4, INTER_ARG_LINK = 0.04
+    const edgeEndIdOf = (v: string | GraphNode) => typeof v === 'string' ? v : v.id
+    const linkStrength = new Map<string, number>()
+    for (const e of simEdges) {
+      const as = model.entityArgs.get(edgeEndIdOf(e.source)) ?? []
+      const at = model.entityArgs.get(edgeEndIdOf(e.target)) ?? []
+      const intra = as.some(a => at.includes(a))
+      linkStrength.set(e.id, e.confidence * (intra ? INTRA_ARG_LINK : INTER_ARG_LINK))
+    }
     const sim = d3.forceSimulation<GraphNode>(simNodes)
-      .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id).strength(d => d.confidence * 0.4))
+      .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id)
+        .strength(d => linkStrength.get(d.id) ?? d.confidence * INTER_ARG_LINK))
       .force('charge', d3.forceManyBody<GraphNode>().strength(-220).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(14).strength(0.7))
       .force('argLayout', argLayoutForce(model, simNodes))
@@ -389,19 +402,24 @@ export function useGraphD3(
     }
 
     // ── Transition particles ──────────────────────────────────────────────────
-    // One-shot bursts fired when an argument collapses to a card / expands.
-    interface Particle { el: SVGCircleElement; active: boolean; x0: number; y0: number; vx: number; vy: number; born: number; life: number; r0: number; maxOp: number }
+    // Fired on the blob↔card transition: filled bursts (collapse) and expanding
+    // stroke-only rings (entities reappearing on expand).
+    interface Particle { el: SVGCircleElement; active: boolean; ring: boolean; x0: number; y0: number; vx: number; vy: number; born: number; life: number; r0: number; rEnd: number; maxOp: number }
     const particles: Particle[] = []
     let particleRaf = 0
+    function takeParticle(): Particle {
+      let p = particles.find(q => !q.active)
+      if (!p) {
+        p = { el: partG.append('circle').node() as SVGCircleElement, active: false, ring: false, x0: 0, y0: 0, vx: 0, vy: 0, born: 0, life: 0, r0: 0, rEnd: 0, maxOp: 1 }
+        particles.push(p)
+      }
+      return p
+    }
     interface BurstOpts { color: string; n: number; spd: number; scale: number; maxOp?: number; r?: number; rect?: { w: number; h: number } }
     function spawnBurst(cx: number, cy: number, o: BurstOpts) {
       const maxOp = o.maxOp ?? 0.7, r0 = (o.r ?? 2.4) * o.scale
       for (let i = 0; i < o.n; i++) {
-        let p = particles.find(q => !q.active)
-        if (!p) {
-          p = { el: partG.append('circle').node() as SVGCircleElement, active: false, x0: 0, y0: 0, vx: 0, vy: 0, born: 0, life: 0, r0: 0, maxOp: 1 }
-          particles.push(p)
-        }
+        const p = takeParticle()
         const a = (i / o.n) * Math.PI * 2 + Math.random() * 0.5
         const cos = Math.cos(a), sin = Math.sin(a)
         // For arguments, start each particle ON the card's rounded-rect edge (not
@@ -412,10 +430,23 @@ export function useGraphD3(
           ox = cos * t; oy = sin * t
         }
         const v = o.spd * o.scale * (0.6 + Math.random() * 0.6)
-        p.active = true; p.x0 = cx + ox; p.y0 = cy + oy; p.vx = cos * v; p.vy = sin * v
+        p.active = true; p.ring = false; p.x0 = cx + ox; p.y0 = cy + oy; p.vx = cos * v; p.vy = sin * v
         p.born = performance.now(); p.life = 360 + Math.random() * 200; p.r0 = r0; p.maxOp = maxOp
-        p.el.setAttribute('fill', o.color)
+        p.el.setAttribute('fill', o.color); p.el.setAttribute('stroke', 'none')
       }
+      if (!particleRaf) particleRaf = requestAnimationFrame(stepParticles)
+    }
+    // A single expanding, stroke-only ring (radar-ping) — used per entity as it
+    // reappears on expand.
+    function spawnRipple(cx: number, cy: number, color: string, scale: number, maxOp = 0.3) {
+      const p = takeParticle()
+      p.active = true; p.ring = true; p.x0 = cx; p.y0 = cy; p.vx = 0; p.vy = 0
+      p.born = performance.now(); p.life = 620
+      p.r0 = ENTITY_R * scale * 0.6; p.rEnd = ENTITY_R * scale * 4.5; p.maxOp = maxOp
+      p.el.setAttribute('fill', 'none')
+      p.el.setAttribute('stroke', color)
+      p.el.setAttribute('stroke-width', String(1.4 * scale))
+      p.el.setAttribute('cx', String(cx)); p.el.setAttribute('cy', String(cy))
       if (!particleRaf) particleRaf = requestAnimationFrame(stepParticles)
     }
     function stepParticles(now: number) {
@@ -425,11 +456,16 @@ export function useGraphD3(
         const t = (now - p.born) / p.life
         if (t >= 1) { p.active = false; p.el.setAttribute('opacity', '0'); continue }
         any = true
-        const e = (p.life / 1000) * t
-        p.el.setAttribute('cx', String(p.x0 + p.vx * e))
-        p.el.setAttribute('cy', String(p.y0 + p.vy * e))
-        p.el.setAttribute('r', String(p.r0 * (1 - 0.5 * t)))
-        p.el.setAttribute('opacity', String((1 - t) * p.maxOp))
+        if (p.ring) {
+          p.el.setAttribute('r', String(p.r0 + (p.rEnd - p.r0) * t))
+          p.el.setAttribute('opacity', String((1 - t) * p.maxOp))
+        } else {
+          const e = (p.life / 1000) * t
+          p.el.setAttribute('cx', String(p.x0 + p.vx * e))
+          p.el.setAttribute('cy', String(p.y0 + p.vy * e))
+          p.el.setAttribute('r', String(p.r0 * (1 - 0.5 * t)))
+          p.el.setAttribute('opacity', String((1 - t) * p.maxOp))
+        }
       }
       particleRaf = any ? requestAnimationFrame(stepParticles) : 0
     }
@@ -569,7 +605,7 @@ export function useGraphD3(
             if (!p) return
             const px = p.x, py = p.y
             setTimeout(() => {
-              if (alive) spawnBurst(px, py, { color: '#118ab2', n: 3, spd: 26, scale: nodeScaleFor(zoomKRef.current), maxOp: 0.22, r: 1.5 })
+              if (alive) spawnRipple(px, py, '#118ab2', nodeScaleFor(zoomKRef.current), 0.3)
             }, i * 110)
           })
         }
