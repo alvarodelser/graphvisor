@@ -8,9 +8,9 @@ export function App() {
   return (
     <Shell>
       <CorpusView />
+      <DiscoverView />
       <GraphView />
       <DetailView />
-      <DiscoverView />
     </Shell>
   )
 }
