@@ -3,7 +3,14 @@ import { useStore } from '../../store/useStore'
 import { StatusBar } from '../StatusBar/StatusBar'
 import styles from './Shell.module.css'
 
-const VIEW_ORDER = ['corpus', 'graph', 'detail', 'discover'] as const
+const VIEW_ORDER = ['corpus', 'discover', 'graph', 'detail'] as const
+
+const VIEW_LABELS: Record<string, string> = {
+  corpus: 'Select',
+  discover: 'Discover',
+  graph: 'Explore',
+  detail: 'Detail',
+}
 
 interface Props {
   children: [ReactNode, ReactNode, ReactNode, ReactNode]
@@ -26,30 +33,32 @@ export function Shell({ children }: Props) {
       <header className={styles.topBar}>
         <span className={styles.logo}>GRAPHVISOR</span>
         <nav className={styles.tabs}>
-          {(['corpus', 'graph', 'detail', 'discover'] as const).map((v) => (
-            <button
-              key={v}
-              className={[
-                styles.tab,
-                activeView === v ? styles.active : '',
-                (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection) ? styles.dimmed : '',
-              ].join(' ')}
-              style={v === 'discover' ? { marginLeft: 'auto' } : undefined}
-              onClick={() => {
-                if (v === 'detail' && !hasDetailTarget) return
-                if (v === 'graph' && !hasCorpusSelection) return
-                setActiveView(v)
-              }}
-              disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection)}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-              {v === 'graph' && hasCorpusSelection && (
-                <span className={styles.badge}>{selectedDocumentIds.length}</span>
-              )}
-              {v === 'detail' && hasDetailTarget && (
-                <span className={styles.dot}>●</span>
-              )}
-            </button>
+          {(['corpus', 'discover', 'graph', 'detail'] as const).map((v, i, arr) => (
+            <>
+              <button
+                key={v}
+                className={[
+                  styles.tab,
+                  activeView === v ? styles.active : '',
+                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection) ? styles.dimmed : '',
+                ].join(' ')}
+                onClick={() => {
+                  if (v === 'detail' && !hasDetailTarget) return
+                  if (v === 'graph' && !hasCorpusSelection) return
+                  setActiveView(v)
+                }}
+                disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection)}
+              >
+                {VIEW_LABELS[v]}
+                {v === 'graph' && hasCorpusSelection && (
+                  <span className={styles.badge}>{selectedDocumentIds.length}</span>
+                )}
+                {v === 'detail' && hasDetailTarget && (
+                  <span className={styles.badge}>●</span>
+                )}
+              </button>
+              {i < arr.length - 1 && <span key={`sep-${v}`} className={styles.sep}>›</span>}
+            </>
           ))}
         </nav>
         {showCTA && (
