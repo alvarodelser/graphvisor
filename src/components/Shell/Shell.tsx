@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, useEffect, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { StatusBar } from '../StatusBar/StatusBar'
 import styles from './Shell.module.css'
@@ -28,15 +28,29 @@ export function Shell({ children }: Props) {
   const ctaLabel = activeView === 'corpus' ? 'View Graph →' : 'Open Detail →'
   const handleCTA = () => setActiveView(activeView === 'corpus' ? 'graph' : 'detail')
 
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const indicatorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const activeTab = tabRefs.current[viewIndex]
+    const indicator = indicatorRef.current
+    if (!activeTab || !indicator) return
+    const { offsetLeft, offsetWidth } = activeTab
+    indicator.style.left = `${offsetLeft}px`
+    indicator.style.width = `${offsetWidth}px`
+  }, [viewIndex])
+
   return (
     <div className={styles.shell}>
       <header className={styles.topBar}>
         <span className={styles.logo}>GRAPHVISOR</span>
         <nav className={styles.tabs}>
+          <div ref={indicatorRef} className={styles.indicator} />
           {(['corpus', 'discover', 'graph', 'detail'] as const).map((v, i, arr) => (
             <>
               <button
                 key={v}
+                ref={el => { tabRefs.current[i] = el }}
                 className={[
                   styles.tab,
                   activeView === v ? styles.active : '',

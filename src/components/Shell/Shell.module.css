@@ -5,7 +5,7 @@
   box-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
 .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.12em; color: #fff; }
-.tabs { display: flex; gap: 2px; flex: 1; align-items: center; }
+.tabs { display: flex; gap: 2px; flex: 1; align-items: center; position: relative; }
 
 .tab {
   position: relative;
@@ -15,16 +15,15 @@
   cursor: pointer; display: flex; align-items: center; gap: 6px;
   transition: color 0.2s ease;
 }
-.tab::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 14px; right: 14px;
-  height: 2px; background: #F4A124;
-  transform: scaleX(0);
-  transition: transform 0.2s ease;
-}
 .tab.active { color: #fff; }
-.tab.active::after { transform: scaleX(1); }
+.indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: #F4A124;
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
 .tab.dimmed  { opacity: 0.4; cursor: not-allowed; }
 .sep {
   align-self: center; line-height: 1;
