@@ -10,6 +10,8 @@ interface Props {
   xScale?: (year: number) => number
   padLeft?: number
   padRight?: number
+  onHoverYear?: (year: number | null) => void
+  disabled?: boolean
 }
 
 interface TooltipState {
@@ -60,9 +62,11 @@ function makeSpline(pts: { x: number; val: number }[]): (x: number) => number {
   }
 }
 
-export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, padRight }: Props) {
+export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, padRight, onHoverYear, disabled }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const onHoverYearRef = useRef(onHoverYear)
+  onHoverYearRef.current = onHoverYear
 
   const terms = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -103,7 +107,7 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
     if (width < 40) return
 
     const PAD = {
-      top: 12, bottom: 24,
+      top: 12, bottom: 6,
       left: padLeft ?? 32,
       right: padRight ?? 88,
     }
@@ -225,16 +229,6 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
         .text(l.term)
     })
 
-    // X axis — tick only at real years
-    chart.append('g')
-      .attr('transform', `translate(0,${chartH})`)
-      .call(d3.axisBottom(xScale).tickValues(years).tickFormat(d => String(d)).tickSize(3))
-      .call(g => {
-        g.select('.domain').attr('stroke', 'rgba(7,59,76,0.12)')
-        g.selectAll('.tick line').attr('stroke', 'rgba(7,59,76,0.1)')
-        g.selectAll('.tick text').attr('font-size', 9).attr('fill', '#9ca3af').attr('dy', '1.3em')
-      })
-
     // Y axis
     chart.append('g')
       .call(d3.axisLeft(yScale).ticks(3).tickFormat(() => ''))
@@ -246,12 +240,7 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
       .attr('fill', 'rgba(7,59,76,0.28)').attr('font-family', 'system-ui, sans-serif')
       .text('CONCEPT MENTIONS BY YEAR')
 
-    // ── Crosshair + tooltip — follows mouse continuously ──────────────────────
-    const crosshair = chart.append('line')
-      .attr('y1', 0).attr('y2', chartH)
-      .attr('stroke', 'rgba(7,59,76,0.25)').attr('stroke-width', 1)
-      .attr('stroke-dasharray', '3 3').attr('pointer-events', 'none').attr('opacity', 0)
-
+    // ── Hover dots + tooltip — snapped to nearest year ──────────────────────
     const dots = series.map(s =>
       chart.append('circle')
         .attr('r', 3).attr('fill', s.color).attr('stroke', '#fff').attr('stroke-width', 1.5)
@@ -260,28 +249,30 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
 
     chart.append('rect')
       .attr('width', chartW).attr('height', chartH)
-      .attr('fill', 'transparent').attr('cursor', 'crosshair')
+      .attr('fill', 'transparent').attr('cursor', 'default')
       .on('mousemove', function(event: MouseEvent) {
         const [mx] = d3.pointer(event, this as SVGRectElement)
         const xi = Math.max(0, Math.min(N_FINE - 1,
           Math.round((xScale.invert(mx) - yearStart) / (yearEnd - yearStart) * (N_FINE - 1))
         ))
-        crosshair.attr('x1', mx).attr('x2', mx).attr('opacity', 1)
+        const snappedYear = Math.round(xs[xi])
+        const snappedX = xScale(snappedYear)
         dots.forEach((dot, i) => {
-          dot.attr('cx', mx).attr('cy', yScale(series[i].vals[xi])).attr('opacity', 1)
+          dot.attr('cx', snappedX).attr('cy', yScale(series[i].vals[xi])).attr('opacity', 1)
         })
+        onHoverYearRef.current?.(snappedYear)
         setTooltip({
           clientX: event.clientX,
           clientY: event.clientY,
-          year: Math.round(xs[xi]),
+          year: snappedYear,
           items: series
             .map(s => ({ term: s.term, val: Math.max(0, s.spline(xs[xi])), color: s.color }))
             .sort((a, b) => b.val - a.val),
         })
       })
       .on('mouseleave', () => {
-        crosshair.attr('opacity', 0)
         dots.forEach(d => d.attr('opacity', 0))
+        onHoverYearRef.current?.(null)
         setTooltip(null)
       })
     } // close draw()
@@ -305,7 +296,7 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
 
   return (
     <>
-      <svg ref={svgRef} style={{ width: '100%', height, display: 'block' }} />
+      <svg ref={svgRef} style={{ width: '100%', height, display: 'block', pointerEvents: disabled ? 'none' : undefined }} />
 
       {tooltip && createPortal(
         <div className="card" style={{

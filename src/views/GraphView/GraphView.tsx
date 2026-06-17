@@ -22,7 +22,6 @@ const GROUPED_RELATION_TYPES: { group: string; label: string; types: string[] }[
   { group: 'correlation', label: 'Correlation', types: ['CORRELATES_WITH', 'ASSOCIATED_WITH', 'ANALOGOUS_TO'] },
   { group: 'causation',   label: 'Causation',   types: ['CAUSES', 'INCREASES', 'DECREASES', 'INHIBITS', 'INDUCES', 'MAY_CAUSE'] },
   { group: 'definition',  label: 'Definition',  types: ['DESCRIBES', 'IS_DEFINED_AS'] },
-  { group: 'concept',     label: 'Concept',     types: ['HAS_CONCEPT'] },
 ]
 
 export function GraphView() {
@@ -107,7 +106,7 @@ export function GraphView() {
     setFilters({ relationTypes: { ...filters.relationTypes, ...update } })
   }
 
-  const nodeTypeKeys = ['Argument', 'Entity', 'Concept'] as const
+  const nodeTypeKeys = ['Argument', 'Entity'] as const
   const allNodeTypesOn = nodeTypeKeys.every(t => filters.nodeTypes[t])
   const anyNodeTypeOn = nodeTypeKeys.some(t => filters.nodeTypes[t])
 
@@ -122,27 +121,18 @@ export function GraphView() {
         allChecked={allNodeTypesOn}
         allIndeterminate={!allNodeTypesOn && anyNodeTypeOn}
         onAllChange={checked => {
-          const nextNodeTypes = { Argument: checked, Entity: checked, Concept: checked }
-          setFilters({ nodeTypes: nextNodeTypes })
+          setFilters({ nodeTypes: { ...filters.nodeTypes, Argument: checked, Entity: checked } })
         }}
       >
-        {nodeTypeKeys.map(type => {
-          const conceptDisabled = type === 'Concept' && !filters.nodeTypes.Argument
-          return (
-            <label key={type} style={{ ...checkRow, opacity: conceptDisabled ? 0.35 : 1 }}>
-              <input type="checkbox"
-                checked={filters.nodeTypes[type]}
-                disabled={conceptDisabled}
-                onChange={e => {
-                  const nextNodeTypes = { ...filters.nodeTypes, [type]: e.target.checked }
-                  if (type === 'Argument' && !e.target.checked) nextNodeTypes.Concept = false
-                  setFilters({ nodeTypes: nextNodeTypes })
-                }}
-                style={{ accentColor: '#F4A124' }} />
-              <span style={labelText}>{type}</span>
-            </label>
-          )
-        })}
+        {nodeTypeKeys.map(type => (
+          <label key={type} style={checkRow}>
+            <input type="checkbox"
+              checked={filters.nodeTypes[type]}
+              onChange={e => setFilters({ nodeTypes: { ...filters.nodeTypes, [type]: e.target.checked } })}
+              style={{ accentColor: '#F4A124' }} />
+            <span style={labelText}>{type}</span>
+          </label>
+        ))}
       </FilterSection>
 
       <FilterSection label="Min Confidence" hint={`≥ ${filters.minConfidence.toFixed(2)}`}>
@@ -166,9 +156,7 @@ export function GraphView() {
         }}
       >
         {GROUPED_RELATION_TYPES.map(({ group, label, types }) => {
-          const groupDisabled =
-            (group !== 'concept' && !filters.nodeTypes.Entity) ||
-            (group === 'concept' && !filters.nodeTypes.Concept)
+          const groupDisabled = !filters.nodeTypes.Entity
           const allOn = !groupDisabled && types.every(t => filters.relationTypes[t] !== false)
           const allOff = types.every(t => filters.relationTypes[t] === false)
           const color = REL_GROUP_COLORS[group]
@@ -222,10 +210,6 @@ export function GraphView() {
           <span style={{ width: 14, height: 14, background: '#118ab2', borderRadius: '50%', flexShrink: 0 }} />
           <span style={legendText}>Entity</span>
         </div>
-        <div style={legendRow}>
-          <svg width="14" height="14" style={{ flexShrink: 0 }}><polygon points="7,0 14,7 7,14 0,7" fill="#6366f1" opacity="0.85" /></svg>
-          <span style={legendText}>Concept</span>
-        </div>
         <div style={{ ...legendRow, marginTop: 6, borderTop: '1px solid rgba(7,59,76,0.06)', paddingTop: 6 }}>
           <span style={{ width: 14, height: 14, borderRadius: 3, border: '2px solid #F4A124', background: 'transparent', flexShrink: 0 }} />
           <span style={legendText}>Selected node</span>
@@ -242,11 +226,7 @@ export function GraphView() {
               const color = REL_GROUP_COLORS[group]
               return (
                 <div key={type} style={{ ...legendRow, opacity: active ? 1 : 0.3, marginBottom: 4 }}>
-                  {group === 'concept' ? (
-                    <svg width="22" height="12" style={{ flexShrink: 0 }}>
-                      <line x1="0" y1="6" x2="22" y2="6" stroke={color} strokeWidth="1.5" opacity="0.65" />
-                    </svg>
-                  ) : group === 'correlation' ? (
+                  {group === 'correlation' ? (
                     // symmetric: arrowhead at both ends
                     <svg width="22" height="12" style={{ flexShrink: 0 }}>
                       <polygon points="0,6 6,1 16,1 22,6 16,11 6,11" fill={`${color}22`} stroke={color} strokeWidth="1" />

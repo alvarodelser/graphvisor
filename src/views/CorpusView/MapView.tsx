@@ -32,7 +32,6 @@ export function MapView({ docs, selectedIds }: Props) {
   return (
     <>
       <svg ref={svgRef} className={styles.svg} />
-      <div className={styles.lassoChip}>LASSO</div>
       {tooltip && (
         <FloatingCard style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#073b4c', marginBottom: 4 }}>
