@@ -21,17 +21,3 @@
   word-break: break-word;
 }
 
-.chart {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.score {
-  font-size: 14px;
-  font-weight: 600;
-  color: #373b4f;
-  min-width: 30px;
-  text-align: right;
-}
