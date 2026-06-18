@@ -17,16 +17,35 @@ interface Props {
 }
 
 export function Shell({ children }: Props) {
-  const { activeView, setActiveView, selectedDocumentIds, selectedNodeId, selectedArgumentId } = useStore()
+  const {
+    activeView, setActiveView,
+    selectedDocumentIds, selectedNodeId, selectedArgumentId,
+    selectedConceptId, selectedRelation,
+  } = useStore()
   const viewIndex = VIEW_ORDER.indexOf(activeView)
 
   const hasCorpusSelection = selectedDocumentIds.length > 0
-  const hasDetailTarget = selectedNodeId !== null || selectedArgumentId !== null
+  const hasDetailTarget =
+    selectedNodeId !== null ||
+    selectedArgumentId !== null ||
+    selectedConceptId !== null ||
+    selectedRelation !== null
+
   const showCTA =
-    (activeView === 'corpus' && selectedDocumentIds.length > 0) ||
+    (activeView === 'corpus' && hasCorpusSelection) ||
+    (activeView === 'discover' && hasCorpusSelection) ||
     (activeView === 'graph' && hasDetailTarget)
-  const ctaLabel = activeView === 'corpus' ? 'View Graph →' : 'Open Detail →'
-  const handleCTA = () => setActiveView(activeView === 'corpus' ? 'graph' : 'detail')
+
+  const ctaLabel =
+    activeView === 'corpus' ? 'Go to Discover' :
+    activeView === 'discover' ? 'Go to Explore' :
+    'Go to Detail'
+
+  const handleCTA = () => {
+    if (activeView === 'corpus') setActiveView('discover')
+    else if (activeView === 'discover') setActiveView('graph')
+    else setActiveView('detail')
+  }
 
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const indicatorRef = useRef<HTMLDivElement>(null)
@@ -54,14 +73,14 @@ export function Shell({ children }: Props) {
                 className={[
                   styles.tab,
                   activeView === v ? styles.active : '',
-                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection) ? styles.dimmed : '',
+                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection) || (v === 'discover' && !hasCorpusSelection) ? styles.dimmed : '',
                 ].join(' ')}
                 onClick={() => {
                   if (v === 'detail' && !hasDetailTarget) return
-                  if (v === 'graph' && !hasCorpusSelection) return
+                  if ((v === 'graph' || v === 'discover') && !hasCorpusSelection) return
                   setActiveView(v)
                 }}
-                disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection)}
+                disabled={(v === 'detail' && !hasDetailTarget) || ((v === 'graph' || v === 'discover') && !hasCorpusSelection)}
               >
                 {VIEW_LABELS[v]}
                 {v === 'graph' && hasCorpusSelection && (
@@ -76,7 +95,12 @@ export function Shell({ children }: Props) {
           ))}
         </nav>
         {showCTA && (
-          <button className={styles.cta} onClick={handleCTA}>{ctaLabel}</button>
+          <button className={styles.cta} onClick={handleCTA}>
+            {ctaLabel}
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+              <path d="M4 2L8 5.5L4 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         )}
       </header>
 
