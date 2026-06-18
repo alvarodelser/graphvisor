@@ -32,7 +32,7 @@ export function TopicsView({ docs, selectedIds }: Props) {
   )
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'auto', padding: 24, paddingTop: 64, background: '#fafbfc' }}>
+    <div style={{ position: 'absolute', inset: 0, overflow: 'auto', padding: 24, paddingTop: 100, background: '#fafbfc' }}>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14,
       }}>

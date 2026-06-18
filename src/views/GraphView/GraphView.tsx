@@ -15,6 +15,7 @@ export function GraphView() {
   const [scope, setScope] = useState<SelectedScope>({ argumentIds: [] })
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelWidth, setPanelWidth] = useState(320)
+  const [hoveredConceptId, setHoveredConceptId] = useState<string | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const didDragRef = useRef(false)
   const { activeView, selectedDocumentIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView } = useStore()
@@ -81,6 +82,7 @@ export function GraphView() {
             blobs={blobs}
             scope={scope}
             onScopeChange={setScope}
+            onConceptHover={setHoveredConceptId}
             onConceptDetail={(conceptId) => {
               setSelectedConceptId(conceptId)
               setSelectedArgumentId(null)
@@ -120,7 +122,7 @@ export function GraphView() {
       </div>
 
       <div className={styles.canvas}>
-        <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} />
+        <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} />
       </div>
     </div>
   )

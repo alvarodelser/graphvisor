@@ -20,11 +20,12 @@ export function Shell({ children }: Props) {
   const {
     activeView, setActiveView,
     selectedDocumentIds, selectedNodeId, selectedArgumentId,
-    selectedConceptId, selectedRelation,
+    selectedConceptId, selectedRelation, selectedHypothesisIds,
   } = useStore()
   const viewIndex = VIEW_ORDER.indexOf(activeView)
 
   const hasCorpusSelection = selectedDocumentIds.length > 0
+  const hasHypothesisSelection = selectedHypothesisIds.length > 0
   const hasDetailTarget =
     selectedNodeId !== null ||
     selectedArgumentId !== null ||
@@ -33,7 +34,7 @@ export function Shell({ children }: Props) {
 
   const showCTA =
     (activeView === 'corpus' && hasCorpusSelection) ||
-    (activeView === 'discover' && hasCorpusSelection) ||
+    (activeView === 'discover' && hasHypothesisSelection) ||
     (activeView === 'graph' && hasDetailTarget)
 
   const ctaLabel =
@@ -73,18 +74,22 @@ export function Shell({ children }: Props) {
                 className={[
                   styles.tab,
                   activeView === v ? styles.active : '',
-                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasCorpusSelection) || (v === 'discover' && !hasCorpusSelection) ? styles.dimmed : '',
+                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection) ? styles.dimmed : '',
                 ].join(' ')}
                 onClick={() => {
                   if (v === 'detail' && !hasDetailTarget) return
-                  if ((v === 'graph' || v === 'discover') && !hasCorpusSelection) return
+                  if (v === 'graph' && !hasHypothesisSelection) return
+                  if (v === 'discover' && !hasCorpusSelection) return
                   setActiveView(v)
                 }}
-                disabled={(v === 'detail' && !hasDetailTarget) || ((v === 'graph' || v === 'discover') && !hasCorpusSelection)}
+                disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection)}
               >
                 {VIEW_LABELS[v]}
-                {v === 'graph' && hasCorpusSelection && (
+                {v === 'discover' && hasCorpusSelection && (
                   <span className={styles.badge}>{selectedDocumentIds.length}</span>
+                )}
+                {v === 'graph' && hasHypothesisSelection && (
+                  <span className={styles.badge}>{selectedHypothesisIds.length}</span>
                 )}
                 {v === 'detail' && hasDetailTarget && (
                   <span className={styles.badge}>●</span>

@@ -3,17 +3,17 @@ import { buildConceptTree } from './conceptTree'
 import type { ArgumentBlob, SelectedScope } from '../../types'
 import styles from './ConceptHierarchy.module.css'
 
-const conceptLabelFromId = (id: string) => id.replace(/^concept-/, '')
 
 interface Props {
   blobs: ArgumentBlob[]
   scope: SelectedScope
   onScopeChange: (s: SelectedScope) => void
+  onConceptHover?: (conceptId: string | null) => void
   onConceptDetail?: (conceptId: string) => void
   onArgumentDetail?: (argId: string) => void
 }
 
-export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptDetail, onArgumentDetail }: Props) {
+export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [hoverArg, setHoverArg] = useState<string | null>(null)
@@ -102,6 +102,8 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptDetail,
                 data-selected={allOn}
                 data-partial={someOn}
                 data-related={related.has(concept.id)}
+                onMouseEnter={() => onConceptHover?.(concept.id)}
+                onMouseLeave={() => onConceptHover?.(null)}
               >
                 <button className={styles.caretBtn} onClick={() => toggleExpand(concept.id)} aria-label={open ? 'collapse' : 'expand'}>
                   <svg className={`${styles.caret} ${open ? styles.caretOpen : ''}`} viewBox="0 0 12 12" width="12" height="12">
@@ -143,13 +145,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptDetail,
                       <input type="checkbox" className={styles.argBox}
                         checked={selected.has(a.id)} onChange={() => toggleArg(a.id)} />
                       <span className={styles.argLabel}>{a.full}</span>
-                      {a.secondaryConceptIds.length > 0 && (
-                        <span className={styles.chips}>
-                          {a.secondaryConceptIds.slice(0, 2).map(cid => (
-                            <span key={cid} className={styles.chip}>{conceptLabelFromId(cid)}</span>
-                          ))}
-                        </span>
-                      )}
                       {onArgumentDetail && (
                         <span
                           className={styles.detailIcon}

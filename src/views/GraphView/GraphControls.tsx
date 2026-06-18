@@ -7,7 +7,6 @@ export const REL_GROUP_COLORS: Record<string, string> = {
   correlation: RELATION_COLORS.correlation,
   causation: RELATION_COLORS.causation,
   definition: RELATION_COLORS.definition,
-  concept: RELATION_COLORS.concept,
 }
 
 export const GROUPED_RELATION_TYPES: { group: string; label: string; types: string[] }[] = [
@@ -15,7 +14,6 @@ export const GROUPED_RELATION_TYPES: { group: string; label: string; types: stri
   { group: 'correlation', label: 'Correlation', types: ['CORRELATES_WITH', 'ASSOCIATED_WITH', 'ANALOGOUS_TO'] },
   { group: 'causation',   label: 'Causation',   types: ['CAUSES', 'INCREASES', 'DECREASES', 'INHIBITS', 'INDUCES', 'MAY_CAUSE'] },
   { group: 'definition',  label: 'Definition',  types: ['DESCRIBES', 'IS_DEFINED_AS'] },
-  { group: 'concept',     label: 'Concept',     types: ['HAS_CONCEPT'] },
 ]
 
 interface FilterProps {
@@ -34,7 +32,7 @@ export function GraphFilterContent({ filters, setFilters, onReload }: FilterProp
     setFilters({ relationTypes: { ...filters.relationTypes, ...update } })
   }
 
-  const nodeTypeKeys = ['Argument', 'Entity', 'Concept'] as const
+  const nodeTypeKeys = ['Argument', 'Entity'] as const
   const allNodeTypesOn = nodeTypeKeys.every(t => filters.nodeTypes[t])
   const anyNodeTypeOn = nodeTypeKeys.some(t => filters.nodeTypes[t])
 
@@ -49,27 +47,19 @@ export function GraphFilterContent({ filters, setFilters, onReload }: FilterProp
         allChecked={allNodeTypesOn}
         allIndeterminate={!allNodeTypesOn && anyNodeTypeOn}
         onAllChange={checked => {
-          const nextNodeTypes = { Argument: checked, Entity: checked, Concept: checked }
+          const nextNodeTypes = { ...filters.nodeTypes, Argument: checked, Entity: checked }
           setFilters({ nodeTypes: nextNodeTypes })
         }}
       >
-        {nodeTypeKeys.map(type => {
-          const conceptDisabled = type === 'Concept' && !filters.nodeTypes.Argument
-          return (
-            <label key={type} style={{ ...checkRow, opacity: conceptDisabled ? 0.35 : 1 }}>
-              <input type="checkbox"
-                checked={filters.nodeTypes[type]}
-                disabled={conceptDisabled}
-                onChange={e => {
-                  const nextNodeTypes = { ...filters.nodeTypes, [type]: e.target.checked }
-                  if (type === 'Argument' && !e.target.checked) nextNodeTypes.Concept = false
-                  setFilters({ nodeTypes: nextNodeTypes })
-                }}
-                style={{ accentColor: '#F4A124' }} />
-              <span style={labelText}>{type}</span>
-            </label>
-          )
-        })}
+        {nodeTypeKeys.map(type => (
+          <label key={type} style={checkRow}>
+            <input type="checkbox"
+              checked={filters.nodeTypes[type]}
+              onChange={e => setFilters({ nodeTypes: { ...filters.nodeTypes, [type]: e.target.checked } })}
+              style={{ accentColor: '#F4A124' }} />
+            <span style={labelText}>{type}</span>
+          </label>
+        ))}
       </FilterSection>
 
       <FilterSection label="Min Confidence" hint={`≥ ${filters.minConfidence.toFixed(2)}`}>
@@ -93,9 +83,7 @@ export function GraphFilterContent({ filters, setFilters, onReload }: FilterProp
         }}
       >
         {GROUPED_RELATION_TYPES.map(({ group, label, types }) => {
-          const groupDisabled =
-            (group !== 'concept' && !filters.nodeTypes.Entity) ||
-            (group === 'concept' && !filters.nodeTypes.Concept)
+          const groupDisabled = !filters.nodeTypes.Entity
           const allOn = !groupDisabled && types.every(t => filters.relationTypes[t] !== false)
           const allOff = types.every(t => filters.relationTypes[t] === false)
           const color = REL_GROUP_COLORS[group]

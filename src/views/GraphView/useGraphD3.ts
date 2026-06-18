@@ -70,6 +70,7 @@ interface Options {
   showBlobs: boolean
   selectedArgumentId: string | null
   selectedConceptId: string | null
+  hoveredConceptId: string | null
   onNodeClick: (node: GraphNode) => void
   onBlobClick: (blob: ArgumentBlob) => void
   onConceptClick: (payload: ConceptClickPayload) => void
@@ -351,6 +352,20 @@ export function useGraphD3(
         .attr('fill', d => d.id === aid ? BLOB_FILL_SEL : BLOB_FILL)
       argNodeGroups.attr('opacity', d => d.id === aid ? 1 : 0.12)
     }
+    function applyConceptHighlight(conceptId: string) {
+      const label = conceptId.replace(/^concept-/, '')
+      const argIds = new Set(
+        optsRef.current.blobs.filter(b => b.parent_concepts.includes(label)).map(b => b.id)
+      )
+      const allMembers = new Set([...argIds].flatMap(aid => model.argMembers.get(aid) ?? []))
+      nodeGroups.attr('opacity', d => allMembers.has(d.id) ? 1 : 0.12)
+      edgeGroups.attr('opacity', d =>
+        allMembers.has(edgeEndId(d, 'source')) && allMembers.has(edgeEndId(d, 'target')) ? 1 : 0.05)
+      blobPaths.attr('opacity', d => argIds.has(d.id) ? 1 : 0.12)
+        .attr('stroke', d => argIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
+        .attr('fill', d => argIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
+      argNodeGroups.attr('opacity', d => argIds.has(d.id) ? 1 : 0.12)
+    }
     function clearHighlight() {
       nodeGroups.attr('opacity', null)
       edgeGroups.attr('opacity', null)
@@ -362,7 +377,9 @@ export function useGraphD3(
     }
     function applySticky() {
       const aId = optsRef.current.selectedArgumentId
+      const hcId = optsRef.current.hoveredConceptId
       if (aId) applyArgHighlight(aId)
+      else if (hcId) applyConceptHighlight(hcId)
       else clearHighlight()
     }
     highlightFnRef.current = applySticky
@@ -683,7 +700,7 @@ export function useGraphD3(
   useEffect(() => { simRef.current?.alpha(0.3).restart() }, [opts.showBlobs, opts.blobs])
 
   // ── Sticky highlight (selection-driven) ─────────────────────────────────────────
-  useEffect(() => { highlightFnRef.current() }, [opts.selectedArgumentId, opts.selectedConceptId])
+  useEffect(() => { highlightFnRef.current() }, [opts.selectedArgumentId, opts.selectedConceptId, opts.hoveredConceptId])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

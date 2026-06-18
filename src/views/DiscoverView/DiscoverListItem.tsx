@@ -1,4 +1,5 @@
 import type { Hypothesis } from '../../types'
+import { useStore } from '../../store/useStore'
 import { HypothesisRadarChart } from './HypothesisRadarChart'
 import { scoreColor } from './scoreColor'
 import styles from './DiscoverListItem.module.css'
@@ -16,8 +17,21 @@ const DIMENSIONS: { key: keyof Hypothesis['scores']; label: string }[] = [
 
 
 export function DiscoverListItem({ hypothesis }: DiscoverListItemProps) {
+  const { selectedHypothesisIds, selectHypothesis } = useStore()
+  const isSelected = selectedHypothesisIds.includes(hypothesis.hypothesis)
+
+  const handleClick = (e: React.MouseEvent) => {
+    selectHypothesis(hypothesis.hypothesis, e.shiftKey)
+  }
+
   return (
-    <div className={styles.item}>
+    <div
+      className={[styles.item, isSelected ? styles.selected : ''].join(' ')}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && selectHypothesis(hypothesis.hypothesis, false)}
+    >
       <div className={styles.left}>
         <div className={styles.title}>{hypothesis.hypothesis}</div>
         <div className={styles.pills}>

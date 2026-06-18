@@ -23,6 +23,7 @@ interface AppState {
   selectedArgumentId: string | null
   selectedConceptId: string | null
   selectedRelation: SelectedRelation | null
+  selectedHypothesisIds: string[]
   toggleDocumentSelection: (id: string) => void
   setSelectedDocuments: (ids: string[]) => void
   clearSelection: () => void
@@ -36,6 +37,9 @@ interface AppState {
   setSelectedArgumentId: (id: string | null) => void
   setSelectedConceptId: (id: string | null) => void
   setSelectedRelation: (r: SelectedRelation | null) => void
+  selectHypothesis: (id: string, multi: boolean) => void
+  selectAllHypotheses: (ids: string[]) => void
+  clearHypothesisSelection: () => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -49,6 +53,7 @@ export const useStore = create<AppState>((set) => ({
   selectedArgumentId: null,
   selectedConceptId: null,
   selectedRelation: null,
+  selectedHypothesisIds: [],
   toggleDocumentSelection: (id) =>
     set((s) => ({
       selectedDocumentIds: s.selectedDocumentIds.includes(id)
@@ -67,4 +72,22 @@ export const useStore = create<AppState>((set) => ({
   setSelectedArgumentId: (id) => set({ selectedArgumentId: id }),
   setSelectedConceptId: (id) => set({ selectedConceptId: id }),
   setSelectedRelation: (r) => set({ selectedRelation: r }),
+  selectHypothesis: (id, multi) =>
+    set((s) => {
+      if (multi) {
+        return {
+          selectedHypothesisIds: s.selectedHypothesisIds.includes(id)
+            ? s.selectedHypothesisIds.filter((h) => h !== id)
+            : [...s.selectedHypothesisIds, id],
+        }
+      }
+      return {
+        selectedHypothesisIds:
+          s.selectedHypothesisIds.length === 1 && s.selectedHypothesisIds[0] === id
+            ? []
+            : [id],
+      }
+    }),
+  selectAllHypotheses: (ids) => set({ selectedHypothesisIds: ids }),
+  clearHypothesisSelection: () => set({ selectedHypothesisIds: [] }),
 }))

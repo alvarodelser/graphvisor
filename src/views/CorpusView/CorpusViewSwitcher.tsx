@@ -3,9 +3,9 @@ import { SquaresFour, MapTrifold, ChartLine, Lasso, ArrowsHorizontal, CursorClic
 import type { CorpusViewMode } from '../../types'
 
 const MODES = [
-  { value: 'topics' as CorpusViewMode, label: 'Topics', ModeIcon: SquaresFour, toolLabel: 'CLICK', ToolIcon: CursorClick },
-  { value: 'map' as CorpusViewMode, label: 'Map', ModeIcon: MapTrifold, toolLabel: 'LASSO', ToolIcon: Lasso },
-  { value: 'timeline' as CorpusViewMode, label: 'Timeline', ModeIcon: ChartLine, toolLabel: 'DRAG RANGE', ToolIcon: ArrowsHorizontal },
+  { value: 'topics' as CorpusViewMode, label: 'by Topic', ModeIcon: SquaresFour, toolLabel: 'CLICK', ToolIcon: CursorClick },
+  { value: 'map' as CorpusViewMode, label: 'by Content', ModeIcon: MapTrifold, toolLabel: 'LASSO', ToolIcon: Lasso },
+  { value: 'timeline' as CorpusViewMode, label: 'by Publication Date', ModeIcon: ChartLine, toolLabel: 'DRAG RANGE', ToolIcon: ArrowsHorizontal },
 ]
 
 interface Props {
@@ -31,7 +31,7 @@ export function CorpusViewSwitcher({ mode, onChange }: Props) {
 
   return (
     <div ref={containerRef} style={{
-      position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+      position: 'absolute', top: 32, left: '50%', transform: 'translateX(-50%)',
       zIndex: 20,
     }}>
       <div style={{
