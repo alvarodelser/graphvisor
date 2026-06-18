@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { Hypothesis } from '../../types'
+import { scoreColor } from './scoreColor'
 
 interface HypothesisRadarChartProps {
   scores: Hypothesis['scores']
@@ -29,9 +30,9 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
 
     const avgNum = data.reduce((s, d) => s + d.value, 0) / data.length
     const avg = avgNum.toFixed(1)
-    const hue = Math.round((avgNum / 10) * 135)
-    const polyColor = `hsl(${hue}, 72%, 42%)`
-    const polyFill = `hsla(${hue}, 72%, 50%, 0.2)`
+    const c = scoreColor(avgNum)
+    const polyColor = c.solid
+    const polyFill = c.bg
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
