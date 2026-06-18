@@ -27,7 +27,11 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
     const chartRadius = (size / 2) - labelPad
     const angleSlice = (Math.PI * 2) / dimensions.length
 
-    const avg = (data.reduce((s, d) => s + d.value, 0) / data.length).toFixed(1)
+    const avgNum = data.reduce((s, d) => s + d.value, 0) / data.length
+    const avg = avgNum.toFixed(1)
+    const hue = Math.round((avgNum / 10) * 135)
+    const polyColor = `hsl(${hue}, 72%, 42%)`
+    const polyFill = `hsla(${hue}, 72%, 50%, 0.2)`
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -77,8 +81,8 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
 
     g.append('path')
       .attr('d', pathData)
-      .attr('fill', 'rgba(6, 214, 160, 0.25)')
-      .attr('stroke', '#06d6a0')
+      .attr('fill', polyFill)
+      .attr('stroke', polyColor)
       .attr('stroke-width', 1.5)
 
     // Avg score in center
@@ -88,7 +92,7 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
       .attr('dominant-baseline', 'middle')
       .attr('font-size', '13px')
       .attr('font-weight', '700')
-      .attr('fill', '#073b4c')
+      .attr('fill', polyColor)
       .text(avg)
   }, [scores, size])
 
