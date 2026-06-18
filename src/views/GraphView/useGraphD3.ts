@@ -26,7 +26,7 @@ const ARG_CARD_RX = 9
 const ARG_TEXT_CHARS = 16     // chars per wrapped line
 const ARG_TEXT_LINES = 2      // max lines of argument text shown inside the card
 const ARG_LINE_H = 8          // line height, graph units
-const ARG_SEP_STRENGTH = 0.6  // how hard overlapping argument cards push apart
+const ARG_SEP_STRENGTH = 1.0  // how hard overlapping argument cards push apart
 const ARG_SEP_MARGIN = 16     // extra gap between cards, graph units
 
 // Greedy word-wrap into at most `maxLines` lines of ~`maxChars`, ellipsising overflow.
@@ -73,6 +73,7 @@ interface Options {
   onNodeClick: (node: GraphNode) => void
   onBlobClick: (blob: ArgumentBlob) => void
   onConceptClick: (payload: ConceptClickPayload) => void
+  onEdgeClick?: (edge: GraphEdge, sourceNode: GraphNode, targetNode: GraphNode) => void
   onHover?: (item: HoverItem) => void
   onCanvasClick?: () => void
 }
@@ -227,6 +228,10 @@ export function useGraphD3(
         })
       })
       .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        optsRef.current.onEdgeClick?.(d, d.source as GraphNode, d.target as GraphNode)
+      })
 
     // ── Blobs ─────────────────────────────────────────────────────────────────
     const blobPaths = blobG.selectAll<SVGPathElement, ArgumentBlob>('path.blob')

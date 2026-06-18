@@ -20,12 +20,20 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive }: Props) {
   const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
   const [isSticky, setIsSticky] = useState(false)
   const {
-    selectedNodeId, setSelectedNode, setActiveView, filters, setFilters,
+    selectedNodeId, setSelectedNode, filters, setFilters,
     selectedArgumentId, setSelectedArgumentId,
     selectedConceptId, setSelectedConceptId,
+    setSelectedRelation,
   } = useStore()
 
   const showBlobs = filters.nodeTypes.Argument && filters.nodeTypes.Entity
+
+  const clearAll = () => {
+    setSelectedNode(null)
+    setSelectedArgumentId(null)
+    setSelectedConceptId(null)
+    setSelectedRelation(null)
+  }
 
   const { reheat } = useGraphD3(svgRef, nodes, edges, {
     filters,
@@ -35,24 +43,40 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive }: Props) {
     selectedArgumentId,
     selectedConceptId,
     onNodeClick: (node) => {
+      clearAll()
       setSelectedNode(node.id)
-      setSelectedArgumentId(node.type === 'Argument' ? node.id : null)
-      setSelectedConceptId(null)
+      if (node.type === 'Argument') setSelectedArgumentId(node.id)
       setDisplayedItem({ type: 'node', node, x: 0, y: 0 })
       setIsSticky(true)
     },
     onBlobClick: (blob) => {
+      clearAll()
       setSelectedArgumentId(blob.id)
-      setSelectedNode(null)
-      setSelectedConceptId(null)
       setDisplayedItem({ type: 'blob', blob, x: 0, y: 0 })
       setIsSticky(true)
     },
     onConceptClick: (payload) => {
+      clearAll()
       setSelectedConceptId(payload.conceptId)
-      setSelectedArgumentId(null)
-      setSelectedNode(null)
       setDisplayedItem({ type: 'concept', ...payload, x: 0, y: 0 })
+      setIsSticky(true)
+    },
+    onEdgeClick: (edge: GraphEdge, sourceNode: GraphNode, targetNode: GraphNode) => {
+      clearAll()
+      setSelectedRelation({
+        id: edge.id,
+        relation_type: edge.relation_type,
+        confidence: edge.confidence,
+        group: edge.group,
+        full_predicate: edge.full_predicate,
+        source_document_title: edge.source_document_title,
+        reasoning: edge.reasoning,
+        sourceId: sourceNode.id,
+        sourceLabel: sourceNode.label,
+        targetId: targetNode.id,
+        targetLabel: targetNode.label,
+      })
+      setDisplayedItem({ type: 'edge', edge, sourceNode, targetNode, x: 0, y: 0 })
       setIsSticky(true)
     },
     onHover: (item) => {
@@ -63,9 +87,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive }: Props) {
       }
     },
     onCanvasClick: () => {
-      setSelectedNode(null)
-      setSelectedArgumentId(null)
-      setSelectedConceptId(null)
+      clearAll()
       setDisplayedItem(null)
       setIsSticky(false)
     },
@@ -79,23 +101,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive }: Props) {
         <NodeFloatingCard
           item={displayedItem}
           sticky={isSticky}
-          onDismiss={() => { setDisplayedItem(null); setIsSticky(false); setSelectedNode(null); setSelectedArgumentId(null); setSelectedConceptId(null) }}
-          onOpenDetail={() => {
-            if (displayedItem?.type === 'blob') {
-              setSelectedArgumentId(displayedItem.blob.id)
-              setSelectedNode(null)
-              setSelectedConceptId(null)
-            } else if (displayedItem?.type === 'node' && displayedItem.node.type === 'Argument') {
-              setSelectedArgumentId(displayedItem.node.id)
-              setSelectedNode(null)
-              setSelectedConceptId(null)
-            } else if (displayedItem?.type === 'concept') {
-              setSelectedConceptId(displayedItem.conceptId)
-              setSelectedArgumentId(null)
-              setSelectedNode(null)
-            }
-            setActiveView('detail')
-          }}
+          onDismiss={() => { setDisplayedItem(null); setIsSticky(false); clearAll() }}
         />
       )}
 

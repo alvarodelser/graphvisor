@@ -13,10 +13,9 @@ interface Props {
   item: NonNullable<HoverItem>
   sticky: boolean
   onDismiss: () => void
-  onOpenDetail: () => void
 }
 
-export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Props) {
+export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
   if (item.type === 'concept') {
     return (
       <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
@@ -32,9 +31,6 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
           {item.argCount} argument{item.argCount === 1 ? '' : 's'}
         </div>
-        {sticky && (
-          <button className={styles.detailBtn} onClick={onOpenDetail}>Open in Detail View →</button>
-        )}
       </div>
     )
   }
@@ -59,7 +55,6 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
           {blob.source_document_title} · {blob.entityIds.length} entities
         </div>
-        <button className={styles.detailBtn} onClick={onOpenDetail}>Open in Detail View →</button>
       </div>
     )
   }
@@ -128,9 +123,6 @@ export function NodeFloatingCard({ item, sticky, onDismiss, onOpenDetail }: Prop
         <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4 }}>
           {node.source_document_title}{node.page_reference != null ? ` · p.${node.page_reference}` : ''}
         </div>
-      )}
-      {sticky && node.type === 'Argument' && (
-        <button className={styles.detailBtn} onClick={onOpenDetail}>Open in Detail View →</button>
       )}
     </div>
   )
