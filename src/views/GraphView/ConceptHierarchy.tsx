@@ -16,7 +16,6 @@ interface Props {
 export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [hoverArg, setHoverArg] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
   const q = query.trim().toLowerCase()
@@ -48,16 +47,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, 
       if (n.has(id)) n.delete(id); else n.add(id)
       return n
     })
-
-  // Related concepts = the secondary memberships of the active (hovered) argument.
-  const related = useMemo(() => {
-    if (!hoverArg) return new Set<string>()
-    for (const c of tree) {
-      const a = c.args.find(x => x.id === hoverArg)
-      if (a) return new Set(a.secondaryConceptIds)
-    }
-    return new Set<string>()
-  }, [tree, hoverArg])
 
   const allConceptIds = useMemo(() => tree.map(c => c.id), [tree])
 
@@ -101,7 +90,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, 
                 className={styles.concept}
                 data-selected={allOn}
                 data-partial={someOn}
-                data-related={related.has(concept.id)}
                 onMouseEnter={() => onConceptHover?.(concept.id)}
                 onMouseLeave={() => onConceptHover?.(null)}
               >
@@ -138,8 +126,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, 
                       key={a.id}
                       className={styles.arg}
                       data-selected={selected.has(a.id)}
-                      onMouseEnter={() => setHoverArg(a.id)}
-                      onMouseLeave={() => setHoverArg(null)}
                       title={a.full}
                     >
                       <input type="checkbox" className={styles.argBox}
