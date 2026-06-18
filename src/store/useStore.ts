@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FilterState, ActiveView, SizeBy, CorpusViewMode } from '../types'
+import type { FilterState, ActiveView, SizeBy, CorpusViewMode, SelectedRelation } from '../types'
 
 const defaultFilters: FilterState = {
   nodeTypes: { Argument: false, Entity: true, Concept: false },
@@ -22,6 +22,7 @@ interface AppState {
   showBlobs: boolean
   selectedArgumentId: string | null
   selectedConceptId: string | null
+  selectedRelation: SelectedRelation | null
   toggleDocumentSelection: (id: string) => void
   setSelectedDocuments: (ids: string[]) => void
   clearSelection: () => void
@@ -34,6 +35,7 @@ interface AppState {
   setShowBlobs: (v: boolean) => void
   setSelectedArgumentId: (id: string | null) => void
   setSelectedConceptId: (id: string | null) => void
+  setSelectedRelation: (r: SelectedRelation | null) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -46,6 +48,7 @@ export const useStore = create<AppState>((set) => ({
   showBlobs: false,
   selectedArgumentId: null,
   selectedConceptId: null,
+  selectedRelation: null,
   toggleDocumentSelection: (id) =>
     set((s) => ({
       selectedDocumentIds: s.selectedDocumentIds.includes(id)
@@ -63,4 +66,5 @@ export const useStore = create<AppState>((set) => ({
   setShowBlobs: (v) => set({ showBlobs: v }),
   setSelectedArgumentId: (id) => set({ selectedArgumentId: id }),
   setSelectedConceptId: (id) => set({ selectedConceptId: id }),
+  setSelectedRelation: (r) => set({ selectedRelation: r }),
 }))

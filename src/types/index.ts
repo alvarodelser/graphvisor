@@ -122,6 +122,20 @@ export interface ArgumentBlob {
   parent_concepts: string[]
 }
 
+export interface SelectedRelation {
+  id: string
+  relation_type: string
+  confidence: number
+  group: RelationGroup
+  full_predicate?: string
+  source_document_title?: string
+  reasoning?: string
+  sourceId: string
+  sourceLabel: string
+  targetId: string
+  targetLabel: string
+}
+
 export interface Hypothesis {
   hypothesis: string
   decision: 'ADVANCE' | 'BORDERLINE'
