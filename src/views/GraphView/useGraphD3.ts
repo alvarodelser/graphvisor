@@ -26,6 +26,8 @@ const ARG_CARD_RX = 9
 const ARG_TEXT_CHARS = 16     // chars per wrapped line
 const ARG_TEXT_LINES = 2      // max lines of argument text shown inside the card
 const ARG_LINE_H = 8          // line height, graph units
+const ARG_SEP_STRENGTH = 0.6  // how hard overlapping argument cards push apart
+const ARG_SEP_MARGIN = 16     // extra gap between cards, graph units
 
 // Greedy word-wrap into at most `maxLines` lines of ~`maxChars`, ellipsising overflow.
 function wrapArgText(raw: string, maxChars: number, maxLines: number): string[] {
@@ -373,6 +375,38 @@ export function useGraphD3(
       const intra = as.some(a => at.includes(a))
       linkStrength.set(e.id, e.confidence * (intra ? INTRA_ARG_LINK : INTER_ARG_LINK))
     }
+    // Argument-NODE separation: treat each argument as its CARD rectangle (centred
+    // on its members' centroid) and push OVERLAPPING cards apart by nudging their
+    // member entities — so argument cards/blobs never overlap. Rectangular AABB
+    // (cards are wide, not points), every pair, scaled to the live card size. A
+    // shared entity sits between both cards (its opposing pushes cancel).
+    const sepById = new Map(simNodes.map(n => [n.id, n]))
+    const argSeparation = (alpha: number) => {
+      const s = nodeScaleFor(zoomKRef.current)
+      const needX = (ARG_CARD_W + ARG_SEP_MARGIN) * s, needY = (ARG_CARD_H + ARG_SEP_MARGIN) * s
+      const cents: { mem: string[]; x: number; y: number }[] = []
+      for (const arg of model.arguments) {
+        const mem = model.argMembers.get(arg.id) ?? []
+        let sx = 0, sy = 0, cnt = 0
+        for (const id of mem) { const n = sepById.get(id); if (n) { sx += n.x ?? 0; sy += n.y ?? 0; cnt++ } }
+        if (cnt) cents.push({ mem, x: sx / cnt, y: sy / cnt })
+      }
+      const f = ARG_SEP_STRENGTH * alpha * 0.5
+      for (let i = 0; i < cents.length; i++) {
+        for (let j = i + 1; j < cents.length; j++) {
+          const A = cents[i], B = cents[j]
+          const dx = B.x - A.x, dy = B.y - A.y
+          const ox = needX - Math.abs(dx), oy = needY - Math.abs(dy)
+          if (ox <= 0 || oy <= 0) continue   // rectangles already clear
+          // Resolve along the axis of least overlap (true rectangle separation).
+          let pvx = 0, pvy = 0
+          if (ox <= oy) pvx = (dx < 0 ? -ox : ox)
+          else pvy = (dy < 0 ? -oy : oy)
+          for (const id of A.mem) { const n = sepById.get(id); if (n) { n.vx = (n.vx ?? 0) - pvx * f; n.vy = (n.vy ?? 0) - pvy * f } }
+          for (const id of B.mem) { const n = sepById.get(id); if (n) { n.vx = (n.vx ?? 0) + pvx * f; n.vy = (n.vy ?? 0) + pvy * f } }
+        }
+      }
+    }
     const sim = d3.forceSimulation<GraphNode>(simNodes)
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id)
         .strength(d => linkStrength.get(d.id) ?? d.confidence * INTER_ARG_LINK))
@@ -382,6 +416,7 @@ export function useGraphD3(
       .force('bridge', bridgePullForce(model, simNodes))
       .force('chainHome', chainHomeForce(model, centers, simNodes))
       .force('blobRepel', blobRepulsionForce(model, simNodes))
+      .force('argSep', argSeparation)
 
     // ── Per-tick render ──────────────────────────────────────────────────────────
     function drawChevron(
