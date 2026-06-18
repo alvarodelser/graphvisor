@@ -13,28 +13,37 @@ export function GraphView() {
   const [edges, setEdges] = useState<GraphEdge[]>([])
   const [blobs, setBlobs] = useState<ArgumentBlob[]>([])
   const [scope, setScope] = useState<SelectedScope>({ argumentIds: [] })
-  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [panelWidth, setPanelWidth] = useState(320)
   const viewRef = useRef<HTMLDivElement>(null)
-  const { activeView, selectedDocumentIds } = useStore()
+  const didDragRef = useRef(false)
+  const { activeView, selectedDocumentIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView } = useStore()
 
-  const startResize = (e: React.MouseEvent) => {
+  const handleTabMouseDown = (e: React.MouseEvent) => {
+    if (!panelOpen) return
     e.preventDefault()
+    didDragRef.current = false
+    const startX = e.clientX
     const up = () => {
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
       document.body.style.userSelect = ''
     }
     function move(ev: MouseEvent) {
+      if (Math.abs(ev.clientX - startX) > 4) didDragRef.current = true
       const left = viewRef.current?.getBoundingClientRect().left ?? 0
       const w = ev.clientX - left
-      // Drag past the minimum collapses the panel entirely.
       if (w < 160) { setPanelOpen(false); up(); return }
       setPanelWidth(Math.min(640, Math.max(220, w)))
     }
     document.body.style.userSelect = 'none'
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseup', up)
+  }
+
+  const handleTabClick = () => {
+    if (didDragRef.current) { didDragRef.current = false; return }
+    setPanelOpen(v => !v)
   }
 
   const isActive = activeView === 'graph'
@@ -49,20 +58,14 @@ export function GraphView() {
     })
   }, [selectedDocumentIds])
 
-  // Everything is selected by default — reset to the full set whenever the
-  // underlying graph changes (i.e. the document selection changed).
   useEffect(() => { setScope({ argumentIds: blobs.map(b => b.id) }) }, [blobs])
 
-  // Scope the graph to the concept-panel selection. When everything is selected
-  // we pass the data through untouched (identical to the unfiltered graph).
   const { fnodes, fedges, fblobs } = useMemo(() => {
     const sel = new Set(scope.argumentIds)
     if (sel.size === blobs.length) return { fnodes: nodes, fedges: edges, fblobs: blobs }
     const fblobs = blobs.filter(b => sel.has(b.id))
     const blobEntityIds = new Set(blobs.flatMap(b => b.entityIds))
     const selEntityIds = new Set(fblobs.flatMap(b => b.entityIds))
-    // Keep an entity if it belongs to a selected blob, or to no blob at all
-    // (orphan entities aren't governed by concept selection).
     const keep = (id: string) => !blobEntityIds.has(id) || selEntityIds.has(id)
     const fnodes = nodes.filter(n => n.type !== 'Entity' || keep(n.id))
     const kept = new Set(fnodes.filter(n => n.type === 'Entity').map(n => n.id))
@@ -72,21 +75,49 @@ export function GraphView() {
 
   return (
     <div className={styles.view} ref={viewRef}>
-      {panelOpen ? (
-        <>
-          <aside className={styles.sidebar} style={{ width: panelWidth }}>
-            <ConceptHierarchy blobs={blobs} scope={scope} onScopeChange={setScope} />
-          </aside>
-          <div className={styles.resizer} onMouseDown={startResize} title="Drag to resize · drag left to collapse" />
-        </>
-      ) : (
-        <button className={styles.expandRail} onClick={() => setPanelOpen(true)} title="Show concept panel">
-          <svg viewBox="0 0 12 12" width="12" height="12">
-            <path d="M4.5 2.5 L8 6 L4.5 9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className={styles.railLabel}>Concepts</span>
-        </button>
+      {panelOpen && (
+        <aside className={styles.sidebar} style={{ width: panelWidth }}>
+          <ConceptHierarchy
+            blobs={blobs}
+            scope={scope}
+            onScopeChange={setScope}
+            onConceptDetail={(conceptId) => {
+              setSelectedConceptId(conceptId)
+              setSelectedArgumentId(null)
+              setSelectedNode(null)
+              setActiveView('detail')
+            }}
+            onArgumentDetail={(argId) => {
+              setSelectedArgumentId(argId)
+              setSelectedNode(null)
+              setSelectedConceptId(null)
+              setActiveView('detail')
+            }}
+          />
+        </aside>
       )}
+
+      {/* Book-tab toggle — always visible; also acts as resize handle when panel is open */}
+      <div
+        className={`${styles.bookTab}${panelOpen ? ` ${styles.bookTabOpen}` : ''}`}
+        onMouseDown={handleTabMouseDown}
+        onClick={handleTabClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && handleTabClick()}
+        title={panelOpen ? 'Collapse concept panel' : 'Expand concept panel'}
+      >
+        <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden>
+          <path
+            d={panelOpen
+              ? 'M7.5 2.5 L4 6 L7.5 9.5'
+              : 'M4.5 2.5 L8 6 L4.5 9.5'}
+            fill="none" stroke="currentColor" strokeWidth="1.6"
+            strokeLinecap="round" strokeLinejoin="round"
+          />
+        </svg>
+        <span className={styles.bookTabLabel}>Concepts</span>
+      </div>
 
       <div className={styles.canvas}>
         <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} />

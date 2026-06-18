@@ -233,3 +233,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.detailIcon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0;
+  color: rgba(7,59,76,0.25); cursor: pointer;
+  opacity: 0; transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.conceptMain:hover .detailIcon,
+.arg:hover .detailIcon { opacity: 1; }
+.detailIcon:hover { color: #073b4c; background: rgba(7,59,76,0.08); }

@@ -9,9 +9,11 @@ interface Props {
   blobs: ArgumentBlob[]
   scope: SelectedScope
   onScopeChange: (s: SelectedScope) => void
+  onConceptDetail?: (conceptId: string) => void
+  onArgumentDetail?: (argId: string) => void
 }
 
-export function ConceptHierarchy({ blobs, scope, onScopeChange }: Props) {
+export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [hoverArg, setHoverArg] = useState<string | null>(null)
@@ -112,6 +114,18 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange }: Props) {
                 <button className={styles.conceptMain} onClick={() => toggleExpand(concept.id)} title={concept.label}>
                   <span className={styles.conceptLabel}>{concept.label}</span>
                   <span className={styles.count}>{selCount > 0 ? `${selCount}/` : ''}{concept.args.length}</span>
+                  {onConceptDetail && (
+                    <span
+                      className={styles.detailIcon}
+                      role="button"
+                      title="Open in Detail View"
+                      onClick={e => { e.stopPropagation(); onConceptDetail(concept.id) }}
+                    >
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                        <path d="M3 1.5L6.5 4.5L3 7.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -134,6 +148,18 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange }: Props) {
                           {a.secondaryConceptIds.slice(0, 2).map(cid => (
                             <span key={cid} className={styles.chip}>{conceptLabelFromId(cid)}</span>
                           ))}
+                        </span>
+                      )}
+                      {onArgumentDetail && (
+                        <span
+                          className={styles.detailIcon}
+                          role="button"
+                          title="Open in Detail View"
+                          onClick={e => { e.stopPropagation(); onArgumentDetail(a.id) }}
+                        >
+                          <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                            <path d="M3 1.5L6.5 4.5L3 7.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         </span>
                       )}
                     </label>
