@@ -159,13 +159,14 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 onClick={() => subjectNav && onEntityClick?.(rel.subject_id!)}
                 style={{
                   gridColumn: subjectCol, gridRow: contentRow,
-                  fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
+                  fontSize: 10, lineHeight: 1.4, padding: '8px 4px', alignSelf: 'start',
                   color: subjectFocal ? '#073b4c' : '#374151',
                   fontWeight: subjectFocal ? 700 : 400,
                   cursor: subjectNav ? 'pointer' : 'default',
+                  borderRadius: 4,
                 }}
-                onMouseEnter={e => { if (subjectNav) e.currentTarget.style.color = '#073b4c' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+                onMouseEnter={e => { if (subjectNav) { e.currentTarget.style.background = '#f4f7fa'; e.currentTarget.style.color = '#073b4c' } }}
+                onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = subjectFocal ? '#073b4c' : '#374151' }}
               >
                 {rel.subject ?? '—'}
               </div>
@@ -194,13 +195,14 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 onClick={() => objectNav && onEntityClick?.(rel.target_argument_id)}
                 style={{
                   gridColumn: subjectCol + 2, gridRow: contentRow,
-                  fontSize: 10, lineHeight: 1.4, padding: '8px 0', alignSelf: 'start',
+                  fontSize: 10, lineHeight: 1.4, padding: '8px 4px', alignSelf: 'start',
                   color: objectFocal ? '#073b4c' : '#374151',
                   fontWeight: objectFocal ? 700 : 400,
                   cursor: objectNav ? 'pointer' : 'default',
+                  borderRadius: 4,
                 }}
-                onMouseEnter={e => { if (objectNav) e.currentTarget.style.color = '#073b4c' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#374151' }}
+                onMouseEnter={e => { if (objectNav) { e.currentTarget.style.background = '#f4f7fa'; e.currentTarget.style.color = '#073b4c' } }}
+                onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = objectFocal ? '#073b4c' : '#374151' }}
               >
                 {rel.object ?? '—'}
               </div>
