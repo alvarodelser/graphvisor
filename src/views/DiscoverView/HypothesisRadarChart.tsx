@@ -40,8 +40,9 @@ export function HypothesisRadarChart({ scores, size = 60 }: HypothesisRadarChart
         .attr('stroke-width', '0.5px')
     }
 
-    // Draw axes
-    dimensions.forEach((_, i) => {
+    // Draw axes and dimension labels
+    const labelDistance = radius + 12
+    dimensions.forEach((dim, i) => {
       const angle = angleSlice * i - Math.PI / 2
       const x = Math.cos(angle) * radius
       const y = Math.sin(angle) * radius
@@ -53,6 +54,26 @@ export function HypothesisRadarChart({ scores, size = 60 }: HypothesisRadarChart
         .attr('y2', y)
         .attr('stroke', '#e5e7eb')
         .attr('stroke-width', '0.5px')
+
+      const labelX = Math.cos(angle) * labelDistance
+      const labelY = Math.sin(angle) * labelDistance
+
+      const shortLabels: Record<string, string> = {
+        novelty: 'Nov',
+        scientific_plausibility: 'Sci',
+        potential_impact: 'Imp',
+        commercial_potential: 'Cmm'
+      }
+
+      g.append('text')
+        .attr('x', labelX)
+        .attr('y', labelY)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', '8px')
+        .attr('font-weight', '500')
+        .attr('fill', '#6b7280')
+        .text(shortLabels[dim] || dim)
     })
 
     // Draw data polygon
@@ -69,6 +90,24 @@ export function HypothesisRadarChart({ scores, size = 60 }: HypothesisRadarChart
       .attr('fill', 'rgba(6, 214, 160, 0.3)')
       .attr('stroke', '#06d6a0')
       .attr('stroke-width', '1px')
+
+    // Draw score values at data points
+    data.forEach((d, i) => {
+      const angle = angleSlice * i - Math.PI / 2
+      const r = (d.value / 10) * radius
+      const x = Math.cos(angle) * r
+      const y = Math.sin(angle) * r
+
+      g.append('text')
+        .attr('x', x)
+        .attr('y', y - 4)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', '7px')
+        .attr('font-weight', '600')
+        .attr('fill', '#06d6a0')
+        .text(d.value.toFixed(1))
+    })
   }, [scores, size])
 
   return (
