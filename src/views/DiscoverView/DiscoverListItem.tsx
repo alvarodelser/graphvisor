@@ -7,28 +7,28 @@ interface DiscoverListItemProps {
 }
 
 const DIMENSIONS: { key: keyof Hypothesis['scores']; label: string }[] = [
-  { key: 'novelty',                  label: 'Novelty' },
-  { key: 'scientific_plausibility',  label: 'Sci. Plausibility' },
-  { key: 'potential_impact',         label: 'Potential Impact' },
-  { key: 'commercial_potential',     label: 'Commercial' },
+  { key: 'novelty',                 label: 'Novelty' },
+  { key: 'scientific_plausibility', label: 'Sci. Plausibility' },
+  { key: 'potential_impact',        label: 'Potential Impact' },
+  { key: 'commercial_potential',    label: 'Commercial' },
 ]
 
 export function DiscoverListItem({ hypothesis }: DiscoverListItemProps) {
   return (
     <div className={styles.item}>
-      <div className={styles.title}>{hypothesis.hypothesis}</div>
-      <div className={styles.right}>
-        <div className={styles.legend}>
+      <div className={styles.left}>
+        <div className={styles.title}>{hypothesis.hypothesis}</div>
+        <div className={styles.pills}>
           {DIMENSIONS.map(({ key, label }) => (
-            <div key={key} className={styles.legendRow}>
+            <span key={key} className={styles.pill}>
               <span className={styles.dot} />
-              <span className={styles.dimLabel}>{label}</span>
-              <span className={styles.dimScore}>{hypothesis.scores[key].toFixed(1)}</span>
-            </div>
+              {label}
+              <strong className={styles.pillScore}>{hypothesis.scores[key].toFixed(1)}</strong>
+            </span>
           ))}
         </div>
-        <HypothesisRadarChart scores={hypothesis.scores} />
       </div>
+      <HypothesisRadarChart scores={hypothesis.scores} />
     </div>
   )
 }

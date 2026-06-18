@@ -93,6 +93,6 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
   }, [scores, size])
 
   return (
-    <svg ref={svgRef} width={size} height={size} style={{ flexShrink: 0 }} />
+    <svg ref={svgRef} width={size} height={size} overflow="visible" style={{ flexShrink: 0, margin: '12px' }} />
   )
 }
