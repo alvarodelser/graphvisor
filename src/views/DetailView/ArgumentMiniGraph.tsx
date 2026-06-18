@@ -200,12 +200,19 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
 
     // ── Force simulation ─────────────────────────────────────────────────────
     const sim = d3.forceSimulation<NodeDatum>(nodes)
-      .force('link', d3.forceLink<NodeDatum, LinkDatum>(links).id(d => d.id).distance(55).strength(d => d.confidence * 0.5))
-      .force('charge', d3.forceManyBody<NodeDatum>().strength(-120))
+      .force('link', d3.forceLink<NodeDatum, LinkDatum>(links).id(d => d.id).distance(40).strength(d => d.confidence * 0.6))
+      .force('charge', d3.forceManyBody<NodeDatum>().strength(-60))
       .force('collide', d3.forceCollide<NodeDatum>(10))
-      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('center', d3.forceCenter(width / 2, height / 2).strength(0.5))
+      .force('x', d3.forceX(width / 2).strength(0.1))
+      .force('y', d3.forceY(height / 2).strength(0.1))
 
+    const NODE_PAD = 16
     sim.on('tick', () => {
+      nodes.forEach(n => {
+        n.x = Math.max(NODE_PAD, Math.min(width - NODE_PAD, n.x ?? width / 2))
+        n.y = Math.max(NODE_PAD, Math.min(height - NODE_PAD, n.y ?? height / 2))
+      })
       edgeGroups.each(function(d) {
         const src = d.source as NodeDatum, tgt = d.target as NodeDatum
         if (src.x == null || tgt.x == null) return
