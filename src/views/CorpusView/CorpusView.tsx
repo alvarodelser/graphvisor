@@ -110,6 +110,21 @@ export function CorpusView() {
       )}
 
       <div>
+        <div className="sl">Concept regions</div>
+        <div style={legendRow}>
+          <span style={{
+            width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+            background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, rgba(124,58,237,0) 100%)',
+            border: '1.5px dashed #a855f7', display: 'inline-block',
+          }} />
+          <span style={{ ...legendText, color: '#7c3aed' }}>Semantic grounding area</span>
+        </div>
+        <div style={{ fontSize: 9, color: '#9ca3af', lineHeight: 1.4, marginTop: 2 }}>
+          Violet circles show the projected 2D extent of each concept's semantic space.
+        </div>
+      </div>
+
+      <div>
         <div className="sl">Interactions</div>
         <div style={{ fontSize: 10, color: '#6b7280', lineHeight: 1.6 }}>
           <div>Click — select single doc</div>

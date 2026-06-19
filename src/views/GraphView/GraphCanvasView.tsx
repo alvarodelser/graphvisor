@@ -21,9 +21,8 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
   const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
   const [isSticky, setIsSticky] = useState(false)
   const {
-    selectedNodeId, setSelectedNode, filters, setFilters,
-    selectedArgumentId, setSelectedArgumentId,
-    selectedConceptId, setSelectedConceptId,
+    setSelectedNode, filters, setFilters,
+    setSelectedArgumentId, setSelectedConceptId,
     setSelectedRelation,
   } = useStore()
 
@@ -38,12 +37,10 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
 
   const { reheat } = useGraphD3(svgRef, nodes, edges, {
     filters,
-    selectedNodeId,
     blobs,
     showBlobs,
-    selectedArgumentId,
-    selectedConceptId,
     hoveredConceptId,
+    lockedItem: isSticky ? displayedItem : null,
     onNodeClick: (node) => {
       clearAll()
       setSelectedNode(node.id)
@@ -82,11 +79,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
       setIsSticky(true)
     },
     onHover: (item) => {
-      if (isSticky) {
-        if (item !== null && item.type !== 'blob' && item.type !== 'concept') setDisplayedItem(item)
-      } else {
-        setDisplayedItem(item)
-      }
+      if (!isSticky) setDisplayedItem(item)
     },
     onCanvasClick: () => {
       clearAll()

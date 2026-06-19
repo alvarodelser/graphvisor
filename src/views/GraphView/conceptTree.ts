@@ -32,7 +32,9 @@ export function buildConceptTree(blobs: ArgumentBlob[]): ConceptTreeNode[] {
         id: b.id,
         label: b.argument_type,
         full: b.full_argument,
-        secondaryConceptIds: [],
+        secondaryConceptIds: b.parent_concepts
+          .filter(c => c !== label)
+          .map(c => conceptIdOf(c)),
       })
     }
   }

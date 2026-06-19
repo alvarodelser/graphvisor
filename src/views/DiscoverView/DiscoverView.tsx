@@ -6,7 +6,6 @@ import type { Hypothesis } from '../../types'
 import styles from './DiscoverView.module.css'
 
 type SortKey = 'overall' | 'novelty' | 'scientific_plausibility' | 'potential_impact' | 'commercial_potential'
-type SortDir = 'desc' | 'asc'
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'overall',                 label: 'Overall' },
@@ -24,7 +23,6 @@ function overallScore(h: Hypothesis) {
 export function DiscoverView() {
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
   const [sortBy, setSortBy] = useState<SortKey>('overall')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const { selectedHypothesisIds, selectAllHypotheses, clearHypothesisSelection } = useStore()
 
   useEffect(() => {
@@ -32,36 +30,35 @@ export function DiscoverView() {
   }, [])
 
   const sorted = useMemo(() => {
-    const dir = sortDir === 'desc' ? -1 : 1
     return [...hypotheses].sort((a, b) => {
       const va = sortBy === 'overall' ? overallScore(a) : a.scores[sortBy]
       const vb = sortBy === 'overall' ? overallScore(b) : b.scores[sortBy]
-      return (va - vb) * dir
+      return vb - va
     })
-  }, [hypotheses, sortBy, sortDir])
+  }, [hypotheses, sortBy])
 
   const allIds = hypotheses.map((h) => h.hypothesis)
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedHypothesisIds.includes(id))
-
-  const toggleDir = () => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))
 
   return (
     <div className={styles.view}>
       <div className={styles.toolbar}>
         <div className={styles.sortGroup}>
-          <span className={styles.sortLabel}>Sort</span>
-          {SORT_OPTIONS.map(({ key, label }) => (
-            <button
-              key={key}
-              className={[styles.sortPill, sortBy === key ? styles.sortPillActive : ''].join(' ')}
-              onClick={() => sortBy === key ? toggleDir() : setSortBy(key)}
+          <span className={styles.sortLabel}>Sort by</span>
+          <div className={styles.selectWrap}>
+            <select
+              className={styles.sortSelect}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
             >
-              {label}
-              {sortBy === key && (
-                <span className={styles.sortArrow}>{sortDir === 'desc' ? '↓' : '↑'}</span>
-              )}
-            </button>
-          ))}
+              {SORT_OPTIONS.map(({ key, label }) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <svg className={styles.selectChevron} width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
         </div>
         <div className={styles.selectionGroup}>
           <button

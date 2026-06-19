@@ -2,11 +2,13 @@ import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { RefObject } from 'react'
 import type { DocNode, SizeBy } from '../../types'
+import type { ConceptGrounding } from '../../data/dataset'
 import { isPointInPolygon } from '../../utils/geometry'
 
 interface Options {
   selectedIds: Set<string>
   sizeBy: SizeBy
+  conceptGroundings: ConceptGrounding[]
   onLassoSelect: (ids: string[]) => void
   onClickToggle: (id: string, shiftKey: boolean) => void
   setTooltip: (t: { doc: DocNode; x: number; y: number } | null) => void
@@ -84,6 +86,59 @@ export function useCorpusD3(
         .attr('stroke', 'rgba(7,59,76,0.35)')
         .attr('stroke-width', 1)
         .attr('stroke-dasharray', '4 8')
+    }
+
+    // ── Concept grounding blobs ───────────────────────────────────────────────
+    // Each concept is projected into the same 2D PCA space as the documents.
+    // We render a soft violet circle whose radius represents the concept's
+    // semantic extent.  Radius is in PCA units, so we convert it through
+    // the same linear scale used for doc positions.
+    if (opts.conceptGroundings.length > 0) {
+      // Estimate a pixels-per-unit factor by comparing the domain & range of xScale
+      const [domMin, domMax] = xScale.domain()
+      const pxPerUnit = (width - 2 * pad) / Math.max(domMax - domMin, 1e-9)
+
+      const groundingG = zoomG.append('g').attr('class', 'concept-groundings')
+
+      opts.conceptGroundings.forEach(g => {
+        const cx = xScale(g.pca_x)
+        const cy = yScale(g.pca_y)
+        const r = Math.max(g.radius * pxPerUnit, 20) // ensure a minimum visible size
+
+        // Blob fill — semi-transparent violet gradient
+        const uid = `cg-${g.concept.replace(/[^a-z0-9]/gi, '_')}`
+        const grad = svg.append('defs').append('radialGradient')
+          .attr('id', uid)
+          .attr('cx', '50%').attr('cy', '50%')
+          .attr('r', '50%')
+        grad.append('stop').attr('offset', '0%').attr('stop-color', '#a855f7').attr('stop-opacity', 0.18)
+        grad.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed').attr('stop-opacity', 0)
+
+        groundingG.append('circle')
+          .attr('cx', cx).attr('cy', cy)
+          .attr('r', r)
+          .attr('fill', `url(#${uid})`)
+          .attr('stroke', '#a855f7')
+          .attr('stroke-width', 1)
+          .attr('stroke-opacity', 0.35)
+          .attr('stroke-dasharray', '3 5')
+          .attr('pointer-events', 'none')
+
+        // Concept name label — always visible, fades at low zoom
+        groundingG.append('text')
+          .attr('class', 'concept-label')
+          .attr('x', cx)
+          .attr('y', cy)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('pointer-events', 'none')
+          .attr('fill', '#7c3aed')
+          .attr('font-size', '9px')
+          .attr('font-weight', '600')
+          .attr('letter-spacing', '0.04em')
+          .attr('opacity', 0.7)
+          .text(g.concept.length > 22 ? g.concept.slice(0, 22) + '…' : g.concept)
+      })
     }
 
     // Background rect — lasso target (distinct from SVG zoom target)
@@ -192,7 +247,7 @@ export function useCorpusD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     return () => { observer.disconnect() }
-  }, [docs, opts.sizeBy])
+  }, [docs, opts.sizeBy, opts.conceptGroundings])
 
   // Sync dot colors
   useEffect(() => {

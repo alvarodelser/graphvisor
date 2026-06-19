@@ -65,11 +65,9 @@ interface ConceptClickPayload { conceptId: string; label: string; argCount: numb
 
 interface Options {
   filters: FilterState
-  selectedNodeId: string | null
   blobs: ArgumentBlob[]
   showBlobs: boolean
-  selectedArgumentId: string | null
-  selectedConceptId: string | null
+  lockedItem: HoverItem | null
   hoveredConceptId: string | null
   onNodeClick: (node: GraphNode) => void
   onBlobClick: (blob: ArgumentBlob) => void
@@ -370,17 +368,55 @@ export function useGraphD3(
       nodeGroups.attr('opacity', null)
       edgeGroups.attr('opacity', null)
       argNodeGroups.attr('opacity', null)
-      const sel = optsRef.current.selectedArgumentId
       blobPaths.attr('opacity', null)
-        .attr('stroke', d => d.id === sel ? BLOB_STROKE_SEL : BLOB_STROKE)
-        .attr('fill', d => d.id === sel ? BLOB_FILL_SEL : BLOB_FILL)
+        .attr('stroke', BLOB_STROKE)
+        .attr('fill', BLOB_FILL)
+    }
+    function applyEntityHighlight(nodeId: string) {
+      const neighborIds = new Set<string>([nodeId])
+      const relevantEdgeIds = new Set<string>()
+      for (const e of simEdges) {
+        const s = edgeEndId(e, 'source'), t = edgeEndId(e, 'target')
+        if (s === nodeId || t === nodeId) { relevantEdgeIds.add(e.id); neighborIds.add(s); neighborIds.add(t) }
+      }
+      const relevantArgIds = new Set<string>()
+      for (const [argId, members] of model.argMembers)
+        if (members.includes(nodeId)) relevantArgIds.add(argId)
+      nodeGroups.attr('opacity', d => neighborIds.has(d.id) ? 1 : 0.12)
+      edgeGroups.attr('opacity', d => relevantEdgeIds.has(d.id) ? 1 : 0.05)
+      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+        .attr('stroke', d => relevantArgIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
+        .attr('fill', d => relevantArgIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
+      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+    }
+    function applyEdgeHighlight(edgeId: string) {
+      const edge = simEdges.find(e => e.id === edgeId)
+      if (!edge) { clearHighlight(); return }
+      const srcId = edgeEndId(edge, 'source'), tgtId = edgeEndId(edge, 'target')
+      const endpointIds = new Set([srcId, tgtId])
+      const relevantArgIds = new Set<string>()
+      for (const [argId, members] of model.argMembers)
+        if (members.some(m => endpointIds.has(m))) relevantArgIds.add(argId)
+      nodeGroups.attr('opacity', d => endpointIds.has(d.id) ? 1 : 0.12)
+      edgeGroups.attr('opacity', d => d.id === edgeId ? 1 : 0.05)
+      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+        .attr('stroke', d => relevantArgIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
+        .attr('fill', d => relevantArgIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
+      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
     }
     function applySticky() {
-      const aId = optsRef.current.selectedArgumentId
+      const locked = optsRef.current.lockedItem
       const hcId = optsRef.current.hoveredConceptId
-      if (aId) applyArgHighlight(aId)
-      else if (hcId) applyConceptHighlight(hcId)
-      else clearHighlight()
+      if (locked) {
+        if (locked.type === 'blob') applyArgHighlight(locked.blob.id)
+        else if (locked.type === 'node') applyEntityHighlight(locked.node.id)
+        else if (locked.type === 'edge') applyEdgeHighlight(locked.edge.id)
+        else if (locked.type === 'concept') applyConceptHighlight(locked.conceptId)
+      } else if (hcId) {
+        applyConceptHighlight(hcId)
+      } else {
+        clearHighlight()
+      }
     }
     highlightFnRef.current = applySticky
 
@@ -683,24 +719,11 @@ export function useGraphD3(
     return () => { alive = false; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
   }, [nodes, edges, opts.filters])
 
-  // ── Selection halo ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!svgRef.current) return
-    d3.select(svgRef.current).selectAll<SVGGElement, GraphNode>('.nodes g').each(function (d) {
-      const g = d3.select(this)
-      g.select('.selection-halo').remove()
-      if (d.id === optsRef.current.selectedNodeId) {
-        g.insert('circle', ':first-child').attr('class', 'selection-halo')
-          .attr('r', 14).attr('fill', 'none').attr('stroke', '#F4A124').attr('stroke-width', 2.5)
-      }
-    })
-  }, [opts.selectedNodeId])
-
   // ── showBlobs / blob list change → reheat ──────────────────────────────────────
   useEffect(() => { simRef.current?.alpha(0.3).restart() }, [opts.showBlobs, opts.blobs])
 
   // ── Sticky highlight (selection-driven) ─────────────────────────────────────────
-  useEffect(() => { highlightFnRef.current() }, [opts.selectedArgumentId, opts.selectedConceptId, opts.hoveredConceptId])
+  useEffect(() => { highlightFnRef.current() }, [opts.lockedItem, opts.hoveredConceptId])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

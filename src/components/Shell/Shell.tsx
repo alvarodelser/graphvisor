@@ -49,15 +49,19 @@ export function Shell({ children }: Props) {
   }
 
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const labelRefs = useRef<(HTMLSpanElement | null)[]>([])
   const indicatorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const activeTab = tabRefs.current[viewIndex]
+    const label = labelRefs.current[viewIndex]
     const indicator = indicatorRef.current
-    if (!activeTab || !indicator) return
-    const { offsetLeft, offsetWidth } = activeTab
-    indicator.style.left = `${offsetLeft}px`
-    indicator.style.width = `${offsetWidth}px`
+    if (!label || !indicator) return
+    const tabsEl = label.closest('nav')
+    if (!tabsEl) return
+    const tabsRect = tabsEl.getBoundingClientRect()
+    const labelRect = label.getBoundingClientRect()
+    indicator.style.left = `${labelRect.left - tabsRect.left}px`
+    indicator.style.width = `${labelRect.width}px`
   }, [viewIndex])
 
   return (
@@ -84,7 +88,7 @@ export function Shell({ children }: Props) {
                 }}
                 disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection)}
               >
-                {VIEW_LABELS[v]}
+                <span ref={el => { labelRefs.current[i] = el }}>{VIEW_LABELS[v]}</span>
                 {v === 'discover' && hasCorpusSelection && (
                   <span className={styles.badge}>{selectedDocumentIds.length}</span>
                 )}

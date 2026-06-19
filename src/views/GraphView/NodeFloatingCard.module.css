@@ -11,14 +11,15 @@
 }
 .sticky {
   pointer-events: all;
-  border-left: 3px solid #F4A124;
+  border-left: 3px solid #ef476f;
 }
-.close {
-  position: absolute; top: 8px; right: 10px;
-  background: none; border: none; font-size: 18px;
-  color: #9ca3af; cursor: pointer; line-height: 1; padding: 0;
+.lockIcon {
+  position: absolute; top: 7px; right: 10px;
+  background: none; border: none; cursor: pointer;
+  padding: 2px; display: flex; align-items: center; justify-content: center;
+  opacity: 0.8;
 }
-.close:hover { color: #374151; }
+.lockIcon:hover { opacity: 1; }
 .header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .edgeHeader { display: flex; align-items: center; gap: 8px; }
 .fullText {

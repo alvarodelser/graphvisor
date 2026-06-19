@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { FloatingCard } from '../../components/FloatingCard/FloatingCard'
 import { useCorpusD3 } from './useCorpusD3'
+import { dataService } from '../../data/DataService'
 import type { DocNode } from '../../types'
+import type { ConceptGrounding } from '../../data/dataset'
 import styles from './CorpusView.module.css'
 
 interface Props {
@@ -13,13 +15,20 @@ interface Props {
 export function MapView({ docs, selectedIds }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<{ doc: DocNode; x: number; y: number } | null>(null)
+  const [conceptGroundings, setConceptGroundings] = useState<ConceptGrounding[]>([])
   const {
     selectedDocumentIds, setSelectedDocuments, toggleDocumentSelection, sizeBy,
   } = useStore()
 
+  // Load concept grounding data once
+  useEffect(() => {
+    dataService.getConceptGroundings().then(setConceptGroundings)
+  }, [])
+
   useCorpusD3(svgRef, docs, {
     selectedIds,
     sizeBy,
+    conceptGroundings,
     onLassoSelect: (ids) =>
       setSelectedDocuments([...new Set([...selectedDocumentIds, ...ids])]),
     onClickToggle: (id, shiftKey) => {

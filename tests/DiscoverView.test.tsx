@@ -39,37 +39,20 @@ describe('DiscoverView', () => {
     })
   })
 
-  it('shows correct counts on filter chips', async () => {
+  it('allows selecting and deselecting all hypotheses', async () => {
     render(<DiscoverView />)
     await waitFor(() => {
-      expect(screen.getByText('All 3')).toBeInTheDocument()
-      expect(screen.getByText('ADVANCE 2')).toBeInTheDocument()
-      expect(screen.getByText('BORDERLINE 1')).toBeInTheDocument()
+      expect(screen.getByText('Select all')).toBeInTheDocument()
     })
-  })
+    
+    fireEvent.click(screen.getByText('Select all'))
+    await waitFor(() => {
+      expect(screen.getByText('Deselect all')).toBeInTheDocument()
+    })
 
-  it('clicking ADVANCE filter shows only ADVANCE hypotheses', async () => {
-    render(<DiscoverView />)
-    await waitFor(() => screen.getByText('ADVANCE 2'))
-    fireEvent.click(screen.getByText('ADVANCE 2'))
-    expect(screen.getByText('Alpha hypothesis ADVANCE.')).toBeInTheDocument()
-    expect(screen.getByText('Beta hypothesis ADVANCE.')).toBeInTheDocument()
-    expect(screen.queryByText('Gamma hypothesis BORDERLINE.')).not.toBeInTheDocument()
-  })
-
-  it('clicking BORDERLINE filter shows only BORDERLINE hypotheses', async () => {
-    render(<DiscoverView />)
-    await waitFor(() => screen.getByText('BORDERLINE 1'))
-    fireEvent.click(screen.getByText('BORDERLINE 1'))
-    expect(screen.queryByText('Alpha hypothesis ADVANCE.')).not.toBeInTheDocument()
-    expect(screen.getByText('Gamma hypothesis BORDERLINE.')).toBeInTheDocument()
-  })
-
-  it('clicking All resets the filter', async () => {
-    render(<DiscoverView />)
-    await waitFor(() => screen.getByText('ADVANCE 2'))
-    fireEvent.click(screen.getByText('ADVANCE 2'))
-    fireEvent.click(screen.getByText('All 3'))
-    expect(screen.getByText('Gamma hypothesis BORDERLINE.')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Deselect all'))
+    await waitFor(() => {
+      expect(screen.getByText('Select all')).toBeInTheDocument()
+    })
   })
 })

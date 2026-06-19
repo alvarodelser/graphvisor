@@ -1,9 +1,6 @@
 import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
 import { PCA } from 'ml-pca'
-import { kmeans } from 'ml-kmeans'
-import corpusJson from './corpus_final_dat.json'
-import hypothesisJson from './hypothesis_L2.json'
-import { pickK, mostFrequentLabel, buildTopics } from '../views/CorpusView/topics'
+import { corpusJson, hypothesisJson, docEmbeddingsUrl, conceptEmbeddingsUrl, conceptsJson, topicsJson, type ConceptGrounding } from './dataset'
 import { relationGroupOf } from '../graph/relations'
 
 export interface DataServiceInterface {
@@ -13,6 +10,10 @@ export interface DataServiceInterface {
   getConceptDetail(conceptLabel: string): Promise<ConceptDetail>
   getHypotheses(): Promise<Hypothesis[]>
   getTopics(): Promise<Topic[]>
+  getConceptGroundings(): Promise<ConceptGrounding[]>
+  getConceptEmbedding(conceptLabel: string): Promise<number[] | null>
+  getDocEmbedding(docId: string): Promise<number[] | null>
+  findSimilarConcepts(embedding: number[], limit?: number): Promise<{ concept: string; similarity: number }[]>
 }
 
 // ── Raw JSON types ────────────────────────────────────────────────────────────
@@ -40,54 +41,171 @@ type RawArgument = {
 
 type RawDoc = {
   source: string
-  year: string
-  abstract: string
-  citations: number
+  year?: string
+  abstract?: string
+  citations?: number
   data: RawArgument[]
-  doc_embbeding: number[]
+  doc_embbeding?: number[]
 }
 
-// ── PCA projection from stored embeddings ────────────────────────────────────
-
-const rawDocs = corpusJson as RawDoc[]
-
-const PCA_SCORES: Array<{ pca_x: number; pca_y: number }> = (() => {
-  const embeddings = rawDocs.map(d => d.doc_embbeding)
-  const pca = new PCA(embeddings)
-  const projected = pca.predict(embeddings, { nComponents: 2 }).to2DArray()
-  return projected.map((row: number[]) => ({ pca_x: row[0], pca_y: row[1] }))
-})()
-
-// ── Topic clustering from stored embeddings ──────────────────────────────────
-const TOPIC_DATA: { assignments: number[]; topics: Topic[] } = (() => {
-  const n = rawDocs.length
-  const embeddings = rawDocs.map(d => d.doc_embbeding)
-  const k = pickK(n)
-  const { clusters } = kmeans(embeddings, k, { seed: 42 })
-
-  // Per-cluster label from member docs' parent_concepts (fallback: top terms)
-  const labels = new Map<number, string>()
-  for (let c = 0; c < k; c++) {
-    const memberConcepts: string[][] = []
-    const memberTerms: string[][] = []
-    rawDocs.forEach((doc, i) => {
-      if (clusters[i] !== c) return
-      memberConcepts.push(doc.data.flatMap(a => a.concept_level?.parent_concepts ?? []))
-      const termCounts: Record<string, number> = {}
-      doc.data.forEach(arg => arg.relations.forEach(rel => {
-        termCounts[rel.subject] = (termCounts[rel.subject] || 0) + 1
-        termCounts[rel.object] = (termCounts[rel.object] || 0) + 1
-      }))
-      memberTerms.push(Object.entries(termCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([t]) => t))
-    })
-    const conceptLabel = mostFrequentLabel(memberConcepts)
-    labels.set(c, conceptLabel || mostFrequentLabel(memberTerms) || `Topic ${c + 1}`)
+function buildDocEmbeddings(docs: RawDoc[]): number[][] {
+  const stored = docs.map(d => d.doc_embbeding)
+  if (stored.every(e => Array.isArray(e) && e.length > 0)) {
+    return stored as number[][]
   }
 
-  const docMeta = rawDocs.map((doc, i) => ({ id: makeDocId(i), argument_count: doc.data.length }))
-  const topics = buildTopics(Array.from(clusters), docMeta, labels)
-  return { assignments: Array.from(clusters), topics }
-})()
+  const termIndex = new Map<string, number>()
+  let nextIdx = 0
+  for (const doc of docs) {
+    for (const arg of doc.data) {
+      for (const rel of arg.relations) {
+        for (const term of [rel.subject.trim(), rel.object.trim()]) {
+          if (!termIndex.has(term)) termIndex.set(term, nextIdx++)
+        }
+      }
+    }
+  }
+
+  if (nextIdx === 0) {
+    return docs.map((_, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(docs.length, 1)
+      return [Math.cos(angle), Math.sin(angle)]
+    })
+  }
+
+  return docs.map(doc => {
+    const vec = new Array(nextIdx).fill(0)
+    for (const arg of doc.data) {
+      for (const rel of arg.relations) {
+        for (const term of [rel.subject.trim(), rel.object.trim()]) {
+          const idx = termIndex.get(term)
+          if (idx !== undefined) vec[idx] += 1
+        }
+      }
+    }
+    const year = parseInt(doc.year ?? '0', 10) || 0
+    vec.push(year / 10000, doc.data.length / 100)
+    return vec
+  })
+}
+
+// ── Lazy initialization variables ────────────────────────────────────────────
+
+const rawDocs = corpusJson as unknown as RawDoc[]
+
+let isInitialized = false
+let initPromise: Promise<void> | null = null
+
+let DOC_EMBEDDINGS: number[][] = []
+let CONCEPT_EMBEDDINGS: number[][] = []
+const CONCEPT_NAME_TO_INDEX = new Map<string, number>()
+let CONCEPT_GROUNDINGS: ConceptGrounding[] = []
+
+let PCA_SCORES: Array<{ pca_x: number; pca_y: number }> = []
+let TOPIC_DATA: { assignments: number[]; topics: Topic[] } = { assignments: [], topics: [] }
+let CACHED_DOCS: DocNode[] = []
+let CACHED_GRAPH: ReturnType<typeof buildGraphData> | null = null
+
+// Helper to load float32 binary files
+async function loadFloat32Binary(url: string, dim: number): Promise<number[][]> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch embeddings from ${url}`)
+  }
+  const buffer = await res.arrayBuffer()
+  const floatArray = new Float32Array(buffer)
+  if (floatArray.length === 0) {
+    throw new Error(`Loaded empty buffer from ${url}`)
+  }
+  const numVectors = floatArray.length / dim
+  const vectors: number[][] = []
+  for (let i = 0; i < numVectors; i++) {
+    const vec = Array.from(floatArray.subarray(i * dim, (i + 1) * dim))
+    vectors.push(vec)
+  }
+  return vectors
+}
+
+// Function to guarantee that data service structures are fully loaded and prepared
+export async function ensureInitialized(): Promise<void> {
+  if (isInitialized) return
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
+    try {
+      // 1. Load document embeddings (binary) — fall back to heuristic BoW vectors
+      let docsEmbeds: number[][] = []
+      try {
+        docsEmbeds = await loadFloat32Binary(docEmbeddingsUrl, 1024)
+        if (docsEmbeds.length !== rawDocs.length) {
+          console.warn(`Doc embeddings count (${docsEmbeds.length}) ≠ corpus count (${rawDocs.length}). Using heuristic fallback.`)
+          docsEmbeds = buildDocEmbeddings(rawDocs)
+        }
+      } catch {
+        console.warn('Failed to load doc embeddings binary — using heuristic fallback.')
+        docsEmbeds = buildDocEmbeddings(rawDocs)
+      }
+      DOC_EMBEDDINGS = docsEmbeds
+
+      // 2. Load concept embeddings (binary) and concept grounding JSON
+      try {
+        CONCEPT_EMBEDDINGS = await loadFloat32Binary(conceptEmbeddingsUrl, 1024)
+      } catch {
+        console.warn('Failed to load concept embeddings binary.')
+      }
+
+      // conceptsJson is ConceptGrounding[] when produced by embed_concepts.py,
+      // or legacy string[] from the placeholder. Normalise here.
+      const rawConcepts = conceptsJson as unknown as Array<ConceptGrounding | string>
+      if (rawConcepts.length > 0 && typeof rawConcepts[0] === 'object') {
+        CONCEPT_GROUNDINGS = rawConcepts as ConceptGrounding[]
+        CONCEPT_GROUNDINGS.forEach((g, idx) => CONCEPT_NAME_TO_INDEX.set(g.concept, idx))
+      } else {
+        // legacy flat string array — no grounding positions yet
+        ;(rawConcepts as string[]).forEach((name, idx) => CONCEPT_NAME_TO_INDEX.set(name, idx))
+      }
+
+      // 3. PCA projection of document embeddings
+      const pca = new PCA(DOC_EMBEDDINGS)
+      const projected = pca.predict(DOC_EMBEDDINGS, { nComponents: 2 }).to2DArray()
+      PCA_SCORES = projected.map((row: number[]) => ({ pca_x: row[0], pca_y: row[1] }))
+
+      // 4. Load pre-computed topics produced by cluster_topics.py
+      //    If the JSON is populated, use it; otherwise fall back to an empty list.
+      const rawTopics = topicsJson as unknown as Array<{ id: number; label: string; docIds: string[]; argCount: number }>
+      if (rawTopics.length > 0) {
+        // Build assignment array from the loaded topics
+        const assignments = new Array<number>(rawDocs.length).fill(0)
+        rawTopics.forEach(t => t.docIds.forEach(did => {
+          const idx = parseInt(did.split('_')[1], 10)
+          if (!isNaN(idx)) assignments[idx] = t.id
+        }))
+        TOPIC_DATA = {
+          assignments,
+          topics: rawTopics.map(t => ({ id: t.id, label: t.label, docIds: t.docIds, argCount: t.argCount })),
+        }
+      } else {
+        // Fallback: assign everything to topic 0
+        TOPIC_DATA = {
+          assignments: new Array<number>(rawDocs.length).fill(0),
+          topics: [{ id: 0, label: 'All documents', docIds: rawDocs.map((_, i) => makeDocId(i)), argCount: rawDocs.reduce((s, d) => s + d.data.length, 0) }],
+        }
+      }
+
+      // 5. Pre-compute doc cache (needs PCA_SCORES and TOPIC_DATA)
+      CACHED_DOCS = buildDocs()
+      CACHED_GRAPH = buildGraphData()
+
+      isInitialized = true
+    } catch (err) {
+      console.error('DataService initialization failed:', err)
+      initPromise = null
+      throw err
+    }
+  })()
+
+  return initPromise
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -125,11 +243,11 @@ function buildDocs(): DocNode[] {
 
     return {
       id: makeDocId(i),
-      title: `${doc.source} (${doc.year})`,
-      year: parseInt(doc.year, 10),
+      title: `${doc.source} (${doc.year ?? ''})`,
+      year: parseInt(doc.year ?? '0', 10) || 0,
       ...(PCA_SCORES[i] ?? { pca_x: 0, pca_y: 0 }),
       argument_count: doc.data.length,
-      citations: doc.citations,
+      citations: doc.citations ?? 0,
       topic_id: TOPIC_DATA.assignments[i],
       top_terms,
       termCounts,
@@ -276,36 +394,27 @@ function buildGraphData(): {
 
   const semanticEdges = Array.from(edgeMap.values()).map(({ docIdx: _dropped, ...e }) => e)
 
-  // Build HAS_CONCEPT edges: Argument node → Concept node
-  const conceptEdges: GraphEdge[] = blobs
-    .filter(blob => blob.parent_concepts[0])
-    .map((blob, i) => ({
-      id: `hc_${i}`,
-      source: blob.id,
-      target: conceptId(blob.parent_concepts[0]),
-      relation_type: 'HAS_CONCEPT',
-      confidence: blob.confidence,
-      group: 'concept' as const,
-      source_document_title: blob.source_document_title,
-    }))
-
-  const edges = [...semanticEdges, ...conceptEdges]
-
-  return { nodes, edges, blobs, entityDocs, rawEdges, entityBlobs }
+  return {
+    nodes,
+    edges: semanticEdges,
+    blobs,
+    entityDocs,
+    rawEdges,
+    entityBlobs,
+  }
 }
-
-const CACHED_DOCS  = buildDocs()
-const CACHED_GRAPH = buildGraphData()
 
 // ── Service implementation ────────────────────────────────────────────────────
 
 export class RealDataService implements DataServiceInterface {
   async getDocuments(): Promise<DocNode[]> {
+    await ensureInitialized()
     return CACHED_DOCS
   }
 
   async getGraph(documentIds: string[]): Promise<{ nodes: GraphNode[]; edges: GraphEdge[]; blobs: ArgumentBlob[] }> {
-    const { nodes: allNodes, edges: allEdges, blobs: allBlobs, entityDocs } = CACHED_GRAPH
+    await ensureInitialized()
+    const { nodes: allNodes, edges: allEdges, blobs: allBlobs, entityDocs } = CACHED_GRAPH!
 
     if (documentIds.length === 0) return { nodes: allNodes, edges: allEdges, blobs: allBlobs }
 
@@ -348,6 +457,7 @@ export class RealDataService implements DataServiceInterface {
   }
 
   async getArgumentDetail(nodeId: string): Promise<ArgumentDetail> {
+    await ensureInitialized()
     // Argument blob ID: doc_\d+_arg_\d+
     const argMatch = nodeId.match(/^doc_(\d+)_arg_(\d+)$/)
     if (argMatch) {
@@ -357,7 +467,7 @@ export class RealDataService implements DataServiceInterface {
       const rawArg = rawDoc?.data[argIdx]
       if (!rawArg) throw new Error(`Argument ${nodeId} not found`)
 
-      const blob = CACHED_GRAPH.blobs.find(b => b.id === nodeId)
+      const blob = CACHED_GRAPH!.blobs.find(b => b.id === nodeId)
 
       const syntheticNode: GraphNode = {
         id: nodeId,
@@ -400,7 +510,7 @@ export class RealDataService implements DataServiceInterface {
     }
 
     // Entity node path
-    const { nodes: allNodes, rawEdges, entityBlobs } = CACHED_GRAPH
+    const { nodes: allNodes, rawEdges, entityBlobs } = CACHED_GRAPH!
 
     const node = allNodes.find(n => n.id === nodeId)
     if (!node) throw new Error(`Node ${nodeId} not found`)
@@ -442,6 +552,7 @@ export class RealDataService implements DataServiceInterface {
 
   // Concepts are grouped by their first parent-concept label (matching the graph).
   async getConceptDetail(conceptLabel: string): Promise<ConceptDetail> {
+    await ensureInitialized()
     const args: ConceptArgument[] = []
     const docStats: ConceptDocStat[] = []
 
@@ -473,8 +584,57 @@ export class RealDataService implements DataServiceInterface {
   }
 
   async getTopics(): Promise<Topic[]> {
+    await ensureInitialized()
     return TOPIC_DATA.topics
+  }
+
+  async getConceptGroundings(): Promise<ConceptGrounding[]> {
+    await ensureInitialized()
+    return CONCEPT_GROUNDINGS
+  }
+
+  async getConceptEmbedding(conceptLabel: string): Promise<number[] | null> {
+    await ensureInitialized()
+    const idx = CONCEPT_NAME_TO_INDEX.get(conceptLabel)
+    if (idx === undefined) return null
+    return CONCEPT_EMBEDDINGS[idx] || null
+  }
+
+  async getDocEmbedding(docId: string): Promise<number[] | null> {
+    await ensureInitialized()
+    const idx = parseInt(docId.split('_')[1], 10)
+    if (isNaN(idx)) return null
+    return DOC_EMBEDDINGS[idx] || null
+  }
+
+  async findSimilarConcepts(embedding: number[], limit = 5): Promise<{ concept: string; similarity: number }[]> {
+    await ensureInitialized()
+    if (CONCEPT_EMBEDDINGS.length === 0) return []
+
+    const sims = conceptsJson.map((concept, idx) => {
+      const vec = CONCEPT_EMBEDDINGS[idx]
+      const similarity = vec ? cosineSimilarity(embedding, vec) : 0
+      const name = typeof concept === 'object' && concept !== null ? concept.concept : (concept as unknown as string)
+      return { concept: name, similarity }
+    })
+
+    return sims
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit)
   }
 }
 
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0
+  let normA = 0
+  let normB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
+  }
+  return normA && normB ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0
+}
+
 export const dataService: DataServiceInterface = new RealDataService()
+

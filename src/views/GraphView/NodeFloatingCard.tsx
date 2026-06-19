@@ -19,7 +19,14 @@ export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
   if (item.type === 'concept') {
     return (
       <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
-        {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+        {sticky && (
+        <button className={styles.lockIcon} onClick={onDismiss} title="Unlock">
+          <svg viewBox="0 0 10 11" width="10" height="11" fill="none" aria-hidden>
+            <rect x="1" y="4.5" width="8" height="6" rx="1" fill="#ef476f"/>
+            <path d="M3 4.5V2.8a2 2 0 0 1 4 0V4.5" stroke="#ef476f" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
         <div className={styles.header}>
           <span style={{ background: '#6366f1', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 8, fontWeight: 700 }}>
             CONCEPT
@@ -42,7 +49,14 @@ export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
       : blob.full_argument
     return (
       <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
-        {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+        {sticky && (
+        <button className={styles.lockIcon} onClick={onDismiss} title="Unlock">
+          <svg viewBox="0 0 10 11" width="10" height="11" fill="none" aria-hidden>
+            <rect x="1" y="4.5" width="8" height="6" rx="1" fill="#ef476f"/>
+            <path d="M3 4.5V2.8a2 2 0 0 1 4 0V4.5" stroke="#ef476f" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
         <div className={styles.header}>
           <span style={{ background: 'rgba(100,116,139,0.18)', color: '#475569', border: '1px solid rgba(100,116,139,0.35)', borderRadius: 4, padding: '1px 6px', fontSize: 8, fontWeight: 700 }}>
             ARGUMENT · {blob.argument_type}
@@ -65,7 +79,14 @@ export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
     const objectText  = targetNode?.full_text ? `"${targetNode.full_text.slice(0, 60)}…"` : targetNode?.label ?? '?'
     return (
       <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
-        {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+        {sticky && (
+        <button className={styles.lockIcon} onClick={onDismiss} title="Unlock">
+          <svg viewBox="0 0 10 11" width="10" height="11" fill="none" aria-hidden>
+            <rect x="1" y="4.5" width="8" height="6" rx="1" fill="#ef476f"/>
+            <path d="M3 4.5V2.8a2 2 0 0 1 4 0V4.5" stroke="#ef476f" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
         <div className={styles.edgeHeader}>
           <span className="sl" style={{ margin: 0 }}>Relation</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>{edge.confidence.toFixed(2)}</span>
@@ -104,7 +125,14 @@ export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
   const { node } = item
   return (
     <div className={`card ${styles.card} ${sticky ? styles.sticky : ''}`}>
-      {sticky && <button className={styles.close} onClick={onDismiss}>×</button>}
+      {sticky && (
+        <button className={styles.lockIcon} onClick={onDismiss} title="Unlock">
+          <svg viewBox="0 0 10 11" width="10" height="11" fill="none" aria-hidden>
+            <rect x="1" y="4.5" width="8" height="6" rx="1" fill="#ef476f"/>
+            <path d="M3 4.5V2.8a2 2 0 0 1 4 0V4.5" stroke="#ef476f" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
       <div className={styles.header}>
         <span style={{ background: TYPE_BG[node.type] ?? '#073b4c', color: TYPE_FG[node.type] ?? '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 8, fontWeight: 700 }}>
           {node.type}
