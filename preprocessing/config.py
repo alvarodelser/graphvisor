@@ -8,8 +8,8 @@ DEFAULT_BATCH_SIZE = 16
 DEFAULT_TIMEOUT_S = 120.0
 EXPECTED_EMBEDDING_DIM = 1024
 
-DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_OLLAMA_MODEL = "llama3"
+DEFAULT_OLLAMA_URL = "http://localhost:11436"
+DEFAULT_OLLAMA_MODEL = "gemma4:31b"
 
 # Field name used throughout GraphVisor (intentional spelling).
 EMBEDDING_FIELD = "doc_embbeding"
