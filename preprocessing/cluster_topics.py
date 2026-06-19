@@ -63,6 +63,12 @@ def parse_args() -> argparse.Namespace:
         help=f"Ollama model name (default: {DEFAULT_OLLAMA_MODEL}).",
     )
     parser.add_argument(
+        "--ollama-timeout",
+        type=float,
+        default=300.0,
+        help="HTTP timeout in seconds for each Ollama labeling request (default: 300).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Compute clusters and topics but do not write output files.",
@@ -128,6 +134,7 @@ def query_ollama_label(
     model: str,
     top_concepts: list[tuple[str, float]],
     paper_titles: list[str],
+    timeout_s: float = 300.0,
 ) -> str | None:
     concepts_str = "\n".join(
         [f"- {concept} (weight: {weight:.3f})" for concept, weight in top_concepts]
@@ -152,7 +159,7 @@ def query_ollama_label(
     }
 
     try:
-        response = httpx.post(url, json=payload, timeout=30.0)
+        response = httpx.post(url, json=payload, timeout=timeout_s)
         response.raise_for_status()
         data = response.json()
         label = data.get("response", "").strip().strip('"').strip("'").strip()
@@ -274,7 +281,8 @@ def main() -> int:
         label = None
         if top_concepts:
             label = query_ollama_label(
-                args.ollama_url, args.ollama_model, top_concepts, paper_titles
+                args.ollama_url, args.ollama_model, top_concepts, paper_titles,
+                timeout_s=args.ollama_timeout,
             )
 
         # Fallback if Ollama is not accessible or fails

@@ -133,6 +133,7 @@ Default K is chosen by a heuristic on corpus size (2 topics for ≤5 docs, 3 for
 | `--n-topics` | heuristic | Number of NMF components |
 | `--ollama-url` | `http://localhost:11436` | Ollama base URL |
 | `--ollama-model` | `gemma4:31b` | Model used for topic labeling |
+| `--ollama-timeout` | `300` | HTTP timeout per label request (seconds) |
 | `--output-topics` | auto | Override topics JSON output path |
 | `--output-corpus` | in-place | Override corpus JSON output path |
 | `--dry-run` | off | Compute but do not write files |
