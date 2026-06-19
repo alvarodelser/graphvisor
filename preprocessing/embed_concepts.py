@@ -159,6 +159,19 @@ def write_json_concepts(path: Path, data: Any) -> None:
     tmp_path.replace(path)
 
 
+def write_corpus(path: Path, docs: list[dict[str, Any]], *, backup_source: Path | None) -> None:
+    if backup_source and backup_source.exists() and backup_source.samefile(path):
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup_path = path.with_suffix(path.suffix + f".bak.{stamp}")
+        shutil.copy2(path, backup_path)
+        print(f"Backup written to {backup_path}")
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with tmp_path.open("w", encoding="utf-8") as handle:
+        json.dump(docs, handle, ensure_ascii=False, indent=4)
+        handle.write("\n")
+    tmp_path.replace(path)
+
+
 def main() -> int:
     args = parse_args()
     input_path, doc_bin_path, bin_path, json_path = resolve_paths(args)
@@ -178,6 +191,7 @@ def main() -> int:
     print("Fitting PCA on document embeddings...")
     pca = PCA(n_components=2)
     pca.fit(doc_vectors)
+    doc_2d = pca.transform(doc_vectors)  # shape: (N, 2)
 
     # 2. Map concepts to documents
     concept_to_doc_indices: dict[str, list[int]] = {}
@@ -318,11 +332,18 @@ def main() -> int:
             )
             return 1
 
-    # Write output files
+    # Write concept output files
     write_binary_embeddings(bin_path, concept_name_embeddings)  # type: ignore
     write_json_concepts(json_path, concepts_data)
     print(f"Wrote concept embeddings binary to {bin_path}")
     print(f"Wrote concept grounding data to {json_path}")
+
+    # Write doc PCA coordinates back into the corpus JSON
+    for i, doc in enumerate(docs):
+        doc["pca_x"] = float(doc_2d[i, 0])
+        doc["pca_y"] = float(doc_2d[i, 1])
+    write_corpus(input_path, docs, backup_source=input_path)
+    print(f"Wrote doc PCA coordinates to corpus at {input_path}")
     return 0
 
 

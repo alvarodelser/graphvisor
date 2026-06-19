@@ -1,5 +1,4 @@
 import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
-import { PCA } from 'ml-pca'
 import { corpusJson, hypothesisJson, docEmbeddingsUrl, conceptEmbeddingsUrl, conceptsJson, topicsJson, type ConceptGrounding } from './dataset'
 import { relationGroupOf } from '../graph/relations'
 
@@ -46,6 +45,8 @@ type RawDoc = {
   citations?: number
   data: RawArgument[]
   doc_embbeding?: number[]
+  pca_x?: number
+  pca_y?: number
 }
 
 function buildDocEmbeddings(docs: RawDoc[]): number[][] {
@@ -101,7 +102,6 @@ let CONCEPT_EMBEDDINGS: number[][] = []
 const CONCEPT_NAME_TO_INDEX = new Map<string, number>()
 let CONCEPT_GROUNDINGS: ConceptGrounding[] = []
 
-let PCA_SCORES: Array<{ pca_x: number; pca_y: number }> = []
 let TOPIC_DATA: { assignments: number[]; topics: Topic[] } = { assignments: [], topics: [] }
 let CACHED_DOCS: DocNode[] = []
 let CACHED_GRAPH: ReturnType<typeof buildGraphData> | null = null
@@ -165,12 +165,7 @@ export async function ensureInitialized(): Promise<void> {
         ;(rawConcepts as string[]).forEach((name, idx) => CONCEPT_NAME_TO_INDEX.set(name, idx))
       }
 
-      // 3. PCA projection of document embeddings
-      const pca = new PCA(DOC_EMBEDDINGS)
-      const projected = pca.predict(DOC_EMBEDDINGS, { nComponents: 2 }).to2DArray()
-      PCA_SCORES = projected.map((row: number[]) => ({ pca_x: row[0], pca_y: row[1] }))
-
-      // 4. Load pre-computed topics produced by cluster_topics.py
+      // 3. Load pre-computed topics produced by cluster_topics.py
       //    If the JSON is populated, use it; otherwise fall back to an empty list.
       const rawTopics = topicsJson as unknown as Array<{ id: number; label: string; docIds: string[]; argCount: number }>
       if (rawTopics.length > 0) {
@@ -192,7 +187,7 @@ export async function ensureInitialized(): Promise<void> {
         }
       }
 
-      // 5. Pre-compute doc cache (needs PCA_SCORES and TOPIC_DATA)
+      // 4. Pre-compute doc cache (needs TOPIC_DATA and pca_x/pca_y from corpus JSON)
       CACHED_DOCS = buildDocs()
       CACHED_GRAPH = buildGraphData()
 
@@ -245,7 +240,8 @@ function buildDocs(): DocNode[] {
       id: makeDocId(i),
       title: `${doc.source} (${doc.year ?? ''})`,
       year: parseInt(doc.year ?? '0', 10) || 0,
-      ...(PCA_SCORES[i] ?? { pca_x: 0, pca_y: 0 }),
+      pca_x: doc.pca_x ?? 0,
+      pca_y: doc.pca_y ?? 0,
       argument_count: doc.data.length,
       citations: doc.citations ?? 0,
       topic_id: TOPIC_DATA.assignments[i],

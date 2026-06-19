@@ -88,56 +88,48 @@ export function useCorpusD3(
         .attr('stroke-dasharray', '4 8')
     }
 
-    // ── Concept grounding blobs ───────────────────────────────────────────────
-    // Each concept is projected into the same 2D PCA space as the documents.
-    // We render a soft violet circle whose radius represents the concept's
-    // semantic extent.  Radius is in PCA units, so we convert it through
-    // the same linear scale used for doc positions.
+    // ── Concept labels ────────────────────────────────────────────────────────
+    // Each concept name is placed at its PCA projection. A small force
+    // simulation separates labels from each other so they stay legible.
     if (opts.conceptGroundings.length > 0) {
-      // Estimate a pixels-per-unit factor by comparing the domain & range of xScale
-      const [domMin, domMax] = xScale.domain()
-      const pxPerUnit = (width - 2 * pad) / Math.max(domMax - domMin, 1e-9)
+      const CHAR_PX = 4.2
 
-      const groundingG = zoomG.append('g').attr('class', 'concept-groundings')
+      type LabelNode = d3.SimulationNodeDatum & {
+        g: ConceptGrounding
+        ax: number
+        ay: number
+        hw: number
+        label: string
+      }
 
-      opts.conceptGroundings.forEach(g => {
-        const cx = xScale(g.pca_x)
-        const cy = yScale(g.pca_y)
-        const r = Math.max(g.radius * pxPerUnit, 20) // ensure a minimum visible size
+      const labelNodes: LabelNode[] = opts.conceptGroundings.map(g => {
+        const label = g.concept.length > 24 ? g.concept.slice(0, 24) + '…' : g.concept
+        const ax = xScale(g.pca_x)
+        const ay = yScale(g.pca_y)
+        return { g, x: ax, y: ay, ax, ay, hw: label.length * CHAR_PX * 0.5 + 3, label }
+      })
 
-        // Blob fill — semi-transparent violet gradient
-        const uid = `cg-${g.concept.replace(/[^a-z0-9]/gi, '_')}`
-        const grad = svg.append('defs').append('radialGradient')
-          .attr('id', uid)
-          .attr('cx', '50%').attr('cy', '50%')
-          .attr('r', '50%')
-        grad.append('stop').attr('offset', '0%').attr('stop-color', '#a855f7').attr('stop-opacity', 0.18)
-        grad.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed').attr('stop-opacity', 0)
+      const labelSim = d3.forceSimulation<LabelNode>(labelNodes)
+        .force('collide', d3.forceCollide<LabelNode>(n => n.hw + 2).strength(0.9))
+        .force('x', d3.forceX<LabelNode>(n => n.ax).strength(0.18))
+        .force('y', d3.forceY<LabelNode>(n => n.ay).strength(0.18))
+        .stop()
+      for (let i = 0; i < 200; i++) labelSim.tick()
 
-        groundingG.append('circle')
-          .attr('cx', cx).attr('cy', cy)
-          .attr('r', r)
-          .attr('fill', `url(#${uid})`)
-          .attr('stroke', '#a855f7')
-          .attr('stroke-width', 1)
-          .attr('stroke-opacity', 0.35)
-          .attr('stroke-dasharray', '3 5')
-          .attr('pointer-events', 'none')
-
-        // Concept name label — always visible, fades at low zoom
-        groundingG.append('text')
-          .attr('class', 'concept-label')
-          .attr('x', cx)
-          .attr('y', cy)
+      const labelG = zoomG.append('g').attr('class', 'concept-labels')
+      labelNodes.forEach(n => {
+        labelG.append('text')
+          .attr('x', n.x ?? n.ax)
+          .attr('y', n.y ?? n.ay)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'middle')
           .attr('pointer-events', 'none')
-          .attr('fill', '#7c3aed')
-          .attr('font-size', '9px')
-          .attr('font-weight', '600')
-          .attr('letter-spacing', '0.04em')
-          .attr('opacity', 0.7)
-          .text(g.concept.length > 22 ? g.concept.slice(0, 22) + '…' : g.concept)
+          .attr('fill', '#8b5cf6')
+          .attr('font-size', '8px')
+          .attr('font-weight', '500')
+          .attr('letter-spacing', '0.05em')
+          .attr('opacity', 0.5)
+          .text(n.label)
       })
     }
 
