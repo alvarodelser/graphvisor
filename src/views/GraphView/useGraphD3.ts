@@ -71,6 +71,7 @@ interface Options {
   blobs: ArgumentBlob[]
   showBlobs: boolean
   lod: LodMode
+  highlightArgIds: Set<string>   // blob ids to emphasise (hypothesis-linked evidence)
   lockedItem: HoverItem | null
   hoveredConceptId: string | null
   onNodeClick: (node: GraphNode) => void
@@ -81,6 +82,9 @@ interface Options {
   onCanvasClick?: () => void
 }
 
+const LINK_STROKE = '#8b5cf6'         // hypothesis-linked evidence highlight (violet)
+const LINK_CARD_STROKE = '#8b5cf6'
+const ARG_CARD_STROKE = 'rgba(7,59,76,0.32)'
 const BLOB_STROKE = 'rgba(100,116,139,0.12)'
 const BLOB_FILL = 'rgba(100,116,139,0.04)'
 const BLOB_STROKE_SEL = 'rgba(100,116,139,0.6)'
@@ -105,6 +109,7 @@ export function useGraphD3(
   const zoomKRef = useRef(1)
   const collapseRef = useRef(0)   // 0→1 collapse progress, driven by scroll past the lock
   const highlightFnRef = useRef<() => void>(() => {})
+  const linkedHighlightRef = useRef<(ids: Set<string>) => void>(() => {})
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -341,7 +346,8 @@ export function useGraphD3(
       const g = d3.select(this)
       g.append('rect').attr('x', -ARG_CARD_W / 2).attr('y', -ARG_CARD_H / 2)
         .attr('width', ARG_CARD_W).attr('height', ARG_CARD_H).attr('rx', ARG_CARD_RX)
-        .attr('fill', 'rgba(7,59,76,0.06)').attr('stroke', 'rgba(7,59,76,0.32)').attr('stroke-width', 1.5)
+        .attr('class', 'arg-card-rect')
+        .attr('fill', 'rgba(7,59,76,0.06)').attr('stroke', ARG_CARD_STROKE).attr('stroke-width', 1.5)
       const lines = wrapArgText(d.full_argument, ARG_TEXT_CHARS, ARG_TEXT_LINES)
       const y0 = -((lines.length - 1) * ARG_LINE_H) / 2
       const text = g.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
@@ -352,6 +358,19 @@ export function useGraphD3(
       })
       g.append('title').text(d.full_argument)
     })
+
+    // Emphasise hypothesis-linked evidence arguments: violet stroke on the blob hull
+    // and the collapsed card. Re-applied (without rebuilding the sim) when the set changes.
+    function applyLinkedHighlight(ids: Set<string>) {
+      blobPaths
+        .attr('stroke', d => ids.has(d.id) ? LINK_STROKE : BLOB_STROKE)
+        .attr('stroke-width', d => ids.has(d.id) ? 2.5 : 1.5)
+      argNodeGroups.select<SVGRectElement>('rect.arg-card-rect')
+        .attr('stroke', d => ids.has((d as ArgumentBlob).id) ? LINK_CARD_STROKE : ARG_CARD_STROKE)
+        .attr('stroke-width', d => ids.has((d as ArgumentBlob).id) ? 2.5 : 1.5)
+    }
+    linkedHighlightRef.current = applyLinkedHighlight
+    applyLinkedHighlight(optsRef.current.highlightArgIds)
 
     // ── Highlight (hover + sticky) ──────────────────────────────────────────────
     const edgeEndId = (e: GraphEdge, w: 'source' | 'target') => {
@@ -794,6 +813,7 @@ export function useGraphD3(
 
   // ── Sticky highlight (selection-driven) ─────────────────────────────────────────
   useEffect(() => { highlightFnRef.current() }, [opts.lockedItem, opts.hoveredConceptId])
+  useEffect(() => { linkedHighlightRef.current(opts.highlightArgIds) }, [opts.highlightArgIds])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

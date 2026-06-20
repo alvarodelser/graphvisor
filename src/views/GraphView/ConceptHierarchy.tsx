@@ -11,12 +11,15 @@ interface Props {
   onScopeChange: (s: SelectedScope) => void
   entityCount: number
   entityLimit: number
+  linkedEvidenceCount: number
+  highlightLinked: boolean
+  onToggleHighlightLinked: () => void
   onConceptHover?: (conceptId: string | null) => void
   onConceptDetail?: (conceptId: string) => void
   onArgumentDetail?: (argId: string) => void
 }
 
-export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, entityLimit, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
+export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, entityLimit, linkedEvidenceCount, highlightLinked, onToggleHighlightLinked, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
   // Per-argument entity count — hints which arguments to uncheck to drop demand.
   const entityCountByArg = useMemo(
@@ -68,6 +71,12 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
           </span>
           <small>{tree.length} concepts · {blobs.length} arguments</small>
         </div>
+        {linkedEvidenceCount > 0 && (
+          <label className={styles.linkedToggle} title="Highlight arguments directly cited as evidence by the selected hypotheses">
+            <input type="checkbox" checked={highlightLinked} onChange={onToggleHighlightLinked} />
+            <span>Highlight linked evidence <span className={styles.linkedCount}>{linkedEvidenceCount}</span></span>
+          </label>
+        )}
         <input
           className={styles.search}
           value={query}

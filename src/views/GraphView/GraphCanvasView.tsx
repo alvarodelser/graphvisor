@@ -16,9 +16,10 @@ interface Props {
   isActive: boolean
   hoveredConceptId: string | null
   lod: LodMode
+  highlightArgIds: Set<string>
 }
 
-export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId, lod }: Props) {
+export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId, lod, highlightArgIds }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
   const [isSticky, setIsSticky] = useState(false)
@@ -42,6 +43,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
     blobs,
     showBlobs,
     lod,
+    highlightArgIds,
     hoveredConceptId,
     lockedItem: isSticky ? displayedItem : null,
     onNodeClick: (node) => {

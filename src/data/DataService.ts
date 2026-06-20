@@ -13,6 +13,7 @@ export interface DataServiceInterface {
   getConceptEmbedding(conceptLabel: string): Promise<number[] | null>
   getDocEmbedding(docId: string): Promise<number[] | null>
   findSimilarConcepts(embedding: number[], limit?: number): Promise<{ concept: string; similarity: number }[]>
+  getConceptsForDocuments(docIds: string[], confThreshold: number, cosThreshold: number): Promise<{ concept: string; score: number }[]>
 }
 
 // ── Raw JSON types ────────────────────────────────────────────────────────────
@@ -31,10 +32,11 @@ type RawArgument = {
   full_argument: string
   argument_type: string
   confidence: number
-  arg_id: number
+  arg_id: string
   concept_level: {
     concept_id: number
     parent_concepts: string[]
+    parent_concepts_cos?: number[]
   }
 }
 
@@ -311,6 +313,7 @@ function buildGraphData(): {
       if (argEntityIds.size >= 2) {
         blobs.push({
           id: `doc_${docIdx}_arg_${argIdx}`,
+          arg_id: arg.arg_id,
           entityIds: Array.from(argEntityIds),
           full_argument: arg.full_argument,
           argument_type: arg.argument_type,
@@ -617,6 +620,41 @@ export class RealDataService implements DataServiceInterface {
     return sims
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit)
+  }
+
+  async getConceptsForDocuments(
+    docIds: string[],
+    confThreshold: number,
+    cosThreshold: number,
+  ): Promise<{ concept: string; score: number }[]> {
+    await ensureInitialized()
+    const selectedIdx = new Set(
+      docIds.map(id => parseInt(id.split('_')[1])).filter(n => !isNaN(n))
+    )
+    const conceptScores = new Map<string, number>()
+    for (const idx of selectedIdx) {
+      const doc = rawDocs[idx]
+      if (!doc) continue
+      for (const arg of doc.data) {
+        if (arg.confidence < confThreshold) continue
+        const { parent_concepts, parent_concepts_cos } = arg.concept_level
+        if (!parent_concepts_cos) {
+          for (const concept of parent_concepts) {
+            conceptScores.set(concept, (conceptScores.get(concept) ?? 0) + 1)
+          }
+          continue
+        }
+        parent_concepts.forEach((concept, i) => {
+          const cos = parent_concepts_cos[i] ?? 0
+          if (cos >= cosThreshold) {
+            conceptScores.set(concept, (conceptScores.get(concept) ?? 0) + cos)
+          }
+        })
+      }
+    }
+    return [...conceptScores.entries()]
+      .map(([concept, score]) => ({ concept, score }))
+      .sort((a, b) => b.score - a.score)
   }
 }
 

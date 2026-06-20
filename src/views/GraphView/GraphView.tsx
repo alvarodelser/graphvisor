@@ -4,10 +4,12 @@ import { dataService } from '../../data/DataService'
 import { GraphCanvasView } from './GraphCanvasView'
 import { ConceptHierarchy } from './ConceptHierarchy'
 import { lodMode, LOD_THRESHOLDS } from './lod'
+import { linkedEvidenceBlobIds } from './linkedEvidence'
 import type { GraphNode, GraphEdge, ArgumentBlob, Hypothesis, SelectedScope } from '../../types'
 import styles from './GraphView.module.css'
 
 const endId = (v: string | GraphNode) => (typeof v === 'string' ? v : v.id)
+const EMPTY_IDS: Set<string> = new Set()
 
 export function GraphView() {
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -20,6 +22,7 @@ export function GraphView() {
   const [hoveredConceptId, setHoveredConceptId] = useState<string | null>(null)
   const [hasActivatedOnce, setHasActivatedOnce] = useState(false)
   const [forceRender, setForceRender] = useState(false)
+  const [highlightLinked, setHighlightLinked] = useState(false)
   const viewRef = useRef<HTMLDivElement>(null)
   const didDragRef = useRef(false)
   const { activeView, selectedDocumentIds, selectedHypothesisIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView, setScopedArgumentCount } = useStore()
@@ -115,6 +118,13 @@ export function GraphView() {
   const entityCount = useMemo(() => fnodes.reduce((n, x) => n + (x.type === 'Entity' ? 1 : 0), 0), [fnodes])
   const mode = lodMode(entityCount)
 
+  // Arguments directly linked to the selected hypotheses via their `evidence` field.
+  const linkedEvidenceArgIds = useMemo(
+    () => linkedEvidenceBlobIds(allHypotheses, selectedHypothesisIds, blobs),
+    [allHypotheses, selectedHypothesisIds, blobs],
+  )
+  const highlightArgIds = highlightLinked ? linkedEvidenceArgIds : EMPTY_IDS
+
   // "Render anyway" escape from the blocked state — reset once back under the
   // limit, or when the document / hypothesis selection changes.
   useEffect(() => { if (mode !== 'blocked') setForceRender(false) }, [mode])
@@ -138,6 +148,9 @@ export function GraphView() {
             onScopeChange={setScope}
             entityCount={entityCount}
             entityLimit={LOD_THRESHOLDS.blocked}
+            linkedEvidenceCount={linkedEvidenceArgIds.size}
+            highlightLinked={highlightLinked}
+            onToggleHighlightLinked={() => setHighlightLinked(v => !v)}
             onConceptHover={setHoveredConceptId}
             onConceptDetail={(conceptId) => {
               setSelectedConceptId(conceptId)
@@ -179,7 +192,7 @@ export function GraphView() {
 
       <div className={styles.canvas}>
         {showGraph && (
-          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} />
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} highlightArgIds={highlightArgIds} />
         )}
         {showBlocked && (
           <div className={styles.blockedBanner} role="alert">

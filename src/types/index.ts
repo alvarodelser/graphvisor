@@ -112,6 +112,7 @@ export interface ConceptDetail {
 
 export interface ArgumentBlob {
   id: string                   // e.g. "doc_0_arg_3"
+  arg_id?: string              // global argument id (e.g. "a2648") — links from hypothesis.evidence
   entityIds: string[]          // entity node IDs from this argument's relations
   full_argument: string
   argument_type: string
@@ -138,6 +139,9 @@ export interface SelectedRelation {
 
 export interface Hypothesis {
   hypothesis: string
+  concept: string
+  evidence: string
+  rationale?: string
   decision: 'ADVANCE' | 'BORDERLINE'
   scores: {
     novelty: number

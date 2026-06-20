@@ -35,6 +35,27 @@
   justify-content: space-between;
   gap: 8px;
 }
+.linkedToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  user-select: none;
+}
+.linkedToggle input { accent-color: #8b5cf6; cursor: pointer; }
+.linkedCount {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  background: rgba(139, 92, 246, 0.14);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
 .title small {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
