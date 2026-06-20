@@ -6,6 +6,8 @@ import { scoreColor } from './scoreColor'
 interface HypothesisRadarChartProps {
   scores: Hypothesis['scores']
   size?: number
+  /** When sorting by a specific dimension, that dimension's value stays visible without hover. */
+  highlightDimension?: keyof Hypothesis['scores']
 }
 
 const LABELS: Record<string, string> = {
@@ -15,8 +17,25 @@ const LABELS: Record<string, string> = {
   commercial_potential: 'Com',
 }
 
-export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChartProps) {
+const LABELS_FULL: Record<string, string> = {
+  novelty: 'Novelty',
+  scientific_plausibility: 'Plausibility',
+  potential_impact: 'Impact',
+  commercial_potential: 'Commercial',
+}
+
+// Reserve horizontal room for the side names (which expand on hover) and sit the
+// chart left of centre so the right-hand name has space to grow rightward.
+const PAD_L = 30
+const PAD_R = 58
+
+export function HypothesisRadarChart({ scores, size = 100, highlightDimension }: HypothesisRadarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+
+  const svgWidth = size + PAD_L + PAD_R
+  const svgHeight = size
+  const originX = PAD_L + size / 2
+  const originY = size / 2
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -38,7 +57,7 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
     svg.selectAll('*').remove()
 
     const g = svg.append('g')
-      .attr('transform', `translate(${size / 2}, ${size / 2})`)
+      .attr('transform', `translate(${originX}, ${originY})`)
 
     // Gridlines (3 levels)
     for (let i = 1; i <= 3; i++) {
@@ -49,7 +68,11 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
         .attr('stroke-width', 0.5)
     }
 
-    // Axes + labels
+    // Axes + labels (name on the inner side, value pinned just outside it so the
+    // two never overlap the polygon edge or each other)
+    type TextSel = d3.Selection<SVGTextElement, unknown, null, undefined>
+    const valueLabels: TextSel[] = []
+    const nameLabels: { sel: TextSel; dim: string }[] = []
     dimensions.forEach((dim, i) => {
       const angle = angleSlice * i - Math.PI / 2
       const tipX = Math.cos(angle) * chartRadius
@@ -61,16 +84,53 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
         .attr('stroke', '#e5e7eb')
         .attr('stroke-width', 0.5)
 
-      const labelR = chartRadius + labelPad * 0.7
-      g.append('text')
-        .attr('x', Math.cos(angle) * labelR)
-        .attr('y', Math.sin(angle) * labelR)
-        .attr('text-anchor', 'middle')
+      // Stack number + name so they never collide. Top/bottom axes stack
+      // radially (number inner, name pushed further out). Left/right axes stack
+      // vertically (name on top of number) and are anchored OUTWARD — growing
+      // away from the plot — so the expanded name never re-enters the chart.
+      const isRight = i === 1
+      const isLeft = i === 3
+      let numX: number, numY: number, nameX: number, nameY: number
+      let anchor: 'start' | 'middle' | 'end' = 'middle'
+      if (isRight || isLeft) {
+        const sideR = chartRadius + 5
+        numX = (isRight ? 1 : -1) * sideR
+        numY = 6
+        nameX = numX
+        nameY = -6
+        anchor = isRight ? 'start' : 'end'
+      } else {
+        numX = Math.cos(angle) * (chartRadius + labelPad * 0.45)
+        numY = Math.sin(angle) * (chartRadius + labelPad * 0.45)
+        nameX = Math.cos(angle) * (chartRadius + labelPad * 1.35)
+        nameY = Math.sin(angle) * (chartRadius + labelPad * 1.35)
+      }
+
+      const persistent = highlightDimension === dim
+      valueLabels.push(
+        g.append('text')
+          .attr('x', numX)
+          .attr('y', numY)
+          .attr('text-anchor', anchor)
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '9px')
+          .attr('font-weight', '700')
+          .attr('fill', polyColor)
+          .attr('opacity', persistent ? 1 : 0)
+          .attr('data-persistent', persistent ? '1' : '0')
+          .text(scores[dim])
+      )
+
+      const nameLabel = g.append('text')
+        .attr('x', nameX)
+        .attr('y', nameY)
+        .attr('text-anchor', anchor)
         .attr('dominant-baseline', 'middle')
         .attr('font-size', '9px')
         .attr('font-weight', '600')
         .attr('fill', '#9ca3af')
         .text(LABELS[dim])
+      nameLabels.push({ sel: nameLabel, dim })
     })
 
     // Data polygon
@@ -95,9 +155,19 @@ export function HypothesisRadarChart({ scores, size = 100 }: HypothesisRadarChar
       .attr('font-weight', '700')
       .attr('fill', polyColor)
       .text(avg)
-  }, [scores, size])
+
+    svg
+      .on('mouseenter', () => {
+        valueLabels.forEach(t => t.attr('opacity', 1))
+        nameLabels.forEach(({ sel, dim }) => sel.text(LABELS_FULL[dim]))
+      })
+      .on('mouseleave', () => {
+        valueLabels.forEach(t => t.attr('opacity', t.attr('data-persistent') === '1' ? 1 : 0))
+        nameLabels.forEach(({ sel, dim }) => sel.text(LABELS[dim]))
+      })
+  }, [scores, size, highlightDimension])
 
   return (
-    <svg ref={svgRef} width={size} height={size} overflow="visible" style={{ flexShrink: 0, margin: '12px' }} />
+    <svg ref={svgRef} width={svgWidth} height={svgHeight} overflow="visible" style={{ flexShrink: 0, margin: '12px' }} />
   )
 }

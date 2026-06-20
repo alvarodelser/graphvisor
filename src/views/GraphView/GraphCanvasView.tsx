@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { ControlPanel } from '../../components/ControlPanel/ControlPanel'
 import { useGraphD3 } from './useGraphD3'
@@ -37,7 +37,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
     setSelectedRelation(null)
   }
 
-  const { reheat } = useGraphD3(svgRef, nodes, edges, {
+  const { reheat, freeze } = useGraphD3(svgRef, nodes, edges, {
     filters,
     blobs,
     showBlobs,
@@ -90,6 +90,11 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
       setIsSticky(false)
     },
   })
+
+  useEffect(() => {
+    if (isActive) reheat()
+    else freeze()
+  }, [isActive])
 
   return (
     <>

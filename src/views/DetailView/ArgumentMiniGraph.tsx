@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect } from 'react'
 import * as d3 from 'd3'
 import type { ArgumentDetail } from '../../types'
 import { RELATION_COLORS } from '../../utils/geometry'
@@ -34,13 +34,18 @@ interface NodeDatum extends d3.SimulationNodeDatum { id: string; label: string }
 interface LinkDatum extends d3.SimulationLinkDatum<NodeDatum> {
   id: string; relation: string; group: string; confidence: number
 }
-type PanelInfo =
+
+export type PanelInfo =
   | { kind: 'node'; label: string; rels: { type: string; other: string; out: boolean; confidence: number }[] }
   | { kind: 'edge'; subject: string; relation: string; object: string; group: string; confidence: number }
 
-export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
+interface Props {
+  detail: ArgumentDetail
+  onPanelChange?: (panel: PanelInfo | null) => void
+}
+
+export function ArgumentMiniGraph({ detail, onPanelChange }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [panel, setPanel] = useState<PanelInfo | null>(null)
 
   useEffect(() => {
     if (!svgRef.current || !detail.entityGraph?.length) return
@@ -161,7 +166,7 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
             out: t.subject === d.id,
             confidence: t.confidence,
           }))
-        setPanel({ kind: 'node', label: d.label, rels })
+        onPanelChange?.({ kind: 'node', label: d.label, rels })
         const adjIds = new Set(rels.map(r => r.other))
         nodeGroups.attr('opacity', (nd: NodeDatum) => nd.id === d.id || adjIds.has(nd.id) ? 1 : 0.12)
         edgeGroups.attr('opacity', (ld: LinkDatum) => {
@@ -171,7 +176,7 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
         })
       })
       .on('mouseleave', () => {
-        setPanel(null)
+        onPanelChange?.(null)
         nodeGroups.attr('opacity', null)
         edgeGroups.attr('opacity', null)
       })
@@ -181,7 +186,7 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
       .style('cursor', 'pointer')
       .on('mouseenter', (_event, d) => {
         const src = d.source as NodeDatum, tgt = d.target as NodeDatum
-        setPanel({
+        onPanelChange?.({
           kind: 'edge',
           subject: src.label ?? (typeof d.source === 'string' ? d.source : ''),
           relation: d.relation.toLowerCase().replace(/_/g, ' '),
@@ -193,7 +198,7 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
         edgeGroups.attr('opacity', (ld: LinkDatum) => ld.id === d.id ? 1 : 0.05)
       })
       .on('mouseleave', () => {
-        setPanel(null)
+        onPanelChange?.(null)
         nodeGroups.attr('opacity', null)
         edgeGroups.attr('opacity', null)
       })
@@ -240,58 +245,11 @@ export function ArgumentMiniGraph({ detail }: { detail: ArgumentDetail }) {
     })
 
     return () => { sim.stop() }
-  }, [detail])
+  }, [detail, onPanelChange])
 
   return (
-    <div style={{ background: '#fafbfc', borderRadius: 8, overflow: 'hidden' }}>
-      <svg ref={svgRef} style={{ width: '100%', height: 160, display: 'block' }} />
-      <div style={{
-        borderTop: '1px solid rgba(7,59,76,0.1)',
-        padding: '6px 10px',
-        minHeight: 64,
-        background: '#fafbfc',
-        borderRadius: '0 0 8px 8px',
-      }}>
-        {panel?.kind === 'node' && (
-          <>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#073b4c', marginBottom: 4, lineHeight: 1.3 }}>
-              {panel.label}
-            </div>
-            <div style={{ maxHeight: 48, overflowY: 'auto' }}>
-              {panel.rels.map((r, i) => (
-                <div key={i} style={{ fontSize: 9, color: '#6b7280', display: 'flex', gap: 4, marginBottom: 2, lineHeight: 1.4 }}>
-                  <span style={{ color: '#9ca3af', flexShrink: 0 }}>{r.out ? '→' : '←'}</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: '#F4A124' }}>{r.type}</span>
-                    {' '}{r.other}
-                  </span>
-                  <span style={{ color: '#d1d5db', flexShrink: 0 }}>{r.confidence.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-        {panel?.kind === 'edge' && (
-          <>
-            <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 3 }}>relation</div>
-            <div style={{ fontSize: 9, color: '#6b7280', lineHeight: 1.6 }}>
-              <span style={{ color: '#073b4c', fontWeight: 600 }}>{panel.subject}</span>
-              {' '}
-              <span style={{ color: edgeStroke(panel.group), fontWeight: 700 }}>{panel.relation}</span>
-              {' '}
-              <span style={{ color: '#073b4c', fontWeight: 600 }}>{panel.object}</span>
-            </div>
-            <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 3 }}>
-              confidence {panel.confidence.toFixed(2)}
-            </div>
-          </>
-        )}
-        {!panel && (
-          <div style={{ fontSize: 9, color: '#9ca3af', textAlign: 'center', paddingTop: 10 }}>
-            hover a node or relation
-          </div>
-        )}
-      </div>
+    <div style={{ background: '#fafbfc' }}>
+      <svg ref={svgRef} style={{ width: '100%', height: 260, display: 'block' }} />
     </div>
   )
 }

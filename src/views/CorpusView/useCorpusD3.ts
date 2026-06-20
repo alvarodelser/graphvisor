@@ -9,12 +9,11 @@ interface Options {
   selectedIds: Set<string>
   sizeBy: SizeBy
   conceptGroundings: ConceptGrounding[]
-  onLassoSelect: (ids: string[]) => void
+  onLassoSelect: (ids: string[], shiftKey: boolean) => void
   onClickToggle: (id: string, shiftKey: boolean) => void
   setTooltip: (t: { doc: DocNode; x: number; y: number } | null) => void
 }
 
-const CANVAS_BG = '#fafbfc'
 const DOT_DEFAULT = '#74b9d6'
 const DOT_SELECTED = '#ef476f'
 
@@ -36,7 +35,6 @@ export function useCorpusD3(
     const { width, height } = svgEl.getBoundingClientRect()
     const svg = d3.select(svgEl)
     svg.selectAll('*').remove()
-    svg.style('background', CANVAS_BG)
 
     const pad = 60
     const xScale = d3.scaleLinear()
@@ -68,6 +66,17 @@ export function useCorpusD3(
 
     // Zoom bound to SVG
     const zoomG = svg.append('g').attr('class', 'zoom-group')
+
+    // Dot grid — first layer so it's always behind content
+    const gridDefs = svg.insert('defs', ':first-child')
+    const pat = gridDefs.append('pattern')
+      .attr('id', 'corpus-dot-grid').attr('patternUnits', 'userSpaceOnUse')
+      .attr('width', 40).attr('height', 40)
+    pat.append('circle').attr('cx', 20).attr('cy', 20).attr('r', 0.8)
+      .attr('fill', '#073b4c').attr('opacity', 0.18)
+    zoomG.append('rect')
+      .attr('x', -5000).attr('y', -5000).attr('width', 10000).attr('height', 10000)
+      .attr('fill', 'url(#corpus-dot-grid)').attr('pointer-events', 'none')
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 8])
       .on('zoom', (event) => {
@@ -75,18 +84,6 @@ export function useCorpusD3(
         zoomG.classed('titles-visible', event.transform.k >= 2.0)
       })
     svg.call(zoom)
-
-    // Concentric rings
-    const ringG = zoomG.append('g').attr('class', 'rings')
-    for (let i = 1; i <= 14; i++) {
-      ringG.append('circle')
-        .attr('cx', width / 2).attr('cy', height / 2)
-        .attr('r', i * 240)
-        .attr('fill', 'none')
-        .attr('stroke', 'rgba(7,59,76,0.35)')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '4 8')
-    }
 
     // ── Concept labels ────────────────────────────────────────────────────────
     // Each concept name is placed at its PCA projection. A small force
@@ -183,9 +180,11 @@ export function useCorpusD3(
     // Lasso bound to bgRect (not SVG) — avoids zoom conflict
     let lassoPath: [number, number][] = []
     let lassoEl: d3.Selection<SVGPathElement, unknown, null, undefined> | null = null
+    let lassoShiftKey = false
 
     const lassoBehavior = d3.drag<SVGRectElement, unknown>()
       .on('start', (event) => {
+        lassoShiftKey = !!event.sourceEvent?.shiftKey
         const [mx, my] = d3.pointer(event, zoomG.node()!)
         lassoPath = [[mx, my]]
         lassoEl = zoomG.append('path')
@@ -208,7 +207,7 @@ export function useCorpusD3(
             const cy = +d3.select(this).attr('cy')
             if (isPointInPolygon([cx, cy], lassoPath)) inside.push(d.id)
           })
-          if (inside.length > 0) optsRef.current.onLassoSelect(inside)
+          optsRef.current.onLassoSelect(inside, lassoShiftKey)
         }
         lassoEl?.remove()
         lassoEl = null
@@ -232,7 +231,6 @@ export function useCorpusD3(
       d3.select(svgEl).selectAll<SVGTextElement, DocNode>('.doc-title')
         .attr('x', d => xS(d.pca_x))
         .attr('y', d => yS(d.pca_y) + 14)
-      d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
       bgRect.attr('x', -w * 4).attr('y', -h * 4)
         .attr('width', w * 8).attr('height', h * 8)
     })

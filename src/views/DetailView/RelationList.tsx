@@ -57,11 +57,12 @@ interface Props {
   visibleGroups: Record<string, boolean>
   onEntityClick?: (entityId: string) => void
   onBlobClick?: (blobId: string) => void
+  onRelationClick?: (rel: ArgumentRelation) => void
   focalId: string
   focalLabel?: string
 }
 
-export function RelationList({ relations, argumentBlobs, visibleGroups, onEntityClick, onBlobClick, focalId, focalLabel }: Props) {
+export function RelationList({ relations, argumentBlobs, visibleGroups, onEntityClick, onBlobClick, onRelationClick, focalId, focalLabel }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const toggleReasoning = (key: string) =>
     setExpanded(prev => {
@@ -177,13 +178,20 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                 gridColumn: subjectCol + 1, gridRow: contentRow,
                 padding: '8px 0', alignSelf: 'start',
               }}>
-                <span style={{
-                  background: RELATION_COLORS[rel.group],
-                  color: GROUP_TEXT_COLOR[rel.group] ?? '#fff',
-                  borderRadius: 20, padding: '2px 7px', fontSize: 9, fontWeight: 700,
-                  display: 'inline-block', whiteSpace: 'nowrap',
-                  overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
-                }}>
+                <span
+                  onClick={() => onRelationClick?.(rel)}
+                  style={{
+                    background: RELATION_COLORS[rel.group],
+                    color: GROUP_TEXT_COLOR[rel.group] ?? '#fff',
+                    borderRadius: 20, padding: '2px 7px', fontSize: 9, fontWeight: 700,
+                    display: 'inline-block', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+                    cursor: onRelationClick ? 'pointer' : 'default',
+                    transition: 'opacity 0.15s',
+                  }}
+                  onMouseEnter={e => { if (onRelationClick) (e.currentTarget as HTMLElement).style.opacity = '0.8' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
+                >
                   {rel.relation_type}
                 </span>
               </div>

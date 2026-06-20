@@ -638,18 +638,16 @@ export class RealDataService implements DataServiceInterface {
       for (const arg of doc.data) {
         if (arg.confidence < confThreshold) continue
         const { parent_concepts, parent_concepts_cos } = arg.concept_level
+        const mainConcept = parent_concepts[0]
+        if (!mainConcept) continue
         if (!parent_concepts_cos) {
-          for (const concept of parent_concepts) {
-            conceptScores.set(concept, (conceptScores.get(concept) ?? 0) + 1)
-          }
+          conceptScores.set(mainConcept, (conceptScores.get(mainConcept) ?? 0) + 1)
           continue
         }
-        parent_concepts.forEach((concept, i) => {
-          const cos = parent_concepts_cos[i] ?? 0
-          if (cos >= cosThreshold) {
-            conceptScores.set(concept, (conceptScores.get(concept) ?? 0) + cos)
-          }
-        })
+        const cos = parent_concepts_cos[0] ?? 0
+        if (cos >= cosThreshold) {
+          conceptScores.set(mainConcept, (conceptScores.get(mainConcept) ?? 0) + cos)
+        }
       }
     }
     return [...conceptScores.entries()]

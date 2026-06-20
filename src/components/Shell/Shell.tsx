@@ -21,6 +21,7 @@ export function Shell({ children }: Props) {
     activeView, setActiveView,
     selectedDocumentIds, selectedNodeId, selectedArgumentId,
     selectedConceptId, selectedRelation, selectedHypothesisIds,
+    discoveredHypothesisCount, scopedArgumentCount,
   } = useStore()
   const viewIndex = VIEW_ORDER.indexOf(activeView)
 
@@ -89,11 +90,11 @@ export function Shell({ children }: Props) {
                 disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection)}
               >
                 <span ref={el => { labelRefs.current[i] = el }}>{VIEW_LABELS[v]}</span>
-                {v === 'discover' && hasCorpusSelection && (
-                  <span className={styles.badge}>{selectedDocumentIds.length}</span>
+                {v === 'discover' && discoveredHypothesisCount > 0 && (
+                  <span className={styles.badge}>{discoveredHypothesisCount}</span>
                 )}
                 {v === 'graph' && hasHypothesisSelection && (
-                  <span className={styles.badge}>{selectedHypothesisIds.length}</span>
+                  <span className={styles.badge}>{scopedArgumentCount}</span>
                 )}
                 {v === 'detail' && hasDetailTarget && (
                   <span className={styles.badge}>●</span>

@@ -12,8 +12,9 @@ interface Props {
   selectedIds: Set<string>
 }
 
-const PAD_LEFT = 32
-const PAD_RIGHT = 88
+const PAD_LEFT_BASE = 32
+const UNDATED_PANEL_W = 76
+const PAD_RIGHT = 140
 // Space reserved for the switcher pill + chip label below it
 const HEADER_H = 82
 // Persistent horizontal range-selector bar (shows selected year blocks)
@@ -90,7 +91,11 @@ export function TimelineView({ docs, selectedIds }: Props) {
     return () => ro.disconnect()
   }, [])
 
-  const years = useMemo(() => docs.map(d => d.year), [docs])
+  const undatedDocs = useMemo(() => docs.filter(d => d.year === 0), [docs])
+  const datedDocs = useMemo(() => docs.filter(d => d.year > 0), [docs])
+  const padLeft = undatedDocs.length > 0 ? PAD_LEFT_BASE + UNDATED_PANEL_W : PAD_LEFT_BASE
+
+  const years = useMemo(() => datedDocs.map(d => d.year), [datedDocs])
   const uniqueYears = useMemo(() => [...new Set(years)].sort((a, b) => a - b), [years])
 
   // Full contiguous range min → max
@@ -102,15 +107,15 @@ export function TimelineView({ docs, selectedIds }: Props) {
   }, [uniqueYears])
 
   const yearScale = useMemo(
-    () => makeYearScale(years.length ? years : [2000], PAD_LEFT, Math.max(PAD_LEFT + 1, width - PAD_RIGHT)),
-    [years, width],
+    () => makeYearScale(years.length ? years : [2000], padLeft, Math.max(padLeft + 1, width - PAD_RIGHT)),
+    [years, width, padLeft],
   )
 
   // Pixel width of a single year column
   const colW = useMemo(() => {
     const [min, max] = yearScale.domain
     const span = max - min
-    return span > 0 ? (width - PAD_LEFT - PAD_RIGHT) / span : 30
+    return span > 0 ? (width - padLeft - PAD_RIGHT) / span : 30
   }, [yearScale, width])
 
   // Label every N years to avoid overcrowding
@@ -131,17 +136,17 @@ export function TimelineView({ docs, selectedIds }: Props) {
 
   const layout = useMemo(
     () => computeBeeswarm(
-      docs.map(d => ({ id: d.id, year: d.year })),
+      datedDocs.map(d => ({ id: d.id, year: d.year })),
       { xOf: (y) => yearScale.scale(y), centerY: BEESWARM_H / 2, radius: 7 },
     ),
-    [docs, yearScale],
+    [datedDocs, yearScale],
   )
 
   // Stable refs so D3 drag callbacks always read current values
   const selectedDocumentIdsRef = useRef(selectedDocumentIds)
   selectedDocumentIdsRef.current = selectedDocumentIds
-  const docsRef = useRef(docs)
-  docsRef.current = docs
+  const docsRef = useRef(datedDocs)
+  docsRef.current = datedDocs
   const uniqueYearsRef = useRef(uniqueYears)
   uniqueYearsRef.current = uniqueYears
   const selectedYearRangesRef = useRef(selectedYearRanges)
@@ -154,6 +159,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
   useEffect(() => {
     if (internalUpdateRef.current) { internalUpdateRef.current = false; return }
     setSelectedYearRanges(deriveRangesFromIds(selectedIds, docsRef.current, uniqueYearsRef.current))
+    // undated docs: sync selection state but don't affect year ranges
   }, [selectedIds])
 
   useEffect(() => {
@@ -161,9 +167,9 @@ export function TimelineView({ docs, selectedIds }: Props) {
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
 
-    // Document circles
+    // Document circles (dated only)
     svg.append('g').selectAll('circle')
-      .data(docs, (d: any) => d.id)
+      .data(datedDocs, (d: any) => d.id)
       .join('circle')
       .attr('cx', d => layout.get(d.id)?.x ?? 0)
       .attr('cy', d => layout.get(d.id)?.y ?? BEESWARM_H / 2)
@@ -175,8 +181,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
         if (event.shiftKey) toggleDocumentSelection(d.id)
         else setSelectedDocuments(selectedDocumentIdsRef.current.includes(d.id) ? [] : [d.id])
       })
-      .on('mouseenter', (event: MouseEvent, d) => setTooltip({ doc: d, x: event.clientX, y: event.clientY }))
-      .on('mouseleave', () => setTooltip(null))
+      // Tooltip is handled by the overlay rect hit-test below (circles are under the overlay)
 
     // Drag selection band inside the beeswarm SVG
     const selectionBand = svg.append('rect')
@@ -186,7 +191,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
 
     const [yMin, yMax] = yearScale.domain
     const span = yMax - yMin
-    const left = PAD_LEFT
+    const left = padLeft
     const right = width - PAD_RIGHT
     const invertYear = (px: number) =>
       span === 0 ? yMin : yMin + (px - left) / (right - left) * span
@@ -258,13 +263,23 @@ export function TimelineView({ docs, selectedIds }: Props) {
       .attr('fill', 'transparent')
       .attr('cursor', 'crosshair')
       .on('mousemove', function(event: MouseEvent) {
-        const [mx] = d3.pointer(event, this as SVGRectElement)
+        const [mx, my] = d3.pointer(event, this as SVGRectElement)
         setHoveredYear(Math.round(invertYear(mx)))
+
+        // Hit-test circles (overlay sits on top, so we do it here)
+        let hit: DocNode | null = null
+        for (const doc of datedDocs) {
+          const pos = layout.get(doc.id)
+          if (!pos) continue
+          const r = sizeScale(doc) + 2
+          if (Math.sqrt((mx - pos.x) ** 2 + (my - pos.y) ** 2) <= r) { hit = doc; break }
+        }
+        setTooltip(hit ? { doc: hit, x: event.clientX, y: event.clientY } : null)
       })
-      .on('mouseleave', () => setHoveredYear(null))
+      .on('mouseleave', () => { setHoveredYear(null); setTooltip(null) })
       .call(dragBehavior as any)
 
-  }, [docs, layout, sizeScale, selectedIds, colW, width, yearScale,
+  }, [datedDocs, layout, sizeScale, selectedIds, colW, width, yearScale, padLeft,
       setSelectedDocuments, toggleDocumentSelection, setIsDragging])
 
   const crosshairX = hoveredYear !== null ? yearScale.scale(hoveredYear) : null
@@ -273,13 +288,52 @@ export function TimelineView({ docs, selectedIds }: Props) {
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, paddingTop: HEADER_H, background: '#fafbfc', overflow: 'hidden' }}>
 
+      {/* ── Undated papers panel ─────────────────────────────────────────────── */}
+      {undatedDocs.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          top: HEADER_H,
+          width: UNDATED_PANEL_W,
+          bottom: 0,
+          borderRight: '1px solid rgba(7,59,76,0.08)',
+          background: 'rgba(7,59,76,0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '8px 6px',
+          overflow: 'hidden',
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: 'rgba(7,59,76,0.35)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Undated · {undatedDocs.length}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, overflowY: 'auto' }}>
+            {undatedDocs.map(doc => (
+              <div
+                key={doc.id}
+                onClick={e => {
+                  e.stopPropagation()
+                  if (e.shiftKey) toggleDocumentSelection(doc.id)
+                  else setSelectedDocuments(selectedDocumentIds.includes(doc.id) ? [] : [doc.id])
+                }}
+                onMouseEnter={e => setTooltip({ doc, x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => setTooltip(null)}
+                style={{
+                  width: 10, height: 10, borderRadius: 3, cursor: 'pointer', flexShrink: 0,
+                  background: selectedIds.has(doc.id) ? SELECTED : UNSELECTED,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Persistent range bar ─────────────────────────────────────────────── */}
       {width > 0 && (
         <svg style={{ width: '100%', height: RANGE_BAR_H, display: 'block' }}>
           {/* Track background */}
           <rect
-            x={PAD_LEFT} y={4}
-            width={width - PAD_LEFT - PAD_RIGHT}
+            x={padLeft} y={4}
+            width={width - padLeft - PAD_RIGHT}
             height={RANGE_BAR_H - 8}
             fill="rgba(7,59,76,0.05)" rx={3}
           />
@@ -294,13 +348,13 @@ export function TimelineView({ docs, selectedIds }: Props) {
             />
           ))}
           {/* Year tick marks at both edges of the track */}
-          <line x1={PAD_LEFT} y1={4} x2={PAD_LEFT} y2={RANGE_BAR_H - 4}
+          <line x1={padLeft} y1={4} x2={padLeft} y2={RANGE_BAR_H - 4}
             stroke="rgba(7,59,76,0.15)" strokeWidth={1} />
           <line x1={width - PAD_RIGHT} y1={4} x2={width - PAD_RIGHT} y2={RANGE_BAR_H - 4}
             stroke="rgba(7,59,76,0.15)" strokeWidth={1} />
           {uniqueYears.length > 0 && (
             <>
-              <text x={PAD_LEFT + 3} y={RANGE_BAR_H - 5} fontSize={8} fill="rgba(7,59,76,0.35)"
+              <text x={padLeft + 3} y={RANGE_BAR_H - 5} fontSize={8} fill="rgba(7,59,76,0.35)"
                 style={{ fontFamily: 'system-ui, sans-serif' }}>
                 {uniqueYears[0]}
               </text>
@@ -352,10 +406,10 @@ export function TimelineView({ docs, selectedIds }: Props) {
       )}
 
       <CorpusStatsPanel
-        docs={docs}
+        docs={datedDocs}
         height={STATS_H}
         xScale={yearScale.scale}
-        padLeft={PAD_LEFT}
+        padLeft={padLeft}
         padRight={PAD_RIGHT}
         onHoverYear={setHoveredYear}
         disabled={isDragging}

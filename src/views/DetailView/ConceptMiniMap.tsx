@@ -1,16 +1,14 @@
-import { useRef, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useRef, useEffect } from 'react'
 import * as d3 from 'd3'
 import type { DocNode, ConceptDocStat } from '../../types'
 
 interface Props {
   docStats: ConceptDocStat[]
   allDocs: DocNode[]
+  onHoverChange?: (info: ConceptHoverInfo | null) => void
 }
 
-interface TooltipState {
-  clientX: number
-  clientY: number
+export interface ConceptHoverInfo {
   doc: DocNode
   stat: ConceptDocStat | null
 }
@@ -18,9 +16,8 @@ interface TooltipState {
 const EMPTY = '#e5e7eb'
 const CONCEPT = '#6366f1'
 
-export function ConceptMiniMap({ docStats, allDocs }: Props) {
+export function ConceptMiniMap({ docStats, allDocs, onHoverChange }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   useEffect(() => {
     if (!svgRef.current || allDocs.length === 0) return
@@ -61,38 +58,15 @@ export function ConceptMiniMap({ docStats, allDocs }: Props) {
       })
       .attr('stroke-width', 0.8)
       .style('cursor', 'pointer')
-      .on('mouseenter', (event: MouseEvent, d: DocNode) => {
-        setTooltip({ clientX: event.clientX, clientY: event.clientY, doc: d, stat: statById.get(d.id) ?? null })
+      .on('mouseenter', (_event: MouseEvent, d: DocNode) => {
+        onHoverChange?.({ doc: d, stat: statById.get(d.id) ?? null })
       })
-      .on('mousemove', (event: MouseEvent) => {
-        setTooltip(prev => prev ? { ...prev, clientX: event.clientX, clientY: event.clientY } : null)
-      })
-      .on('mouseleave', () => setTooltip(null))
-  }, [docStats, allDocs])
+      .on('mouseleave', () => onHoverChange?.(null))
+  }, [docStats, allDocs, onHoverChange])
 
   return (
-    <div style={{ position: 'relative', background: '#fafbfc', borderRadius: 8 }}>
-      <svg ref={svgRef} style={{ width: '100%', height: 120, display: 'block', borderRadius: 8 }} />
-
-      {tooltip && createPortal(
-        <div className="card" style={{
-          position: 'fixed', left: tooltip.clientX + 14, top: tooltip.clientY - 14,
-          zIndex: 9999, padding: '8px 11px', maxWidth: 220, pointerEvents: 'none',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#073b4c', marginBottom: 3, lineHeight: 1.3 }}>
-            {tooltip.doc.title}
-          </div>
-          {tooltip.stat && tooltip.stat.withConcept > 0 ? (
-            <div style={{ fontSize: 10, color: '#6366f1', fontWeight: 600 }}>
-              {tooltip.stat.withConcept} / {tooltip.stat.total} arguments
-              {' '}({Math.round((tooltip.stat.withConcept / tooltip.stat.total) * 100)}%)
-            </div>
-          ) : (
-            <div style={{ fontSize: 10, color: '#9ca3af' }}>No arguments with this concept</div>
-          )}
-        </div>,
-        document.body
-      )}
+    <div style={{ background: '#fafbfc' }}>
+      <svg ref={svgRef} style={{ width: '100%', height: 200, display: 'block' }} />
     </div>
   )
 }

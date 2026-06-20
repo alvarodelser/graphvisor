@@ -108,7 +108,8 @@ export function useGraphD3(
   const highlightFnRef = useRef<() => void>(() => {})
 
   useEffect(() => {
-    if (!svgRef.current || nodes.length === 0) return
+    if (!svgRef.current) return
+    if (nodes.length === 0) { d3.select(svgRef.current).selectAll('*').remove(); return }
     zoomKRef.current = 1
     const svgEl = svgRef.current
     const { width, height } = svgEl.getBoundingClientRect()
@@ -158,13 +159,16 @@ export function useGraphD3(
 
     // ── Layers ───────────────────────────────────────────────────────────────
     const defs = svg.append('defs')
-    const grad = defs.append('radialGradient')
-      .attr('id', 'graph-vignette').attr('cx', '50%').attr('cy', '50%').attr('r', '70%')
-    grad.append('stop').attr('offset', '0%').attr('stop-color', '#073b4c').attr('stop-opacity', 0)
-    grad.append('stop').attr('offset', '100%').attr('stop-color', '#073b4c').attr('stop-opacity', 0.10)
-    svg.append('rect').attr('width', '100%').attr('height', '100%')
-      .attr('fill', 'url(#graph-vignette)').attr('pointer-events', 'none')
+    // Dot grid — first layer inside zoomG, moves with content to ground nodes spatially
+    const pat = defs.append('pattern')
+      .attr('id', 'graph-dot-grid').attr('patternUnits', 'userSpaceOnUse')
+      .attr('width', 40).attr('height', 40)
+    pat.append('circle').attr('cx', 20).attr('cy', 20).attr('r', 0.8)
+      .attr('fill', '#073b4c').attr('opacity', 0.18)
     const zoomG = svg.append('g').attr('class', 'zoom-group')
+    zoomG.append('rect')
+      .attr('x', -5000).attr('y', -5000).attr('width', 10000).attr('height', 10000)
+      .attr('fill', 'url(#graph-dot-grid)').attr('pointer-events', 'none')
     const blobG = zoomG.append('g').attr('class', 'blobs')
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
@@ -190,7 +194,7 @@ export function useGraphD3(
       e.preventDefault()
       const out = e.deltaY > 0
       const atLock = zoomKRef.current <= LOCK_K + 1e-4
-      if ((atLock && out) || (collapseRef.current > 0 && !out)) {
+      if (optsRef.current.showBlobs && ((atLock && out) || (collapseRef.current > 0 && !out))) {
         const step = Math.min(0.2, Math.abs(e.deltaY) * (e.deltaMode === 1 ? 0.03 : COLLAPSE_WHEEL_STEP))
         collapseRef.current = Math.max(0, Math.min(1, collapseRef.current + (out ? step : -step)))
         // Reheat so the (alpha-scaled) separation force actively pushes the newly

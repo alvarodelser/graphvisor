@@ -32,9 +32,9 @@ export function TopicsView({ docs, selectedIds }: Props) {
   )
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'auto', padding: 24, paddingTop: 100, background: '#fafbfc' }}>
+    <div style={{ position: 'absolute', inset: 0, overflow: 'auto', padding: 16, paddingTop: 88, background: '#fafbfc' }}>
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14,
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12,
       }}>
         {visibleTopics.map(topic => {
           const allSelected = topic.docIds.every(id => selectedIds.has(id))
@@ -46,14 +46,17 @@ export function TopicsView({ docs, selectedIds }: Props) {
                 else selectAll([...new Set([...selectedDocumentIds, ...topic.docIds])])
               }}
               style={{
-                border: '1px solid rgba(7,59,76,0.15)', borderRadius: 12, padding: 12,
-                background: '#fff', cursor: 'pointer',
+                border: allSelected ? '1.5px solid rgba(239,71,111,0.4)' : '1px solid rgba(7,59,76,0.12)',
+                borderRadius: 12, padding: '14px 16px',
+                background: allSelected ? 'rgba(239,71,111,0.03)' : '#fff',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, background 0.15s',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#073b4c', marginBottom: 2 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#073b4c', marginBottom: 3, lineHeight: 1.35 }}>
                 {topic.label}
               </div>
-              <div style={{ fontSize: 9, color: '#64748b', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
                 {topic.docIds.length} docs · {topic.argCount} args
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -70,7 +73,7 @@ export function TopicsView({ docs, selectedIds }: Props) {
                       onMouseEnter={(e) => setTooltip({ doc, x: e.clientX, y: e.clientY })}
                       onMouseLeave={() => setTooltip(null)}
                       style={{
-                        width: 16, height: 16, borderRadius: 5, cursor: 'pointer',
+                        width: 14, height: 14, borderRadius: 3, cursor: 'pointer',
                         background: selectedIds.has(id) ? SELECTED : UNSELECTED,
                       }}
                     />

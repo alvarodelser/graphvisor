@@ -1,22 +1,14 @@
 import type { Hypothesis } from '../../types'
 import { useStore } from '../../store/useStore'
 import { HypothesisRadarChart } from './HypothesisRadarChart'
-import { scoreColor } from './scoreColor'
 import styles from './DiscoverListItem.module.css'
 
 interface DiscoverListItemProps {
   hypothesis: Hypothesis
+  highlightDimension?: keyof Hypothesis['scores']
 }
 
-const DIMENSIONS: { key: keyof Hypothesis['scores']; label: string }[] = [
-  { key: 'novelty',                 label: 'Novelty' },
-  { key: 'scientific_plausibility', label: 'Sci. Plausibility' },
-  { key: 'potential_impact',        label: 'Potential Impact' },
-  { key: 'commercial_potential',    label: 'Commercial' },
-]
-
-
-export function DiscoverListItem({ hypothesis }: DiscoverListItemProps) {
+export function DiscoverListItem({ hypothesis, highlightDimension }: DiscoverListItemProps) {
   const { selectedHypothesisIds, selectHypothesis } = useStore()
   const isSelected = selectedHypothesisIds.includes(hypothesis.hypothesis)
 
@@ -33,26 +25,19 @@ export function DiscoverListItem({ hypothesis }: DiscoverListItemProps) {
       onKeyDown={(e) => e.key === 'Enter' && selectHypothesis(hypothesis.hypothesis, false)}
     >
       <div className={styles.left}>
+        {hypothesis.concept && (
+          <span style={{
+            alignSelf: 'flex-start', display: 'inline-block', fontSize: 9, fontWeight: 600,
+            color: '#8b5cf6', background: 'rgba(139,92,246,0.08)',
+            border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10,
+            padding: '1px 7px', marginBottom: 5, letterSpacing: '0.03em',
+          }}>
+            {hypothesis.concept}
+          </span>
+        )}
         <div className={styles.title}>{hypothesis.hypothesis}</div>
-        <div className={styles.pills}>
-          {DIMENSIONS.map(({ key, label }) => {
-            const score = hypothesis.scores[key]
-            const c = scoreColor(score)
-            return (
-              <span
-                key={key}
-                className={styles.pill}
-                style={{ background: c.bg, borderColor: c.border, color: c.text }}
-              >
-                <span className={styles.dot} style={{ background: c.solid }} />
-                {label}
-                <strong className={styles.pillScore}>{score.toFixed(1)}</strong>
-              </span>
-            )
-          })}
-        </div>
       </div>
-      <HypothesisRadarChart scores={hypothesis.scores} />
+      <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} />
     </div>
   )
 }

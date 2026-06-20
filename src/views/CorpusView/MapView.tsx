@@ -29,8 +29,10 @@ export function MapView({ docs, selectedIds }: Props) {
     selectedIds,
     sizeBy,
     conceptGroundings,
-    onLassoSelect: (ids) =>
-      setSelectedDocuments([...new Set([...selectedDocumentIds, ...ids])]),
+    onLassoSelect: (ids, shiftKey) =>
+      setSelectedDocuments(
+        shiftKey ? [...new Set([...selectedDocumentIds, ...ids])] : ids
+      ),
     onClickToggle: (id, shiftKey) => {
       if (shiftKey) toggleDocumentSelection(id)
       else setSelectedDocuments(selectedDocumentIds.includes(id) ? [] : [id])

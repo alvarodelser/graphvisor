@@ -27,19 +27,24 @@
 .navLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .navSpacer { flex: 1; }
 .navCount { font-size: 9px; color: #9ca3af; font-weight: 600; flex-shrink: 0; }
-.topRow { display: flex; gap: 12px; flex-shrink: 0; align-items: flex-start; }
-.mapWrapper { width: 200px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(17,138,178,0.18), 0 2px 6px rgba(7,59,76,0.06); }
+.threeCol { display: flex; gap: 12px; flex-shrink: 0; align-items: flex-start; }
+.infoCol  { width: 200px; flex-shrink: 0; }
+.canvasCol {
+  flex: 1; min-width: 0; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(17,138,178,0.18), 0 2px 6px rgba(7,59,76,0.06);
+}
+.hoverCol {
+  width: 180px; flex-shrink: 0;
+  border: 1px solid rgba(7,59,76,0.08); border-radius: 12px;
+  background: #fafbfc; padding: 10px 12px;
+  display: flex; flex-direction: column;
+}
 .listWrapper { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-
-/* Two-column rows (content + side map) used by the entity and concept layouts */
-.splitRow { display: flex; gap: 12px; flex-shrink: 0; min-height: 0; }
-.sideCol  { width: 200px; flex-shrink: 0; }
 
 /* ── Mobile / narrow viewports ───────────────────────────────────────────── */
 @media (max-width: 640px) {
   .content { padding: 10px; gap: 10px; overflow-y: auto; }
-  .topRow, .splitRow { flex-direction: column; }
-  .mapWrapper, .sideCol { width: 100%; }
+  .threeCol { flex-direction: column; }
+  .infoCol, .canvasCol, .hoverCol { width: 100%; }
   .listWrapper { overflow: visible; }
 }

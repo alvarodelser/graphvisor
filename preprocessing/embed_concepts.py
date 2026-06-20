@@ -178,7 +178,7 @@ def main() -> int:
 
     docs = load_corpus(input_path)
 
-    # 1. Load document embeddings and fit PCA
+    # 1. Load document embeddings
     if not doc_bin_path.exists():
         print(f"Error: Document embeddings binary file not found at {doc_bin_path}. Run embed_corpus.py first.", file=sys.stderr)
         return 1
@@ -187,11 +187,6 @@ def main() -> int:
     if len(doc_vectors) != len(docs):
         print(f"Error: Document embeddings count ({len(doc_vectors)}) does not match corpus count ({len(docs)})", file=sys.stderr)
         return 1
-
-    print("Fitting PCA on document embeddings...")
-    pca = PCA(n_components=2)
-    pca.fit(doc_vectors)
-    doc_2d = pca.transform(doc_vectors)  # shape: (N, 2)
 
     # 2. Map concepts to documents
     concept_to_doc_indices: dict[str, list[int]] = {}
@@ -287,7 +282,15 @@ def main() -> int:
     else:
         print("All concept name embeddings are cached and up to date.")
 
-    # 5. Compute document grounding ball for each concept
+    # 5. Fit PCA jointly on document + concept name embeddings
+    concept_vectors = np.array(concept_name_embeddings)
+    all_vectors = np.vstack([doc_vectors, concept_vectors])
+    print(f"Fitting PCA on {len(doc_vectors)} document + {len(concept_vectors)} concept embeddings...")
+    pca = PCA(n_components=2)
+    pca.fit(all_vectors)
+    doc_2d = pca.transform(doc_vectors)  # shape: (N_docs, 2)
+
+    # 6. Compute document grounding ball for each concept
     concepts_data = []
     for idx, concept in enumerate(concepts):
         doc_indices = list(set(concept_to_doc_indices[concept]))

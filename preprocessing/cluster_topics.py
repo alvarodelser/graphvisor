@@ -7,6 +7,7 @@ import argparse
 import json
 import shutil
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,7 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n-topics", type=int, help="Number of topics/clusters.")
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL, help="Ollama base URL.")
     parser.add_argument("--ollama-model", default=DEFAULT_OLLAMA_MODEL, help="Ollama model name.")
-    parser.add_argument("--ollama-timeout", type=float, default=300.0, help="HTTP timeout.")
+    parser.add_argument("--ollama-timeout", type=float, default=600.0, help="HTTP timeout per attempt.")
+    parser.add_argument("--ollama-retries", type=int, default=3, help="Max retry attempts for Ollama calls.")
     parser.add_argument("--dry-run", action="store_true", help="Compute but do not write.")
     return parser.parse_args()
 
@@ -81,7 +83,7 @@ def pick_k(n_docs: int) -> int:
 
 
 def query_ollama_label(ollama_url: str, model: str, top_concepts: list[tuple[str, float]], paper_titles: list[str],
-                       timeout_s: float = 300.0) -> str | None:
+                       timeout_s: float = 600.0, max_retries: int = 3) -> str | None:
     concepts_str = "\n".join([f"- {concept} (weight: {weight:.3f})" for concept, weight in top_concepts])
     papers_str = "\n".join([f"- {title}" for title in paper_titles])
     prompt = (
@@ -95,13 +97,16 @@ def query_ollama_label(ollama_url: str, model: str, top_concepts: list[tuple[str
     )
     url = f"{ollama_url.rstrip('/')}/api/generate"
     payload = {"model": model, "prompt": prompt, "stream": False}
-    try:
-        response = httpx.post(url, json=payload, timeout=timeout_s)
-        response.raise_for_status()
-        label = response.json().get("response", "").strip().strip('"').strip("'").strip()
-        return label if label else None
-    except Exception as e:
-        print(f"Warning: Failed to contact Ollama at {url}: {e}", file=sys.stderr)
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = httpx.post(url, json=payload, timeout=timeout_s)
+            response.raise_for_status()
+            label = response.json().get("response", "").strip().strip('"').strip("'").strip()
+            return label if label else None
+        except Exception as e:
+            print(f"Warning: Ollama attempt {attempt}/{max_retries} failed: {e}", file=sys.stderr)
+            if attempt < max_retries:
+                time.sleep(5 * attempt)
     return None
 
 
@@ -204,7 +209,7 @@ def main() -> int:
 
         paper_titles = [doc.get("source", "Untitled paper") for doc in topic_docs]
         label = query_ollama_label(args.ollama_url, args.ollama_model, top_concepts, paper_titles,
-                                   args.ollama_timeout) if top_concepts else None
+                                   args.ollama_timeout, args.ollama_retries) if top_concepts else None
 
         if not label:
             label = " / ".join([item[0] for item in top_concepts[:3]]) if top_concepts else f"Topic {k + 1}"
