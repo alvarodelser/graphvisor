@@ -55,7 +55,10 @@ body {
 
 
 /* GraphVisor v3: Chevron edge animations (replace v2 dash animations) */
+/* Chevrons are STATIC by default — the infinite animation runs only when the SVG
+   carries `.edge-anim` (Full LOD on non-Safari). WebKit can't GPU-composite this
+   animation under an SVG clip-path, so it burns a CPU core even when idle. */
 @keyframes march-forward { from { transform: translateX(0); } to { transform: translateX(20px); } }
 @keyframes march-reverse { from { transform: translateX(0); } to { transform: translateX(-20px); } }
-.chevrons-forward { animation: march-forward 0.8s linear infinite; }
-.chevrons-reverse { animation: march-reverse 0.8s linear infinite; }
+.edge-anim .chevrons-forward { animation: march-forward 0.8s linear infinite; }
+.edge-anim .chevrons-reverse { animation: march-reverse 0.8s linear infinite; }

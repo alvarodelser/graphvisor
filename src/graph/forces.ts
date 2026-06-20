@@ -125,6 +125,69 @@ export function bridgePullForce(model: GraphModel, nodes: GraphNode[], strength 
   }
 }
 
+// Linearised argLayoutForce: instead of each argument scanning every sibling in
+// its chain (O(args²)) to find an "away" direction, point away from the chain's
+// centroid (mean of sibling centroids), computed once per tick. O(args).
+export function argLayoutForceLinear(model: GraphModel, nodes: GraphNode[], strength = 0.12): Force {
+  const byId = indexNodes(nodes)
+  const argChain = new Map<string, string | undefined>()
+  for (const arg of model.arguments) {
+    const first = (model.argMembers.get(arg.id) ?? [])[0]
+    argChain.set(arg.id, first ? model.chainOf.get(first) : undefined)
+  }
+  return (alpha: number) => {
+    const centroid = new Map<string, Vec>()
+    for (const arg of model.arguments) {
+      const members = (model.argMembers.get(arg.id) ?? []).map(id => byId.get(id)).filter(Boolean) as GraphNode[]
+      if (members.length === 0) continue
+      centroid.set(arg.id, {
+        x: members.reduce((s, n) => s + (n.x ?? 0), 0) / members.length,
+        y: members.reduce((s, n) => s + (n.y ?? 0), 0) / members.length,
+      })
+    }
+    // Chain centroid = running sum of arg centroids per chain (one O(args) pass).
+    const chainSum = new Map<string, { x: number; y: number; c: number }>()
+    for (const arg of model.arguments) {
+      const c = centroid.get(arg.id); const ch = argChain.get(arg.id)
+      if (!c || !ch) continue
+      const acc = chainSum.get(ch) ?? { x: 0, y: 0, c: 0 }
+      acc.x += c.x; acc.y += c.y; acc.c++
+      chainSum.set(ch, acc)
+    }
+    for (const arg of model.arguments) {
+      const c = centroid.get(arg.id)
+      if (!c) continue
+      const memberIds = model.argMembers.get(arg.id) ?? []
+      const solo = memberIds.filter(id => model.soloEntities.has(id))
+      if (solo.length === 0) continue
+
+      // Orientation: away from the centroid of the OTHER args in this chain.
+      const ch = argChain.get(arg.id)
+      const acc = ch ? chainSum.get(ch) : undefined
+      let awayX = 0, awayY = 0
+      if (acc && acc.c > 1) {
+        const ox = (acc.x - c.x) / (acc.c - 1)
+        const oy = (acc.y - c.y) / (acc.c - 1)
+        awayX = c.x - ox; awayY = c.y - oy
+      }
+      const base = (awayX === 0 && awayY === 0) ? 0 : Math.atan2(awayY, awayX)
+
+      const radius = 18 + Math.sqrt(solo.length) * 10
+      const span = Math.PI * 1.2
+      solo.forEach((id, i) => {
+        const n = byId.get(id)
+        if (!n) return
+        const frac = solo.length === 1 ? 0 : i / (solo.length - 1) - 0.5
+        const angle = base + frac * span
+        const tx = c.x + Math.cos(angle) * radius
+        const ty = c.y + Math.sin(angle) * radius
+        n.vx = (n.vx ?? 0) + (tx - (n.x ?? 0)) * strength * alpha
+        n.vy = (n.vy ?? 0) + (ty - (n.y ?? 0)) * strength * alpha
+      })
+    }
+  }
+}
+
 export function blobRepulsionForce(model: GraphModel, nodes: GraphNode[], strength = 0.12): Force {
   const byId = indexNodes(nodes)
   const R = BLOB_PAD + 10
@@ -144,6 +207,50 @@ export function blobRepulsionForce(model: GraphModel, nodes: GraphNode[], streng
             const f = ((R - dist) / dist) * strength * alpha
             n.vx = (n.vx ?? 0) + dx * f
             n.vy = (n.vy ?? 0) + dy * f
+          }
+        }
+      }
+    }
+  }
+}
+
+// Spatial-grid blobRepulsionForce: bucket all nodes into a uniform grid (cell = R)
+// and test each member only against nodes in the 3×3 neighbourhood. Cell size = R
+// guarantees every node within R falls in that neighbourhood, so the result is
+// identical to the naive O(args·members·allNodes) version — just ~O(n).
+export function blobRepulsionForceGrid(model: GraphModel, nodes: GraphNode[], strength = 0.12): Force {
+  const byId = indexNodes(nodes)
+  const R = BLOB_PAD + 10
+  const key = (cx: number, cy: number) => `${cx},${cy}`
+  return (alpha: number) => {
+    const grid = new Map<string, GraphNode[]>()
+    for (const n of nodes) {
+      const k = key(Math.floor((n.x ?? 0) / R), Math.floor((n.y ?? 0) / R))
+      const arr = grid.get(k)
+      if (arr) arr.push(n); else grid.set(k, [n])
+    }
+    for (const arg of model.arguments) {
+      const memberSet = new Set(model.argMembers.get(arg.id) ?? [])
+      for (const mid of memberSet) {
+        const m = byId.get(mid)
+        if (!m) continue
+        const mx = m.x ?? 0, my = m.y ?? 0
+        const cx = Math.floor(mx / R), cy = Math.floor(my / R)
+        for (let gx = cx - 1; gx <= cx + 1; gx++) {
+          for (let gy = cy - 1; gy <= cy + 1; gy++) {
+            const arr = grid.get(key(gx, gy))
+            if (!arr) continue
+            for (const n of arr) {
+              if (memberSet.has(n.id)) continue
+              const dx = (n.x ?? 0) - mx, dy = (n.y ?? 0) - my
+              if (Math.abs(dx) > R || Math.abs(dy) > R) continue
+              const dist = Math.hypot(dx, dy) || 1
+              if (dist < R) {
+                const f = ((R - dist) / dist) * strength * alpha
+                n.vx = (n.vx ?? 0) + dx * f
+                n.vy = (n.vy ?? 0) + dy * f
+              }
+            }
           }
         }
       }

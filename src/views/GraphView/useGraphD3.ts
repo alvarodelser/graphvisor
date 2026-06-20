@@ -6,9 +6,12 @@ import { buildEdgeShape, positionEdgeShape, type EdgeShape } from './edgeStyles'
 import { buildGraphModel } from '../../graph/graphModel'
 import { computeBlobPath } from '../../graph/blobGeometry'
 import {
-  computeChainCenters, chainHomeForce, argLayoutForce, bridgePullForce, blobRepulsionForce,
+  computeChainCenters, chainHomeForce, argLayoutForce, argLayoutForceLinear,
+  bridgePullForce, blobRepulsionForce, blobRepulsionForceGrid,
 } from '../../graph/forces'
 import { computeCollapse } from '../../graph/collapse'
+import { isSafari } from '../../utils/browser'
+import type { LodMode } from './lod'
 
 const ENTITY_R = 8
 // Zoom hard-locks at LOCK_K. Up to there the wheel zooms normally; once locked,
@@ -67,6 +70,7 @@ interface Options {
   filters: FilterState
   blobs: ArgumentBlob[]
   showBlobs: boolean
+  lod: LodMode
   lockedItem: HoverItem | null
   hoveredConceptId: string | null
   onNodeClick: (node: GraphNode) => void
@@ -81,6 +85,13 @@ const BLOB_STROKE = 'rgba(100,116,139,0.12)'
 const BLOB_FILL = 'rgba(100,116,139,0.04)'
 const BLOB_STROKE_SEL = 'rgba(100,116,139,0.6)'
 const BLOB_FILL_SEL = 'rgba(100,116,139,0.13)'
+
+// How far non-relevant elements fade when something is emphasised. LOCK (click/
+// selection) fades hard to focus the view; HOVER fades gently so it reads as a
+// transient highlight rather than a restricted view. Tune freely.
+interface DimLevels { node: number; edge: number; blob: number }
+const LOCK_DIM: DimLevels = { node: 0.12, edge: 0.05, blob: 0.12 }
+const HOVER_DIM: DimLevels = { node: 0.45, edge: 0.3, blob: 0.45 }
 
 export function useGraphD3(
   svgRef: RefObject<SVGSVGElement | null>,
@@ -102,6 +113,10 @@ export function useGraphD3(
     const svg = d3.select(svgEl)
     svg.selectAll('*').remove()
     svg.style('background', '#fafbfc')
+    // Chevron marching animation runs only in Full LOD and never on Safari (WebKit
+    // CPU-repaints animation under clip-paths even when idle).
+    const lod = optsRef.current.lod
+    svg.classed('edge-anim', lod === 'full' && !isSafari())
     let alive = true
 
     svg.on('click', () => optsRef.current.onCanvasClick?.())
@@ -216,17 +231,18 @@ export function useGraphD3(
       .data(simEdges, d => d.id).join('g').attr('class', 'edge-group').style('cursor', 'pointer')
     edgeGroups.each(function (d) {
       const g = d3.select(this)
-      edgeShapeById.set(d.id, buildEdgeShape(g, defs, d))
+      edgeShapeById.set(d.id, buildEdgeShape(g, defs, d, lod === 'lean'))
       g.append('title').text(`${d.relation_type} · ${d.confidence.toFixed(2)}`)
     })
     edgeGroups
       .on('mouseenter', (event, d) => {
+        applyEdgeHighlight(d.id, HOVER_DIM)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({
           type: 'edge', edge: d, sourceNode: d.source as GraphNode, targetNode: d.target as GraphNode, x: mx, y: my,
         })
       })
-      .on('mouseleave', () => optsRef.current.onHover?.(null))
+      .on('mouseleave', () => { applySticky(); optsRef.current.onHover?.(null) })
       .on('click', (event, d) => {
         event.stopPropagation()
         optsRef.current.onEdgeClick?.(d, d.source as GraphNode, d.target as GraphNode)
@@ -239,7 +255,7 @@ export function useGraphD3(
       .attr('stroke-width', 1.5).attr('pointer-events', 'fill').style('cursor', 'pointer')
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
       .on('mouseenter', function (event, d) {
-        applyArgHighlight(d.id)
+        applyArgHighlight(d.id, HOVER_DIM)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
@@ -286,11 +302,13 @@ export function useGraphD3(
       )
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onNodeClick(d) })
       .on('mouseenter', (event, d) => {
+        applyEntityHighlight(d.id, HOVER_DIM)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'node', node: d, x: mx, y: my })
         d3.select(event.currentTarget as SVGGElement).select('.node-label').attr('opacity', 1)
       })
       .on('mouseleave', (event) => {
+        applySticky()
         optsRef.current.onHover?.(null)
         d3.select(event.currentTarget as SVGGElement).select('.node-label').attr('opacity', 0)
       })
@@ -309,7 +327,7 @@ export function useGraphD3(
       .style('display', 'none').style('cursor', 'pointer')
       .on('click', (event, d) => { event.stopPropagation(); optsRef.current.onBlobClick(d) })
       .on('mouseenter', function (event, d) {
-        applyArgHighlight(d.id)
+        applyArgHighlight(d.id, HOVER_DIM)
         const [mx, my] = d3.pointer(event, svgEl)
         optsRef.current.onHover?.({ type: 'blob', blob: d, x: mx, y: my })
       })
@@ -340,29 +358,29 @@ export function useGraphD3(
       const v = e[w]
       return typeof v === 'string' ? v : (v as GraphNode).id
     }
-    function applyArgHighlight(aid: string) {
+    function applyArgHighlight(aid: string, dim: DimLevels = LOCK_DIM) {
       const members = new Set(model.argMembers.get(aid) ?? [])
-      nodeGroups.attr('opacity', d => members.has(d.id) ? 1 : 0.12)
+      nodeGroups.attr('opacity', d => members.has(d.id) ? 1 : dim.node)
       edgeGroups.attr('opacity', d =>
-        members.has(edgeEndId(d, 'source')) && members.has(edgeEndId(d, 'target')) ? 1 : 0.05)
-      blobPaths.attr('opacity', d => d.id === aid ? 1 : 0.12)
+        members.has(edgeEndId(d, 'source')) && members.has(edgeEndId(d, 'target')) ? 1 : dim.edge)
+      blobPaths.attr('opacity', d => d.id === aid ? 1 : dim.blob)
         .attr('stroke', d => d.id === aid ? BLOB_STROKE_SEL : BLOB_STROKE)
         .attr('fill', d => d.id === aid ? BLOB_FILL_SEL : BLOB_FILL)
-      argNodeGroups.attr('opacity', d => d.id === aid ? 1 : 0.12)
+      argNodeGroups.attr('opacity', d => d.id === aid ? 1 : dim.blob)
     }
-    function applyConceptHighlight(conceptId: string) {
+    function applyConceptHighlight(conceptId: string, dim: DimLevels = LOCK_DIM) {
       const label = conceptId.replace(/^concept-/, '')
       const argIds = new Set(
         optsRef.current.blobs.filter(b => b.parent_concepts.includes(label)).map(b => b.id)
       )
       const allMembers = new Set([...argIds].flatMap(aid => model.argMembers.get(aid) ?? []))
-      nodeGroups.attr('opacity', d => allMembers.has(d.id) ? 1 : 0.12)
+      nodeGroups.attr('opacity', d => allMembers.has(d.id) ? 1 : dim.node)
       edgeGroups.attr('opacity', d =>
-        allMembers.has(edgeEndId(d, 'source')) && allMembers.has(edgeEndId(d, 'target')) ? 1 : 0.05)
-      blobPaths.attr('opacity', d => argIds.has(d.id) ? 1 : 0.12)
+        allMembers.has(edgeEndId(d, 'source')) && allMembers.has(edgeEndId(d, 'target')) ? 1 : dim.edge)
+      blobPaths.attr('opacity', d => argIds.has(d.id) ? 1 : dim.blob)
         .attr('stroke', d => argIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
         .attr('fill', d => argIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
-      argNodeGroups.attr('opacity', d => argIds.has(d.id) ? 1 : 0.12)
+      argNodeGroups.attr('opacity', d => argIds.has(d.id) ? 1 : dim.blob)
     }
     function clearHighlight() {
       nodeGroups.attr('opacity', null)
@@ -372,7 +390,7 @@ export function useGraphD3(
         .attr('stroke', BLOB_STROKE)
         .attr('fill', BLOB_FILL)
     }
-    function applyEntityHighlight(nodeId: string) {
+    function applyEntityHighlight(nodeId: string, dim: DimLevels = LOCK_DIM) {
       const neighborIds = new Set<string>([nodeId])
       const relevantEdgeIds = new Set<string>()
       for (const e of simEdges) {
@@ -382,14 +400,14 @@ export function useGraphD3(
       const relevantArgIds = new Set<string>()
       for (const [argId, members] of model.argMembers)
         if (members.includes(nodeId)) relevantArgIds.add(argId)
-      nodeGroups.attr('opacity', d => neighborIds.has(d.id) ? 1 : 0.12)
-      edgeGroups.attr('opacity', d => relevantEdgeIds.has(d.id) ? 1 : 0.05)
-      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+      nodeGroups.attr('opacity', d => neighborIds.has(d.id) ? 1 : dim.node)
+      edgeGroups.attr('opacity', d => relevantEdgeIds.has(d.id) ? 1 : dim.edge)
+      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : dim.blob)
         .attr('stroke', d => relevantArgIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
         .attr('fill', d => relevantArgIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
-      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : dim.blob)
     }
-    function applyEdgeHighlight(edgeId: string) {
+    function applyEdgeHighlight(edgeId: string, dim: DimLevels = LOCK_DIM) {
       const edge = simEdges.find(e => e.id === edgeId)
       if (!edge) { clearHighlight(); return }
       const srcId = edgeEndId(edge, 'source'), tgtId = edgeEndId(edge, 'target')
@@ -397,23 +415,25 @@ export function useGraphD3(
       const relevantArgIds = new Set<string>()
       for (const [argId, members] of model.argMembers)
         if (members.some(m => endpointIds.has(m))) relevantArgIds.add(argId)
-      nodeGroups.attr('opacity', d => endpointIds.has(d.id) ? 1 : 0.12)
-      edgeGroups.attr('opacity', d => d.id === edgeId ? 1 : 0.05)
-      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+      nodeGroups.attr('opacity', d => endpointIds.has(d.id) ? 1 : dim.node)
+      edgeGroups.attr('opacity', d => d.id === edgeId ? 1 : dim.edge)
+      blobPaths.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : dim.blob)
         .attr('stroke', d => relevantArgIds.has(d.id) ? BLOB_STROKE_SEL : BLOB_STROKE)
         .attr('fill', d => relevantArgIds.has(d.id) ? BLOB_FILL_SEL : BLOB_FILL)
-      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : 0.12)
+      argNodeGroups.attr('opacity', d => relevantArgIds.has(d.id) ? 1 : dim.blob)
     }
+    // Restore the persistent state after a transient hover ends: locked item →
+    // strong focus, panel-hovered concept → gentle highlight, else nothing.
     function applySticky() {
       const locked = optsRef.current.lockedItem
       const hcId = optsRef.current.hoveredConceptId
       if (locked) {
-        if (locked.type === 'blob') applyArgHighlight(locked.blob.id)
-        else if (locked.type === 'node') applyEntityHighlight(locked.node.id)
-        else if (locked.type === 'edge') applyEdgeHighlight(locked.edge.id)
-        else if (locked.type === 'concept') applyConceptHighlight(locked.conceptId)
+        if (locked.type === 'blob') applyArgHighlight(locked.blob.id, LOCK_DIM)
+        else if (locked.type === 'node') applyEntityHighlight(locked.node.id, LOCK_DIM)
+        else if (locked.type === 'edge') applyEdgeHighlight(locked.edge.id, LOCK_DIM)
+        else if (locked.type === 'concept') applyConceptHighlight(locked.conceptId, LOCK_DIM)
       } else if (hcId) {
-        applyConceptHighlight(hcId)
+        applyConceptHighlight(hcId, HOVER_DIM)
       } else {
         clearHighlight()
       }
@@ -465,16 +485,61 @@ export function useGraphD3(
         }
       }
     }
+    // Spatial-grid argument separation: same result as the all-pairs version, but
+    // only tests centroids in the 3×3 cell neighbourhood (cell = max overlap span).
+    const argSeparationGrid = (alpha: number) => {
+      const s = nodeScaleFor(zoomKRef.current)
+      const needX = (ARG_CARD_W + ARG_SEP_MARGIN) * s, needY = (ARG_CARD_H + ARG_SEP_MARGIN) * s
+      const cents: { mem: string[]; x: number; y: number }[] = []
+      for (const arg of model.arguments) {
+        const mem = model.argMembers.get(arg.id) ?? []
+        let sx = 0, sy = 0, cnt = 0
+        for (const id of mem) { const n = sepById.get(id); if (n) { sx += n.x ?? 0; sy += n.y ?? 0; cnt++ } }
+        if (cnt) cents.push({ mem, x: sx / cnt, y: sy / cnt })
+      }
+      const f = ARG_SEP_STRENGTH * alpha * 0.5
+      const cell = Math.max(needX, needY) || 1
+      const key = (cx: number, cy: number) => `${cx},${cy}`
+      const grid = new Map<string, number[]>()
+      cents.forEach((c, i) => {
+        const k = key(Math.floor(c.x / cell), Math.floor(c.y / cell))
+        const arr = grid.get(k); if (arr) arr.push(i); else grid.set(k, [i])
+      })
+      cents.forEach((A, i) => {
+        const cx = Math.floor(A.x / cell), cy = Math.floor(A.y / cell)
+        for (let gx = cx - 1; gx <= cx + 1; gx++) {
+          for (let gy = cy - 1; gy <= cy + 1; gy++) {
+            const arr = grid.get(key(gx, gy))
+            if (!arr) continue
+            for (const j of arr) {
+              if (j <= i) continue   // each unordered pair once
+              const B = cents[j]
+              const dx = B.x - A.x, dy = B.y - A.y
+              const ox = needX - Math.abs(dx), oy = needY - Math.abs(dy)
+              if (ox <= 0 || oy <= 0) continue
+              let pvx = 0, pvy = 0
+              if (ox <= oy) pvx = (dx < 0 ? -ox : ox)
+              else pvy = (dy < 0 ? -oy : oy)
+              for (const id of A.mem) { const n = sepById.get(id); if (n) { n.vx = (n.vx ?? 0) - pvx * f; n.vy = (n.vy ?? 0) - pvy * f } }
+              for (const id of B.mem) { const n = sepById.get(id); if (n) { n.vx = (n.vx ?? 0) + pvx * f; n.vy = (n.vy ?? 0) + pvy * f } }
+            }
+          }
+        }
+      })
+    }
+    // Optimised force variants engage at Calm and above (count >= 120); Full keeps
+    // the exact O(n²) forces — cheap at that size.
+    const optimized = lod !== 'full'
     const sim = d3.forceSimulation<GraphNode>(simNodes)
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id)
         .strength(d => linkStrength.get(d.id) ?? d.confidence * INTER_ARG_LINK))
       .force('charge', d3.forceManyBody<GraphNode>().strength(-220).theta(0.9))
       .force('collide', d3.forceCollide<GraphNode>(14).strength(0.7))
-      .force('argLayout', argLayoutForce(model, simNodes))
+      .force('argLayout', (optimized ? argLayoutForceLinear : argLayoutForce)(model, simNodes))
       .force('bridge', bridgePullForce(model, simNodes))
       .force('chainHome', chainHomeForce(model, centers, simNodes))
-      .force('blobRepel', blobRepulsionForce(model, simNodes))
-      .force('argSep', argSeparation)
+      .force('blobRepel', (optimized ? blobRepulsionForceGrid : blobRepulsionForce)(model, simNodes))
+      .force('argSep', optimized ? argSeparationGrid : argSeparation)
 
     // ── Per-tick render ──────────────────────────────────────────────────────────
     function drawChevron(
@@ -508,8 +573,11 @@ export function useGraphD3(
       }
       return p
     }
+    // Transition particles are a Full-LOD flourish only; off at Calm and above.
+    const particlesOn = lod === 'full'
     interface BurstOpts { color: string; n: number; spd: number; scale: number; maxOp?: number; r?: number; rect?: { w: number; h: number } }
     function spawnBurst(cx: number, cy: number, o: BurstOpts) {
+      if (!particlesOn) return
       const maxOp = o.maxOp ?? 0.7, r0 = (o.r ?? 2.4) * o.scale
       for (let i = 0; i < o.n; i++) {
         const p = takeParticle()
@@ -532,6 +600,7 @@ export function useGraphD3(
     // A single expanding, stroke-only ring (radar-ping) — used per entity as it
     // reappears on expand.
     function spawnRipple(cx: number, cy: number, color: string, scale: number, maxOp = 0.3) {
+      if (!particlesOn) return
       const p = takeParticle()
       p.active = true; p.ring = true; p.x0 = cx; p.y0 = cy; p.vx = 0; p.vy = 0
       p.born = performance.now(); p.life = 620
@@ -659,7 +728,8 @@ export function useGraphD3(
               .map(id => posMap.get(id))
               .filter((p): p is { x: number; y: number } => !!p)
               .map(p => [p.x, p.y] as [number, number])
-            return computeBlobPath(pts) ?? ''
+            // Lean LOD: sharp hull (corner 0) — skip the rounded-corner curves.
+            return computeBlobPath(pts, undefined, lod === 'lean' ? 0 : undefined) ?? ''
           })
       } else {
         blobPaths.style('display', 'none')
@@ -717,7 +787,7 @@ export function useGraphD3(
 
     simRef.current = sim
     return () => { alive = false; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
-  }, [nodes, edges, opts.filters])
+  }, [nodes, edges, opts.filters, opts.lod])
 
   // ── showBlobs / blob list change → reheat ──────────────────────────────────────
   useEffect(() => { simRef.current?.alpha(0.3).restart() }, [opts.showBlobs, opts.blobs])

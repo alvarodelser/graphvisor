@@ -33,8 +33,9 @@ export function associationOuterPoints(len: number): string {
 }
 
 export interface EdgeShape {
-  variant: 'directional' | 'association'
-  clipPoly: SVGPolygonElement
+  variant: 'directional' | 'association' | 'plain'
+  clipPoly?: SVGPolygonElement
+  line?: SVGLineElement
 }
 
 type GSel = d3.Selection<SVGGElement, unknown, null, undefined>
@@ -86,9 +87,19 @@ function buildAssociation(g: GSel, defs: DefsSel, edge: GraphEdge): EdgeShape {
   return { variant: 'association', clipPoly: clipPoly.node()! }
 }
 
+// ── Lean edge: a plain straight line, no pentagon/chevrons/clip-path ──────────
+// Used in Lean LOD where edge decoration is too costly to draw per frame.
+function buildPlain(g: GSel, edge: GraphEdge): EdgeShape {
+  const line = g.append('line').attr('class', 'edge-plain')
+    .attr('stroke', colorOf(edge.group)).attr('stroke-width', 1.5).attr('opacity', 0.55)
+  return { variant: 'plain', line: line.node()! }
+}
+
 // Build the right edge DOM for an edge based on its group. Returns a handle the
-// per-tick positioner uses (no per-frame DOM queries).
-export function buildEdgeShape(g: GSel, defs: DefsSel, edge: GraphEdge): EdgeShape {
+// per-tick positioner uses (no per-frame DOM queries). In Lean LOD all edges are
+// plain straight lines.
+export function buildEdgeShape(g: GSel, defs: DefsSel, edge: GraphEdge, plain = false): EdgeShape {
+  if (plain) return buildPlain(g, edge)
   return edgeStyleVariantFor(edge.group) === 'association'
     ? buildAssociation(g, defs, edge)
     : buildDirectional(g, defs, edge)
@@ -103,16 +114,22 @@ export function positionEdgeShape(
   const dx = x2 - x1, dy = y2 - y1
   const len = Math.hypot(dx, dy)
   const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+  if (shape.variant === 'plain') {
+    const ln = shape.line!
+    ln.setAttribute('x1', String(x1)); ln.setAttribute('y1', String(y1))
+    ln.setAttribute('x2', String(x2)); ln.setAttribute('y2', String(y2))
+    return
+  }
   if (shape.variant === 'association') {
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
     g.attr('transform', `translate(${mx},${my}) rotate(${angle})`)
     const pts = associationOuterPoints(len)
     g.select('.chevron-outer').attr('points', pts)
-    shape.clipPoly.setAttribute('points', pts)
+    shape.clipPoly!.setAttribute('points', pts)
   } else {
     g.attr('transform', `translate(${x1},${y1}) rotate(${angle})`)
     const pts = directionalOuterPoints(len)
     g.select('.chevron-outer').attr('points', pts)
-    shape.clipPoly.setAttribute('points', pts)
+    shape.clipPoly!.setAttribute('points', pts)
   }
 }

@@ -6,6 +6,7 @@ import type { HoverItem } from './useGraphD3'
 import { NodeFloatingCard } from './NodeFloatingCard'
 import { GraphFilterContent, GraphLegendContent } from './GraphControls'
 import type { GraphNode, GraphEdge, ArgumentBlob } from '../../types'
+import type { LodMode } from './lod'
 import styles from './GraphView.module.css'
 
 interface Props {
@@ -14,9 +15,10 @@ interface Props {
   blobs: ArgumentBlob[]
   isActive: boolean
   hoveredConceptId: string | null
+  lod: LodMode
 }
 
-export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId }: Props) {
+export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId, lod }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
   const [isSticky, setIsSticky] = useState(false)
@@ -39,6 +41,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
     filters,
     blobs,
     showBlobs,
+    lod,
     hoveredConceptId,
     lockedItem: isSticky ? displayedItem : null,
     onNodeClick: (node) => {
