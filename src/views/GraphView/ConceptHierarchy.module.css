@@ -35,27 +35,6 @@
   justify-content: space-between;
   gap: 8px;
 }
-.linkedToggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: #8b5cf6;
-  cursor: pointer;
-  user-select: none;
-}
-.linkedToggle input { accent-color: #8b5cf6; cursor: pointer; }
-.linkedCount {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9px;
-  background: rgba(139, 92, 246, 0.14);
-  border-radius: 4px;
-  padding: 1px 5px;
-}
 .title small {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
@@ -244,6 +223,23 @@
   background: rgba(100, 116, 139, 0.1);
   border-radius: 4px;
   padding: 1px 5px;
+}
+
+/* Hypothesis-linked evidence arguments (when the filter-panel toggle is on) */
+.arg[data-linked='true'] {
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: inset 2px 0 0 #8b5cf6;
+}
+.arg[data-linked='true'] .argLabel { color: #6d28d9; font-weight: 600; }
+.concept[data-linked='true'] .conceptLabel::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  vertical-align: middle;
 }
 
 /* Secondary-membership chips — revealed on hover / selection only */

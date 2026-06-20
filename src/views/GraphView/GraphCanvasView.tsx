@@ -17,9 +17,12 @@ interface Props {
   hoveredConceptId: string | null
   lod: LodMode
   highlightArgIds: Set<string>
+  linkedEvidenceCount: number
+  highlightLinked: boolean
+  onToggleHighlightLinked: () => void
 }
 
-export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId, lod, highlightArgIds }: Props) {
+export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptId, lod, highlightArgIds, linkedEvidenceCount, highlightLinked, onToggleHighlightLinked }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [displayedItem, setDisplayedItem] = useState<HoverItem>(null)
   const [isSticky, setIsSticky] = useState(false)
@@ -107,7 +110,8 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
 
       <ControlPanel
         isActive={isActive}
-        filterContent={<GraphFilterContent filters={filters} setFilters={setFilters} onReload={reheat} />}
+        filterContent={<GraphFilterContent filters={filters} setFilters={setFilters} onReload={reheat}
+          linkedEvidenceCount={linkedEvidenceCount} highlightLinked={highlightLinked} onToggleHighlightLinked={onToggleHighlightLinked} />}
         legendContent={<GraphLegendContent filters={filters} />}
         fabBottom={20}
         fabLeft={20}

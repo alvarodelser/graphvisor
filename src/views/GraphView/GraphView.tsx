@@ -125,6 +125,21 @@ export function GraphView() {
   )
   const highlightArgIds = highlightLinked ? linkedEvidenceArgIds : EMPTY_IDS
 
+  // Toggling the highlight on also checks the linked arguments in the concept panel
+  // (so they're guaranteed visible), in addition to marking them.
+  const toggleHighlightLinked = () => {
+    const next = !highlightLinked
+    setHighlightLinked(next)
+    if (next && linkedEvidenceArgIds.size > 0) {
+      setScope(s => {
+        const ids = new Set(s.argumentIds)
+        let changed = false
+        linkedEvidenceArgIds.forEach(id => { if (!ids.has(id)) { ids.add(id); changed = true } })
+        return changed ? { argumentIds: [...ids] } : s
+      })
+    }
+  }
+
   // "Render anyway" escape from the blocked state — reset once back under the
   // limit, or when the document / hypothesis selection changes.
   useEffect(() => { if (mode !== 'blocked') setForceRender(false) }, [mode])
@@ -148,9 +163,8 @@ export function GraphView() {
             onScopeChange={setScope}
             entityCount={entityCount}
             entityLimit={LOD_THRESHOLDS.blocked}
-            linkedEvidenceCount={linkedEvidenceArgIds.size}
+            linkedArgIds={linkedEvidenceArgIds}
             highlightLinked={highlightLinked}
-            onToggleHighlightLinked={() => setHighlightLinked(v => !v)}
             onConceptHover={setHoveredConceptId}
             onConceptDetail={(conceptId) => {
               setSelectedConceptId(conceptId)
@@ -192,7 +206,7 @@ export function GraphView() {
 
       <div className={styles.canvas}>
         {showGraph && (
-          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} highlightArgIds={highlightArgIds} />
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} highlightArgIds={highlightArgIds} linkedEvidenceCount={linkedEvidenceArgIds.size} highlightLinked={highlightLinked} onToggleHighlightLinked={toggleHighlightLinked} />
         )}
         {showBlocked && (
           <div className={styles.blockedBanner} role="alert">

@@ -11,15 +11,14 @@ interface Props {
   onScopeChange: (s: SelectedScope) => void
   entityCount: number
   entityLimit: number
-  linkedEvidenceCount: number
+  linkedArgIds: Set<string>
   highlightLinked: boolean
-  onToggleHighlightLinked: () => void
   onConceptHover?: (conceptId: string | null) => void
   onConceptDetail?: (conceptId: string) => void
   onArgumentDetail?: (argId: string) => void
 }
 
-export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, entityLimit, linkedEvidenceCount, highlightLinked, onToggleHighlightLinked, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
+export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, entityLimit, linkedArgIds, highlightLinked, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
   // Per-argument entity count — hints which arguments to uncheck to drop demand.
   const entityCountByArg = useMemo(
@@ -71,12 +70,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
           </span>
           <small>{tree.length} concepts · {blobs.length} arguments</small>
         </div>
-        {linkedEvidenceCount > 0 && (
-          <label className={styles.linkedToggle} title="Highlight arguments directly cited as evidence by the selected hypotheses">
-            <input type="checkbox" checked={highlightLinked} onChange={onToggleHighlightLinked} />
-            <span>Highlight linked evidence <span className={styles.linkedCount}>{linkedEvidenceCount}</span></span>
-          </label>
-        )}
         <input
           className={styles.search}
           value={query}
@@ -104,12 +97,14 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
           const selCount = concept.args.reduce((n, a) => n + (selected.has(a.id) ? 1 : 0), 0)
           const allOn = selCount > 0 && selCount === concept.args.length
           const someOn = selCount > 0 && !allOn
+          const hasLinked = highlightLinked && concept.args.some(a => linkedArgIds.has(a.id))
           return (
             <Fragment key={concept.id}>
               <div
                 className={styles.concept}
                 data-selected={allOn}
                 data-partial={someOn}
+                data-linked={hasLinked}
                 onMouseEnter={() => onConceptHover?.(concept.id)}
                 onMouseLeave={() => onConceptHover?.(null)}
               >
@@ -146,6 +141,7 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
                       key={a.id}
                       className={styles.arg}
                       data-selected={selected.has(a.id)}
+                      data-linked={highlightLinked && linkedArgIds.has(a.id)}
                       title={a.full}
                     >
                       <input type="checkbox" className={styles.argBox}
