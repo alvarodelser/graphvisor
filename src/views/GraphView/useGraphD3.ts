@@ -71,7 +71,6 @@ interface Options {
   blobs: ArgumentBlob[]
   showBlobs: boolean
   lod: LodMode
-  highlightArgIds: Set<string>   // blob ids to emphasise (hypothesis-linked evidence)
   lockedItem: HoverItem | null
   hoveredConceptId: string | null
   onNodeClick: (node: GraphNode) => void
@@ -82,8 +81,6 @@ interface Options {
   onCanvasClick?: () => void
 }
 
-const LINK_STROKE = '#8b5cf6'         // hypothesis-linked evidence highlight (violet)
-const LINK_CARD_STROKE = '#8b5cf6'
 const ARG_CARD_STROKE = 'rgba(7,59,76,0.32)'
 const BLOB_STROKE = 'rgba(100,116,139,0.12)'
 const BLOB_FILL = 'rgba(100,116,139,0.04)'
@@ -109,15 +106,14 @@ export function useGraphD3(
   const zoomKRef = useRef(1)
   const collapseRef = useRef(0)   // 0→1 collapse progress, driven by scroll past the lock
   const highlightFnRef = useRef<() => void>(() => {})
-  const linkedHighlightRef = useRef<(ids: Set<string>) => void>(() => {})
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
+    zoomKRef.current = 1
     const svgEl = svgRef.current
     const { width, height } = svgEl.getBoundingClientRect()
     const svg = d3.select(svgEl)
     svg.selectAll('*').remove()
-    svg.style('background', '#fafbfc')
     // Chevron marching animation runs only in Full LOD and never on Safari (WebKit
     // CPU-repaints animation under clip-paths even when idle).
     const lod = optsRef.current.lod
@@ -161,15 +157,14 @@ export function useGraphD3(
     })
 
     // ── Layers ───────────────────────────────────────────────────────────────
-    const zoomG = svg.append('g').attr('class', 'zoom-group')
     const defs = svg.append('defs')
-    const ringG = zoomG.append('g').attr('class', 'rings')
-    for (let i = 1; i <= 14; i++) {
-      ringG.append('circle')
-        .attr('cx', width / 2).attr('cy', height / 2).attr('r', i * 240)
-        .attr('fill', 'none').attr('stroke', 'rgba(7,59,76,0.35)')
-        .attr('stroke-width', 1).attr('stroke-dasharray', '4 8')
-    }
+    const grad = defs.append('radialGradient')
+      .attr('id', 'graph-vignette').attr('cx', '50%').attr('cy', '50%').attr('r', '70%')
+    grad.append('stop').attr('offset', '0%').attr('stop-color', '#073b4c').attr('stop-opacity', 0)
+    grad.append('stop').attr('offset', '100%').attr('stop-color', '#073b4c').attr('stop-opacity', 0.10)
+    svg.append('rect').attr('width', '100%').attr('height', '100%')
+      .attr('fill', 'url(#graph-vignette)').attr('pointer-events', 'none')
+    const zoomG = svg.append('g').attr('class', 'zoom-group')
     const blobG = zoomG.append('g').attr('class', 'blobs')
     const edgeG = zoomG.append('g').attr('class', 'edges')
     const nodeG = zoomG.append('g').attr('class', 'nodes')
@@ -361,17 +356,6 @@ export function useGraphD3(
 
     // Emphasise hypothesis-linked evidence arguments: violet stroke on the blob hull
     // and the collapsed card. Re-applied (without rebuilding the sim) when the set changes.
-    function applyLinkedHighlight(ids: Set<string>) {
-      blobPaths
-        .attr('stroke', d => ids.has(d.id) ? LINK_STROKE : BLOB_STROKE)
-        .attr('stroke-width', d => ids.has(d.id) ? 2.5 : 1.5)
-      argNodeGroups.select<SVGRectElement>('rect.arg-card-rect')
-        .attr('stroke', d => ids.has((d as ArgumentBlob).id) ? LINK_CARD_STROKE : ARG_CARD_STROKE)
-        .attr('stroke-width', d => ids.has((d as ArgumentBlob).id) ? 2.5 : 1.5)
-    }
-    linkedHighlightRef.current = applyLinkedHighlight
-    applyLinkedHighlight(optsRef.current.highlightArgIds)
-
     // ── Highlight (hover + sticky) ──────────────────────────────────────────────
     const edgeEndId = (e: GraphEdge, w: 'source' | 'target') => {
       const v = e[w]
@@ -793,13 +777,20 @@ export function useGraphD3(
         }
       prevNodeArgIds = new Set(nodeArgIds)
     }
+    // Pre-settle: stop the auto-started timer, tick 100 iterations
+    // synchronously (no handler yet so no DOM updates), then paint
+    // one frame before resuming the async animation loop. This
+    // eliminates the initial large-blob flash while the sim converges.
+    sim.stop()
+    sim.tick(100)
     sim.on('tick', renderFrame)
+    renderFrame()
+    sim.restart()
 
     const observer = new ResizeObserver(() => {
       const { width: w, height: h } = svgEl.getBoundingClientRect()
       if (w < 10 || h < 10) return
       sim.alpha(0.1).restart()
-      d3.select(svgEl).selectAll('.rings circle').attr('cx', w / 2).attr('cy', h / 2)
       hintG.attr('transform', `translate(${w / 2}, ${h - 34})`)
     })
     observer.observe(svgEl.parentElement ?? svgEl)
@@ -813,7 +804,6 @@ export function useGraphD3(
 
   // ── Sticky highlight (selection-driven) ─────────────────────────────────────────
   useEffect(() => { highlightFnRef.current() }, [opts.lockedItem, opts.hoveredConceptId])
-  useEffect(() => { linkedHighlightRef.current(opts.highlightArgIds) }, [opts.highlightArgIds])
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()

@@ -225,12 +225,41 @@
   padding: 1px 5px;
 }
 
-/* Hypothesis-linked evidence arguments (when the filter-panel toggle is on) */
-.arg[data-linked='true'] {
-  background: rgba(139, 92, 246, 0.1);
-  box-shadow: inset 2px 0 0 #8b5cf6;
+/* "Select only evidence" action — scopes to the hypothesis-linked arguments */
+.evidenceBar {
+  margin-top: 6px;
 }
-.arg[data-linked='true'] .argLabel { color: #6d28d9; font-weight: 600; }
+.evidenceBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.evidenceBtn:hover { background: rgba(239, 68, 68, 0.18); }
+.evidenceCount {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  background: rgba(239, 68, 68, 0.16);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Hypothesis-linked evidence arguments — always marked in the concept list */
+.arg[data-linked='true'] {
+  background: rgba(239, 68, 68, 0.1);
+  box-shadow: inset 2px 0 0 #ef4444;
+}
+.arg[data-linked='true'] .argLabel { color: #b91c1c; font-weight: 600; }
 .concept[data-linked='true'] .conceptLabel::after {
   content: '';
   display: inline-block;
@@ -238,7 +267,7 @@
   height: 6px;
   margin-left: 6px;
   border-radius: 50%;
-  background: #8b5cf6;
+  background: #ef4444;
   vertical-align: middle;
 }
 

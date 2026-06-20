@@ -1,4 +1,5 @@
 .view {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -98,6 +99,20 @@
   color: #073b4c;
   border-color: rgba(7, 59, 76, 0.26);
 }
+
+.evidenceBtn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background 0.12s;
+}
+.evidenceBtn:hover { background: rgba(239, 68, 68, 0.18); }
 
 /* ── List ──────────────────────────────────────────── */
 

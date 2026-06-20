@@ -9,7 +9,6 @@ import type { GraphNode, GraphEdge, ArgumentBlob, Hypothesis, SelectedScope } fr
 import styles from './GraphView.module.css'
 
 const endId = (v: string | GraphNode) => (typeof v === 'string' ? v : v.id)
-const EMPTY_IDS: Set<string> = new Set()
 
 export function GraphView() {
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -22,10 +21,9 @@ export function GraphView() {
   const [hoveredConceptId, setHoveredConceptId] = useState<string | null>(null)
   const [hasActivatedOnce, setHasActivatedOnce] = useState(false)
   const [forceRender, setForceRender] = useState(false)
-  const [highlightLinked, setHighlightLinked] = useState(false)
   const viewRef = useRef<HTMLDivElement>(null)
   const didDragRef = useRef(false)
-  const { activeView, selectedDocumentIds, selectedHypothesisIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView, setScopedArgumentCount } = useStore()
+  const { activeView, selectedDocumentIds, selectedHypothesisIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView, setScopedArgumentCount, pendingEvidenceOnly, setPendingEvidenceOnly } = useStore()
 
   const handleTabMouseDown = (e: React.MouseEvent) => {
     if (!panelOpen) return
@@ -123,22 +121,18 @@ export function GraphView() {
     () => linkedEvidenceBlobIds(allHypotheses, selectedHypothesisIds, blobs),
     [allHypotheses, selectedHypothesisIds, blobs],
   )
-  const highlightArgIds = highlightLinked ? linkedEvidenceArgIds : EMPTY_IDS
 
-  // Toggling the highlight on also checks the linked arguments in the concept panel
-  // (so they're guaranteed visible), in addition to marking them.
-  const toggleHighlightLinked = () => {
-    const next = !highlightLinked
-    setHighlightLinked(next)
-    if (next && linkedEvidenceArgIds.size > 0) {
-      setScope(s => {
-        const ids = new Set(s.argumentIds)
-        let changed = false
-        linkedEvidenceArgIds.forEach(id => { if (!ids.has(id)) { ids.add(id); changed = true } })
-        return changed ? { argumentIds: [...ids] } : s
-      })
+  // Scope the concept panel to ONLY the hypothesis-linked evidence arguments.
+  const selectOnlyEvidence = () => setScope({ argumentIds: [...linkedEvidenceArgIds] })
+
+  // Consume the one-shot flag set by Discover's "Explore evidence only" button.
+  // Runs after the blobs→scope reset effect (declared above), so it wins.
+  useEffect(() => {
+    if (pendingEvidenceOnly && linkedEvidenceArgIds.size > 0) {
+      setScope({ argumentIds: [...linkedEvidenceArgIds] })
+      setPendingEvidenceOnly(false)
     }
-  }
+  }, [pendingEvidenceOnly, linkedEvidenceArgIds, setPendingEvidenceOnly])
 
   // "Render anyway" escape from the blocked state — reset once back under the
   // limit, or when the document / hypothesis selection changes.
@@ -164,7 +158,7 @@ export function GraphView() {
             entityCount={entityCount}
             entityLimit={LOD_THRESHOLDS.blocked}
             linkedArgIds={linkedEvidenceArgIds}
-            highlightLinked={highlightLinked}
+            onSelectOnlyEvidence={selectOnlyEvidence}
             onConceptHover={setHoveredConceptId}
             onConceptDetail={(conceptId) => {
               setSelectedConceptId(conceptId)
@@ -206,7 +200,7 @@ export function GraphView() {
 
       <div className={styles.canvas}>
         {showGraph && (
-          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} highlightArgIds={highlightArgIds} linkedEvidenceCount={linkedEvidenceArgIds.size} highlightLinked={highlightLinked} onToggleHighlightLinked={toggleHighlightLinked} />
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} />
         )}
         {showBlocked && (
           <div className={styles.blockedBanner} role="alert">

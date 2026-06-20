@@ -3,7 +3,7 @@ import type { FilterState, ActiveView, SizeBy, CorpusViewMode, SelectedRelation 
 
 const defaultFilters: FilterState = {
   nodeTypes: { Argument: false, Entity: true, Concept: false },
-  minConfidence: 0.8,
+  minConfidence: 0.9,
   relationTypes: {
     SUPPORTS: true, CORRELATES_WITH: true, REVEALS: true,
     CONTRADICTS: true,
@@ -24,6 +24,11 @@ interface AppState {
   selectedConceptId: string | null
   selectedRelation: SelectedRelation | null
   selectedHypothesisIds: string[]
+  conceptSimilarityThreshold: number
+  conceptAggregateThreshold: number
+  discoveredHypothesisCount: number
+  scopedArgumentCount: number
+  pendingEvidenceOnly: boolean   // one-shot: scope Explore to hypothesis evidence args on entry
   toggleDocumentSelection: (id: string) => void
   setSelectedDocuments: (ids: string[]) => void
   clearSelection: () => void
@@ -40,6 +45,11 @@ interface AppState {
   selectHypothesis: (id: string, multi: boolean) => void
   selectAllHypotheses: (ids: string[]) => void
   clearHypothesisSelection: () => void
+  setConceptSimilarityThreshold: (v: number) => void
+  setConceptAggregateThreshold: (v: number) => void
+  setDiscoveredHypothesisCount: (v: number) => void
+  setScopedArgumentCount: (v: number) => void
+  setPendingEvidenceOnly: (v: boolean) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -54,6 +64,11 @@ export const useStore = create<AppState>((set) => ({
   selectedConceptId: null,
   selectedRelation: null,
   selectedHypothesisIds: [],
+  conceptSimilarityThreshold: 0.9,
+  conceptAggregateThreshold: 6,
+  discoveredHypothesisCount: 0,
+  scopedArgumentCount: 0,
+  pendingEvidenceOnly: false,
   toggleDocumentSelection: (id) =>
     set((s) => ({
       selectedDocumentIds: s.selectedDocumentIds.includes(id)
@@ -90,4 +105,9 @@ export const useStore = create<AppState>((set) => ({
     }),
   selectAllHypotheses: (ids) => set({ selectedHypothesisIds: ids }),
   clearHypothesisSelection: () => set({ selectedHypothesisIds: [] }),
+  setConceptSimilarityThreshold: (v) => set({ conceptSimilarityThreshold: v }),
+  setConceptAggregateThreshold: (v) => set({ conceptAggregateThreshold: v }),
+  setDiscoveredHypothesisCount: (v) => set({ discoveredHypothesisCount: v }),
+  setScopedArgumentCount: (v) => set({ scopedArgumentCount: v }),
+  setPendingEvidenceOnly: (v) => set({ pendingEvidenceOnly: v }),
 }))

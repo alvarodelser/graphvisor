@@ -20,12 +20,9 @@ interface FilterProps {
   filters: FilterState
   setFilters: (partial: Partial<FilterState>) => void
   onReload: () => void
-  linkedEvidenceCount: number
-  highlightLinked: boolean
-  onToggleHighlightLinked: () => void
 }
 
-export function GraphFilterContent({ filters, setFilters, onReload, linkedEvidenceCount, highlightLinked, onToggleHighlightLinked }: FilterProps) {
+export function GraphFilterContent({ filters, setFilters, onReload }: FilterProps) {
   const toggleRelationType = (type: string, checked: boolean) =>
     setFilters({ relationTypes: { ...filters.relationTypes, [type]: checked } })
 
@@ -45,20 +42,6 @@ export function GraphFilterContent({ filters, setFilters, onReload, linkedEviden
 
   return (
     <>
-      {linkedEvidenceCount > 0 && (
-        <div style={flatRow}>
-          <label style={{ ...checkRow, marginBottom: 0, flex: 1 }}
-            title="Highlight arguments cited as evidence by the selected hypotheses (and check them in the concept panel)">
-            <input type="checkbox" checked={highlightLinked} onChange={onToggleHighlightLinked}
-              style={{ accentColor: '#8b5cf6' }} />
-            <span style={{ ...labelText, fontWeight: 700, color: '#8b5cf6' }}>Linked evidence</span>
-          </label>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', background: 'rgba(139,92,246,0.14)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
-            {linkedEvidenceCount}
-          </span>
-        </div>
-      )}
-
       <FilterSection
         label="Node Types"
         allChecked={allNodeTypesOn}
