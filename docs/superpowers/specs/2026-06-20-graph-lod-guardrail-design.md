@@ -6,7 +6,7 @@
 
 Makes the graph survive large selections gracefully instead of freezing, and stops
 Safari's idle CPU burn. Driven by a scoped **entity count** that selects a level-of-detail
-(LOD) mode, a hard guardrail at 300 entities with a "render anyway" escape, and a live
+(LOD) mode, a hard guardrail at 1200 entities with a "render anyway" escape, and a live
 **demand meter** in the concept sidebar so the user can see and reduce load by unchecking
 arguments.
 
@@ -17,7 +17,7 @@ arguments.
 1. **Gate the chevron animation** so Safari stops CPU-repainting idle edges (audit Problem A #1).
 2. **Don't load the graph until Explore is active**, and keep it warm afterward unless it's heavy.
 3. **Degrade fidelity by entity count** (LOD modes) so medium/large graphs stay smooth.
-4. **Hard guardrail at 300 entities** — block rendering, surface the concept sidebar + demand
+4. **Hard guardrail at 1200 entities** — block rendering, surface the concept sidebar + demand
    meter, prompt the user to uncheck arguments; offer a "Render anyway" escape.
 5. **Optimize the O(n²)/O(n³) forces** (audit Problem B) so Calm/Lean graphs (and "Render anyway")
    don't stall.
@@ -36,12 +36,12 @@ arguments in the concept sidebar, so the meter and mode update live.
 
 | `count` | Mode | Edges | Chevron animation | Particles | Blobs | Forces |
 |---------|------|-------|-------------------|-----------|-------|--------|
-| 0–119 | **full** | chevron arrows | animated (non-Safari) | on | full | exact (current) |
-| 120–209 | **calm** | chevron arrows | static | off | full | **optimized** |
-| 210–299 | **lean** | plain straight lines | n/a | off | hull-only | **optimized** |
-| 300+ | **blocked** | not rendered | — | — | — | — |
+| 0–399 | **full** | chevron arrows | animated (non-Safari) | on | full | exact (current) |
+| 400–799 | **calm** | chevron arrows | static | off | full | **optimized** |
+| 800–1199 | **lean** | plain straight lines | n/a | off | hull-only | **optimized** |
+| 1200+ | **blocked** | not rendered | — | — | — | — |
 
-Boundaries are inclusive-low / exclusive-high (e.g. 120 is Calm, 119 is Full).
+Boundaries are inclusive-low / exclusive-high (e.g. 400 is Calm, 399 is Full).
 
 `mode` is a pure function of `count`, defined once and unit-tested at the boundaries.
 
@@ -66,35 +66,36 @@ marching look only on small (Full) graphs.
 
 ### 2. Lazy mount + retention — `GraphView.tsx`, `GraphCanvasView.tsx`
 
-- **First load:** don't call `dataService.getGraph(...)` and don't mount `GraphCanvasView`
-  until Explore has been activated at least once. Track `hasActivatedOnce` (set true when
-  `isActive` first becomes true; never reset).
+- **First load:** `dataService.getGraph(...)` still runs on document selection (it is cheap and
+  feeds the Explore tab's argument badge), but `GraphCanvasView` — the heavy D3 simulation — is
+  not mounted until Explore has been activated at least once. Track `hasActivatedOnce` (set true
+  when `isActive` first becomes true; never reset).
 - **Render mode** accounts for the escape: `renderMode = (mode === 'blocked' && forceRender) ? 'lean' : mode`.
 - **Mount condition for `GraphCanvasView`:**
   ```
   hasActivatedOnce && renderMode !== 'blocked' && (isActive || renderMode !== 'lean')
   ```
   - Full / Calm graphs stay mounted (warm) when navigating to Detail or back to Select/Discover.
-  - Lean graphs (and forced 300+ renders) **unmount when you leave Explore** to free CPU; remount on return.
+  - Lean graphs (and forced 1200+ renders) **unmount when you leave Explore** to free CPU; remount on return.
   - Blocked (not forced) never mounts the sim — the banner shows instead.
 - `lod` (the `renderMode`) is passed `GraphView → GraphCanvasView → useGraphD3`.
 
 ### 3. Guardrail UI — `GraphView.tsx` (+ banner CSS)
 
-- State `forceRender: boolean`. Resets to `false` whenever `count` drops below 300, or when
+- State `forceRender: boolean`. Resets to `false` whenever `count` drops below 1200, or when
   `selectedDocumentIds` / `selectedHypothesisIds` change.
 - When `isActive && mode === 'blocked' && !forceRender`:
   - Auto-open the concept sidebar (`setPanelOpen(true)`).
   - Render a **banner** over the canvas area (canvas itself blank): *"Large selection — N
-    entities. Uncheck arguments in the panel to get under 300."*
+    entities. Uncheck arguments in the panel to get under 1200."*
   - A **"Render anyway (may lag)"** button sets `forceRender = true` → graph mounts in Lean.
 
 ### 4. Demand meter — `ConceptHierarchy.tsx` (+ meter CSS)
 
-- New props: `entityCount: number`, `limit = 300` (passed from `GraphView` — the same `count`).
+- New props: `entityCount: number`, `limit = 1200` (passed from `GraphView` — the same `count`).
 - A **wifi-style bar meter** in the sidebar header: N discrete bars filling proportionally to
   `entityCount / limit`, colored **green → amber → red** as it approaches the limit, with
-  `{entityCount}/{limit}` text. At/over the limit it reads red/"OVER".
+  `{entityCount}/{limit}` (limit 1200) text. At/over the limit it reads red/"OVER".
 - **Per-argument entity counts:** each argument row shows its `blob.entityIds.length` as a hint
   (which arguments to uncheck for the biggest drop). `ConceptHierarchy` builds a
   `Map<argId, entityCount>` from the `blobs` prop it already receives.
@@ -102,7 +103,7 @@ marching look only on small (Full) graphs.
 
 ### 5. Force optimizations — `forces.ts`, `useGraphD3.ts`
 
-Engaged only at **Calm and above** (`count >= 120`); Full keeps the exact forces (cheap at that
+Engaged only at **Calm and above** (`count >= 400`); Full keeps the exact forces (cheap at that
 size). Same qualitative layout, lower complexity:
 
 - **`blobRepulsionForce`** (`forces.ts:128`, O(args·members·allNodes)) → **uniform spatial grid**:
@@ -126,7 +127,7 @@ also sheds the per-tick clip mutation cost.
 ## Data flow
 
 ```
-selectedDocumentIds ──► getGraph (gated on hasActivatedOnce)
+selectedDocumentIds ──► getGraph (runs on selection; feeds Explore badge)
 selectedHypothesisIds ─► hypothesis/concept scope ─► fnodes/fedges/fblobs
 scope (concept sidebar checkboxes) ─┘
         │
@@ -143,8 +144,8 @@ count = fnodes Entity length ──► mode(count) ──► renderMode (+forceR
 ## Testing
 
 **Unit**
-- `mode(count)` at boundaries: 0, 119, 120, 209, 210, 299, 300.
-- `forceRender` reset logic (drops below 300; doc/hypothesis change).
+- `mode(count)` at boundaries: 0, 399, 400, 799, 800, 1199, 1200.
+- `forceRender` reset logic (drops below 1200; doc/hypothesis change).
 - Mount-condition truth table (full/calm/lean/blocked × active/inactive × forceRender).
 - Demand-meter bar fill + color band given `entityCount / limit`.
 - Optimized forces: parity-ish vs naive on a small fixture (no NaN, comparable displacement
@@ -155,7 +156,7 @@ count = fnodes Entity length ──► mode(count) ──► renderMode (+forceR
 
 **Manual / browser**
 - Safari: ~20-edge graph, confirm idle CPU drops to flat after the animation gate.
-- Freeze: select many docs/hypotheses; confirm no main-thread stall — blocked at 300 with
+- Freeze: select many docs/hypotheses; confirm no main-thread stall — blocked at 1200 with
   banner + meter; "Render anyway" mounts Lean without freezing (optimized forces).
 - Retention: Calm graph stays warm across Detail/Select/Discover; Lean graph unmounts when
   leaving Explore and remounts on return.

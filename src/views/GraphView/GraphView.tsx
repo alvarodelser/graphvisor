@@ -60,8 +60,9 @@ export function GraphView() {
     dataService.getHypotheses().then(setAllHypotheses)
   }, [])
 
+  // Data fetch is cheap and feeds the Explore tab's argument badge, so it runs on
+  // selection regardless of activation. Only the heavy sim mount is deferred (showGraph).
   useEffect(() => {
-    if (!hasActivatedOnce) return
     if (selectedDocumentIds.length === 0) {
       setNodes([]); setEdges([]); setAllBlobs([])
       return
@@ -69,7 +70,7 @@ export function GraphView() {
     dataService.getGraph(selectedDocumentIds).then(({ nodes, edges, blobs }) => {
       setNodes(nodes); setEdges(edges); setAllBlobs(blobs)
     })
-  }, [selectedDocumentIds, hasActivatedOnce])
+  }, [selectedDocumentIds])
 
   const hypothesisConceptLabels = useMemo(() => {
     if (selectedHypothesisIds.length === 0) return null
