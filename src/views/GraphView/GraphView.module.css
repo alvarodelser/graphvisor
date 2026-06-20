@@ -2,6 +2,49 @@
 .canvas { flex: 1; position: relative; background: #fafbfc; overflow: hidden; }
 .svg    { width: 100%; height: 100%; display: block; touch-action: none; }
 
+/* "Too demanding" guardrail banner — shown instead of the graph above the limit */
+.blockedBanner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, 80%);
+  padding: 22px 26px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(7, 59, 76, 0.12);
+}
+.blockedTitle {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ef4444;
+  margin-bottom: 8px;
+}
+.blockedBody {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink, #073b4c);
+}
+.blockedBtn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #073b4c;
+  background: rgba(100, 116, 139, 0.1);
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.blockedBtn:hover { background: rgba(100, 116, 139, 0.18); }
+.blockedHint { font-weight: 500; color: rgba(100, 116, 139, 0.8); }
+
 /* Concept hierarchy side panel */
 .sidebar {
   flex: 0 0 auto;

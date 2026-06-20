@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useRef, useState, useEffect } from 'react'
 import { buildConceptTree } from './conceptTree'
+import { DemandMeter } from './DemandMeter'
 import type { ArgumentBlob, SelectedScope } from '../../types'
 import styles from './ConceptHierarchy.module.css'
 
@@ -8,13 +9,20 @@ interface Props {
   blobs: ArgumentBlob[]
   scope: SelectedScope
   onScopeChange: (s: SelectedScope) => void
+  entityCount: number
+  entityLimit: number
   onConceptHover?: (conceptId: string | null) => void
   onConceptDetail?: (conceptId: string) => void
   onArgumentDetail?: (argId: string) => void
 }
 
-export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
+export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, entityLimit, onConceptHover, onConceptDetail, onArgumentDetail }: Props) {
   const tree = useMemo(() => buildConceptTree(blobs), [blobs])
+  // Per-argument entity count — hints which arguments to uncheck to drop demand.
+  const entityCountByArg = useMemo(
+    () => new Map(blobs.map(b => [b.id, b.entityIds.length])),
+    [blobs],
+  )
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
 
@@ -54,7 +62,10 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, 
     <div className={styles.panel}>
       <div className={styles.head}>
         <div className={styles.title}>
-          Concept hierarchy
+          <span className={styles.titleRow}>
+            Concept hierarchy
+            <DemandMeter count={entityCount} limit={entityLimit} />
+          </span>
           <small>{tree.length} concepts · {blobs.length} arguments</small>
         </div>
         <input
@@ -131,6 +142,9 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, onConceptHover, 
                       <input type="checkbox" className={styles.argBox}
                         checked={selected.has(a.id)} onChange={() => toggleArg(a.id)} />
                       <span className={styles.argLabel}>{a.full}</span>
+                      <span className={styles.argCount} title="entities in this argument">
+                        {entityCountByArg.get(a.id) ?? 0}
+                      </span>
                       {onArgumentDetail && (
                         <span
                           className={styles.detailIcon}

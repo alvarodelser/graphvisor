@@ -1,0 +1,35 @@
+.meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
+  --meter-color: #10b981;
+}
+.meter[data-level='warn'] { --meter-color: #F4A124; }
+.meter[data-level='over'] { --meter-color: #ef4444; }
+
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+.bar {
+  width: 3px;
+  align-self: flex-end;
+  border-radius: 1px;
+  background: rgba(100, 116, 139, 0.22);
+  transition: background 0.2s;
+}
+.bar[data-on='true'] { background: var(--meter-color); }
+
+.label {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--meter-color);
+  line-height: 1;
+}
+.slash {
+  color: rgba(100, 116, 139, 0.7);
+  font-weight: 500;
+}

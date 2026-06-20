@@ -3,7 +3,7 @@ import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { GraphCanvasView } from './GraphCanvasView'
 import { ConceptHierarchy } from './ConceptHierarchy'
-import { lodMode } from './lod'
+import { lodMode, LOD_THRESHOLDS } from './lod'
 import type { GraphNode, GraphEdge, ArgumentBlob, Hypothesis, SelectedScope } from '../../types'
 import styles from './GraphView.module.css'
 
@@ -18,6 +18,8 @@ export function GraphView() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelWidth, setPanelWidth] = useState(320)
   const [hoveredConceptId, setHoveredConceptId] = useState<string | null>(null)
+  const [hasActivatedOnce, setHasActivatedOnce] = useState(false)
+  const [forceRender, setForceRender] = useState(false)
   const viewRef = useRef<HTMLDivElement>(null)
   const didDragRef = useRef(false)
   const { activeView, selectedDocumentIds, selectedHypothesisIds, setSelectedConceptId, setSelectedArgumentId, setSelectedNode, setActiveView, setScopedArgumentCount } = useStore()
@@ -51,11 +53,15 @@ export function GraphView() {
 
   const isActive = activeView === 'graph'
 
+  // Don't build the graph until Explore is first opened; stay loaded afterward.
+  useEffect(() => { if (isActive) setHasActivatedOnce(true) }, [isActive])
+
   useEffect(() => {
     dataService.getHypotheses().then(setAllHypotheses)
   }, [])
 
   useEffect(() => {
+    if (!hasActivatedOnce) return
     if (selectedDocumentIds.length === 0) {
       setNodes([]); setEdges([]); setAllBlobs([])
       return
@@ -63,7 +69,7 @@ export function GraphView() {
     dataService.getGraph(selectedDocumentIds).then(({ nodes, edges, blobs }) => {
       setNodes(nodes); setEdges(edges); setAllBlobs(blobs)
     })
-  }, [selectedDocumentIds])
+  }, [selectedDocumentIds, hasActivatedOnce])
 
   const hypothesisConceptLabels = useMemo(() => {
     if (selectedHypothesisIds.length === 0) return null
@@ -108,6 +114,19 @@ export function GraphView() {
   const entityCount = useMemo(() => fnodes.reduce((n, x) => n + (x.type === 'Entity' ? 1 : 0), 0), [fnodes])
   const mode = lodMode(entityCount)
 
+  // "Render anyway" escape from the blocked state — reset once back under the
+  // limit, or when the document / hypothesis selection changes.
+  useEffect(() => { if (mode !== 'blocked') setForceRender(false) }, [mode])
+  useEffect(() => { setForceRender(false) }, [selectedDocumentIds, selectedHypothesisIds])
+
+  const renderMode = mode === 'blocked' && forceRender ? 'lean' : mode
+  // Full/Calm graphs stay warm in the background; Lean (heavy) unmounts off-Explore.
+  const showGraph = hasActivatedOnce && renderMode !== 'blocked' && (isActive || renderMode !== 'lean')
+  const showBlocked = isActive && mode === 'blocked' && !forceRender
+
+  // Surface the concept sidebar so the user can uncheck arguments to get under the limit.
+  useEffect(() => { if (showBlocked) setPanelOpen(true) }, [showBlocked])
+
   return (
     <div className={styles.view} ref={viewRef}>
       {panelOpen && (
@@ -116,6 +135,8 @@ export function GraphView() {
             blobs={blobs}
             scope={scope}
             onScopeChange={setScope}
+            entityCount={entityCount}
+            entityLimit={LOD_THRESHOLDS.blocked}
             onConceptHover={setHoveredConceptId}
             onConceptDetail={(conceptId) => {
               setSelectedConceptId(conceptId)
@@ -156,7 +177,21 @@ export function GraphView() {
       </div>
 
       <div className={styles.canvas}>
-        <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={mode} />
+        {showGraph && (
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} />
+        )}
+        {showBlocked && (
+          <div className={styles.blockedBanner} role="alert">
+            <div className={styles.blockedTitle}>Large selection</div>
+            <p className={styles.blockedBody}>
+              <strong>{entityCount}</strong> entities exceeds the {LOD_THRESHOLDS.blocked}-entity limit.
+              Uncheck arguments in the concept panel to get under it.
+            </p>
+            <button className={styles.blockedBtn} onClick={() => setForceRender(true)}>
+              Render anyway <span className={styles.blockedHint}>(may lag)</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
