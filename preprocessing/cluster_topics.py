@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="NMF topic clustering on corpus concepts with Ollama labeling.",
     )
-    parser.add_argument("--dataset", choices=["5", "112"], help="Dataset id.")
+    parser.add_argument("--dataset", help="Dataset id.")
     parser.add_argument("--input", type=Path, help="Explicit corpus JSON path.")
     parser.add_argument("--output-topics", type=Path, help="Output topics JSON path.")
     parser.add_argument("--output-corpus", type=Path, help="Output corpus JSON path.")

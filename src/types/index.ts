@@ -140,8 +140,9 @@ export interface SelectedRelation {
 export interface Hypothesis {
   hypothesis: string
   concept: string
-  evidence: string
+  evidence: string[]
   rationale?: string
+  research_question?: string
   decision: 'ADVANCE' | 'BORDERLINE'
   scores: {
     novelty: number

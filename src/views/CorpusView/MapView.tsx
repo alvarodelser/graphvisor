@@ -10,9 +10,10 @@ import styles from './CorpusView.module.css'
 interface Props {
   docs: DocNode[]
   selectedIds: Set<string>
+  showConceptLabels?: boolean
 }
 
-export function MapView({ docs, selectedIds }: Props) {
+export function MapView({ docs, selectedIds, showConceptLabels = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<{ doc: DocNode; x: number; y: number } | null>(null)
   const [conceptGroundings, setConceptGroundings] = useState<ConceptGrounding[]>([])
@@ -28,7 +29,7 @@ export function MapView({ docs, selectedIds }: Props) {
   useCorpusD3(svgRef, docs, {
     selectedIds,
     sizeBy,
-    conceptGroundings,
+    conceptGroundings: showConceptLabels ? conceptGroundings : [],
     onLassoSelect: (ids, shiftKey) =>
       setSelectedDocuments(
         shiftKey ? [...new Set([...selectedDocumentIds, ...ids])] : ids

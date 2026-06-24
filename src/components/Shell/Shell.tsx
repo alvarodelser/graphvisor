@@ -68,7 +68,19 @@ export function Shell({ children }: Props) {
   return (
     <div className={styles.shell}>
       <header className={styles.topBar}>
-        <span className={styles.logo}>GRAPHVISOR</span>
+        <span className={styles.brand}>
+          <svg className={styles.brandIcon} viewBox="0 0 180.00415 100.00003" aria-hidden="true">
+            <g transform="translate(-14.673589,-68.475939)">
+              <path fill="#fff" d="m 14.676203,118.47595 c 0.323797,6.52405 50.000004,50 89.999997,50 40,0 90.3238,-43.47595 90,-50 -0.42047,-8.47171 -50,-50.000015 -90,-50.000015 -39.999993,0 -90.420459,41.528305 -89.999997,50.000015 z" />
+              <ellipse fill="#073b4c" cx="84.676201" cy="133.65865" rx="32.500004" ry="32.5" />
+              <ellipse fill="#073b4c" cx="124.6762" cy="96.158646" rx="10" ry="9.999999" />
+              <ellipse fill="#073b4c" cx="144.67621" cy="126.15864" rx="5" ry="4.9999995" />
+              <path fill="none" stroke="#073b4c" strokeWidth="4.99999" strokeLinecap="round" strokeLinejoin="round" d="M 79.676204,136.15865 124.6762,96.158645" />
+              <path fill="none" stroke="#073b4c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="m 144.6762,126.15864 -20,-29.999995" />
+            </g>
+          </svg>
+          <span className={styles.logo}>GRAPHVISOR</span>
+        </span>
         <nav className={styles.tabs}>
           <div ref={indicatorRef} className={styles.indicator} />
           {(['corpus', 'discover', 'graph', 'detail'] as const).map((v, i, arr) => (

@@ -82,7 +82,7 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
   const visible = relations.filter(r => visibleGroups[r.group])
   const hasArgCol = !!argumentBlobs
   const groups = groupRelations(visible, argumentBlobs)
-  const colTemplate = hasArgCol ? '140px 1fr 90px 1fr 40px 1.6fr' : '1fr 90px 1fr 40px 1.6fr'
+  const colTemplate = hasArgCol ? '140px 1fr auto 1fr 40px 1.6fr' : '1fr auto 1fr 40px 1.6fr'
   // On phones keep full column widths but let the table scroll horizontally.
   const minTableW = narrow ? (hasArgCol ? 620 : 480) : undefined
 
@@ -185,7 +185,6 @@ export function RelationList({ relations, argumentBlobs, visibleGroups, onEntity
                     color: GROUP_TEXT_COLOR[rel.group] ?? '#fff',
                     borderRadius: 20, padding: '2px 7px', fontSize: 9, fontWeight: 700,
                     display: 'inline-block', whiteSpace: 'nowrap',
-                    overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
                     cursor: onRelationClick ? 'pointer' : 'default',
                     transition: 'opacity 0.15s',
                   }}

@@ -149,7 +149,7 @@ export function useGraphD3(
     // Pre-position each entity near its chain center
     simNodes.forEach(n => {
       const home = centers.get(model.chainOf.get(n.id)!) ?? { x: width / 2, y: height / 2 }
-      const spread = Math.sqrt(model.chainSizes.get(model.chainOf.get(n.id)!) ?? 1) * 30
+      const spread = Math.min(Math.sqrt(model.chainSizes.get(model.chainOf.get(n.id)!) ?? 1) * 20, 100)
       const a = Math.random() * Math.PI * 2
       const r = Math.random() * spread
       n.x = home.x + Math.cos(a) * r
@@ -540,7 +540,7 @@ export function useGraphD3(
     const sim = d3.forceSimulation<GraphNode>(simNodes)
       .force('link', d3.forceLink<GraphNode, GraphEdge>(simEdges).id(d => d.id)
         .strength(d => linkStrength.get(d.id) ?? d.confidence * INTER_ARG_LINK))
-      .force('charge', d3.forceManyBody<GraphNode>().strength(-220).theta(0.9))
+      .force('charge', d3.forceManyBody<GraphNode>().strength(-220).theta(0.9).distanceMax(280))
       .force('collide', d3.forceCollide<GraphNode>(14).strength(0.7))
       .force('argLayout', (optimized ? argLayoutForceLinear : argLayoutForce)(model, simNodes))
       .force('bridge', bridgePullForce(model, simNodes))
@@ -786,7 +786,7 @@ export function useGraphD3(
     // one frame before resuming the async animation loop. This
     // eliminates the initial large-blob flash while the sim converges.
     sim.stop()
-    sim.tick(100)
+    sim.tick(150)
     sim.on('tick', renderFrame)
     renderFrame()
     sim.restart()

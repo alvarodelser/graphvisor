@@ -225,10 +225,15 @@
   padding: 1px 5px;
 }
 
-/* "Select only evidence" action — scopes to the hypothesis-linked arguments */
-.evidenceBar {
-  margin-top: 6px;
+/* ── Footer ─────────────────────────────────────────────────────── */
+.footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  flex-shrink: 0;
 }
+
+/* "Filter evidence only" action — scopes to the hypothesis-linked arguments */
 .evidenceBtn {
   display: inline-flex;
   align-items: center;

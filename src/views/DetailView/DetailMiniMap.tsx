@@ -97,7 +97,7 @@ export function DetailMiniMap({ detail, allDocs, onHoverChange }: Props) {
     <div style={{ background: '#fafbfc' }}>
       <svg
         ref={svgRef}
-        style={{ width: '100%', height: 200, display: 'block' }}
+        style={{ width: '100%', height: 160, display: 'block' }}
       />
     </div>
   )

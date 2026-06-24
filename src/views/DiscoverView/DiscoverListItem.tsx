@@ -6,13 +6,16 @@ import styles from './DiscoverListItem.module.css'
 interface DiscoverListItemProps {
   hypothesis: Hypothesis
   highlightDimension?: keyof Hypothesis['scores']
+  showConcept?: boolean
+  showResearchQuestion?: boolean
 }
 
-export function DiscoverListItem({ hypothesis, highlightDimension }: DiscoverListItemProps) {
+export function DiscoverListItem({ hypothesis, highlightDimension, showConcept = false, showResearchQuestion = true }: DiscoverListItemProps) {
   const { selectedHypothesisIds, selectHypothesis } = useStore()
   const isSelected = selectedHypothesisIds.includes(hypothesis.hypothesis)
 
   const handleClick = (e: React.MouseEvent) => {
+    if (window.getSelection()?.toString()) return
     selectHypothesis(hypothesis.hypothesis, e.shiftKey)
   }
 
@@ -25,7 +28,7 @@ export function DiscoverListItem({ hypothesis, highlightDimension }: DiscoverLis
       onKeyDown={(e) => e.key === 'Enter' && selectHypothesis(hypothesis.hypothesis, false)}
     >
       <div className={styles.left}>
-        {hypothesis.concept && (
+        {showConcept && hypothesis.concept && (
           <span style={{
             alignSelf: 'flex-start', display: 'inline-block', fontSize: 9, fontWeight: 600,
             color: '#8b5cf6', background: 'rgba(139,92,246,0.08)',
@@ -36,6 +39,22 @@ export function DiscoverListItem({ hypothesis, highlightDimension }: DiscoverLis
           </span>
         )}
         <div className={styles.title}>{hypothesis.hypothesis}</div>
+        {showResearchQuestion && hypothesis.research_question && (
+          <div style={{
+            fontSize: 10,
+            color: '#6b7280',
+            fontStyle: 'italic',
+            lineHeight: 1.4,
+            marginTop: 5,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }} title={hypothesis.research_question}>
+            <span style={{ fontWeight: 700, marginRight: 4 }}>[RQ]</span>
+            {hypothesis.research_question}
+          </div>
+        )}
       </div>
       <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} />
     </div>

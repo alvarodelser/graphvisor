@@ -34,7 +34,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dataset",
-        choices=["5", "112"],
         help="Dataset id (reads src/data/corpus_<id>.json and doc embeddings binary).",
     )
     parser.add_argument(

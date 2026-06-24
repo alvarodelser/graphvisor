@@ -86,13 +86,6 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
             <button className={styles.miniBtn} disabled={selected.size === 0} onClick={() => setSelection(new Set())}>Clear</button>
           </div>
         </div>
-        {linkedArgIds.size > 0 && (
-          <div className={styles.evidenceBar}>
-            <button className={styles.evidenceBtn} onClick={onSelectOnlyEvidence}>
-              Select only evidence <span className={styles.evidenceCount}>{linkedArgIds.size}</span>
-            </button>
-          </div>
-        )}
       </div>
 
       <div className={styles.list}>
@@ -177,6 +170,14 @@ export function ConceptHierarchy({ blobs, scope, onScopeChange, entityCount, ent
           )
         })}
       </div>
+
+      {linkedArgIds.size > 0 && (
+        <div className={styles.footer}>
+          <button className={styles.evidenceBtn} onClick={onSelectOnlyEvidence}>
+            Filter evidence only <span className={styles.evidenceCount}>{linkedArgIds.size}</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

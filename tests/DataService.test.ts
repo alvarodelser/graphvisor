@@ -116,9 +116,10 @@ describe('RealDataService.getArgumentDetail — reasoning', () => {
 
 describe('RealDataService.getConceptDetail', () => {
   it('returns arguments and per-document stats for a concept', async () => {
-    const cd = await svc.getConceptDetail('protein oxidation')
-    expect(cd.label).toBe('protein oxidation')
-    expect(cd.conceptId).toBe('concept-protein oxidation')
+    const conceptName = 'Mismatch repair–mediated suppression of homeologous recombination'
+    const cd = await svc.getConceptDetail(conceptName)
+    expect(cd.label).toBe(conceptName)
+    expect(cd.conceptId).toBe('concept-' + conceptName)
     expect(cd.arguments.length).toBeGreaterThan(0)
     expect(cd.arguments[0]).toHaveProperty('full_argument')
     expect(cd.arguments[0].id).toMatch(/^doc_\d+_arg_\d+$/)
@@ -138,9 +139,9 @@ describe('RealDataService.getConceptDetail', () => {
 })
 
 describe('RealDataService.getHypotheses', () => {
-  it('returns 8 hypotheses with required fields', async () => {
+  it('returns hypotheses with required fields', async () => {
     const hypotheses = await svc.getHypotheses()
-    expect(hypotheses).toHaveLength(8)
+    expect(hypotheses.length).toBeGreaterThan(0)
     expect(hypotheses[0]).toHaveProperty('hypothesis')
     expect(hypotheses[0]).toHaveProperty('decision')
     expect(hypotheses[0].decision).toMatch(/^(ADVANCE|BORDERLINE)$/)

@@ -66,7 +66,7 @@ export function ConceptMiniMap({ docStats, allDocs, onHoverChange }: Props) {
 
   return (
     <div style={{ background: '#fafbfc' }}>
-      <svg ref={svgRef} style={{ width: '100%', height: 200, display: 'block' }} />
+      <svg ref={svgRef} style={{ width: '100%', height: 160, display: 'block' }} />
     </div>
   )
 }

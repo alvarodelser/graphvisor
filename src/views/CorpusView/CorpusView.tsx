@@ -13,6 +13,7 @@ export function CorpusView() {
   const [docs, setDocs] = useState<DocNode[]>([])
   const [minArgCount, setMinArgCount] = useState(0)
   const [minImpact, setMinImpact] = useState(0)
+  const [showConceptLabels, setShowConceptLabels] = useState(false)
   const {
     activeView, corpusViewMode, setCorpusViewMode,
     selectedDocumentIds, clearSelection, selectAll, setSizeBy, sizeBy,
@@ -52,6 +53,22 @@ export function CorpusView() {
           <button onClick={clearSelection} style={btnStyle}>Clear</button>
           <button onClick={() => selectAll(filteredDocs.map(d => d.id))} style={btnStyle}>All</button>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span className="sl">Concept embeddings</span>
+        <button
+          onClick={() => setShowConceptLabels(v => !v)}
+          style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid rgba(139,92,246,0.35)',
+            background: showConceptLabels ? 'rgba(139,92,246,0.18)' : 'transparent',
+            color: showConceptLabels ? '#8b5cf6' : '#6b7280',
+            transition: 'all 0.15s',
+          }}
+        >
+          {showConceptLabels ? 'ON' : 'OFF'}
+        </button>
       </div>
 
       <div>
@@ -141,7 +158,7 @@ export function CorpusView() {
       <div className={styles.canvas}>
         <CorpusViewSwitcher mode={corpusViewMode} onChange={setCorpusViewMode} />
 
-        {corpusViewMode === 'map' && <MapView docs={filteredDocs} selectedIds={selectedIds} />}
+        {corpusViewMode === 'map' && <MapView docs={filteredDocs} selectedIds={selectedIds} showConceptLabels={showConceptLabels} />}
         {corpusViewMode === 'topics' && <TopicsView docs={filteredDocs} selectedIds={selectedIds} />}
         {corpusViewMode === 'timeline' && <TimelineView docs={filteredDocs} selectedIds={selectedIds} />}
 

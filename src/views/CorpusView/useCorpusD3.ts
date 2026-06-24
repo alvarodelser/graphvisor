@@ -17,6 +17,8 @@ interface Options {
 const DOT_DEFAULT = '#74b9d6'
 const DOT_SELECTED = '#ef476f'
 
+const hasImpactData = (d: DocNode) => d.citations > 0
+
 export function useCorpusD3(
   svgRef: RefObject<SVGSVGElement | null>,
   docs: DocNode[],
@@ -49,6 +51,7 @@ export function useCorpusD3(
     const sizeScale = opts.sizeBy === 'uniform' ? null : d3.scaleLinear().domain(sizeExt).range([4, 9])
     const getRadius = (d: DocNode) => {
       if (!sizeScale) return 6
+      if (opts.sizeBy === 'impact' && !hasImpactData(d)) return 6
       const val = opts.sizeBy === 'argument_count' ? d.argument_count : d.citations
       return sizeScale(val)
     }
@@ -148,10 +151,18 @@ export function useCorpusD3(
       .attr('cx', d => simPositions.current.get(d.id)?.x ?? xScale(d.pca_x))
       .attr('cy', d => simPositions.current.get(d.id)?.y ?? yScale(d.pca_y))
       .attr('r', d => getRadius(d))
-      .attr('fill', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : DOT_DEFAULT)
-      .attr('stroke', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : 'none')
-      .attr('stroke-width', 4)
-      .attr('stroke-opacity', 0.4)
+      .attr('fill', d => {
+        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
+        if (opts.sizeBy === 'impact' && !hasImpactData(d)) return 'none'
+        return DOT_DEFAULT
+      })
+      .attr('stroke', d => {
+        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
+        if (opts.sizeBy === 'impact' && !hasImpactData(d)) return DOT_DEFAULT
+        return 'none'
+      })
+      .attr('stroke-width', d => optsRef.current.selectedIds.has(d.id) ? 4 : 1.5)
+      .attr('stroke-opacity', d => optsRef.current.selectedIds.has(d.id) ? 0.4 : 1)
       .style('cursor', 'pointer')
       .on('click', (event, d) => {
         event.stopPropagation()
@@ -243,8 +254,18 @@ export function useCorpusD3(
   useEffect(() => {
     if (!svgRef.current) return
     d3.select(svgRef.current).selectAll<SVGCircleElement, DocNode>('.corpus-dot')
-      .attr('fill', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : DOT_DEFAULT)
-      .attr('stroke', d => optsRef.current.selectedIds.has(d.id) ? DOT_SELECTED : 'none')
+      .attr('fill', d => {
+        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
+        if (optsRef.current.sizeBy === 'impact' && !hasImpactData(d)) return 'none'
+        return DOT_DEFAULT
+      })
+      .attr('stroke', d => {
+        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
+        if (optsRef.current.sizeBy === 'impact' && !hasImpactData(d)) return DOT_DEFAULT
+        return 'none'
+      })
+      .attr('stroke-width', d => optsRef.current.selectedIds.has(d.id) ? 4 : 1.5)
+      .attr('stroke-opacity', d => optsRef.current.selectedIds.has(d.id) ? 0.4 : 1)
   }, [opts.selectedIds])
 
   return {}

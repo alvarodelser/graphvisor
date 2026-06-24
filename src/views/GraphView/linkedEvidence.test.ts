@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { linkedEvidenceBlobIds } from './linkedEvidence'
 
-const hyp = (hypothesis: string, evidence: string) => ({ hypothesis, evidence })
+const hyp = (hypothesis: string, evidence: string) => ({ hypothesis, evidence: [evidence] })
 const blob = (id: string, arg_id?: string) => ({ id, arg_id })
 
 describe('linkedEvidenceBlobIds', () => {

@@ -118,7 +118,7 @@ export function HypothesisRadarChart({ scores, size = 100, highlightDimension }:
           .attr('fill', polyColor)
           .attr('opacity', persistent ? 1 : 0)
           .attr('data-persistent', persistent ? '1' : '0')
-          .text(scores[dim])
+          .text(Number(scores[dim]).toFixed(1))
       )
 
       const nameLabel = g.append('text')

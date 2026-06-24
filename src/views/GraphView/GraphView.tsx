@@ -127,12 +127,17 @@ export function GraphView() {
 
   // Consume the one-shot flag set by Discover's "Explore evidence only" button.
   // Runs after the blobs→scope reset effect (declared above), so it wins.
+  // If blobs are loaded but no evidence matches, clear the flag so the button
+  // can be retried (otherwise pendingEvidenceOnly stays true and re-clicks are no-ops).
   useEffect(() => {
-    if (pendingEvidenceOnly && linkedEvidenceArgIds.size > 0) {
+    if (!pendingEvidenceOnly) return
+    if (linkedEvidenceArgIds.size > 0) {
       setScope({ argumentIds: [...linkedEvidenceArgIds] })
       setPendingEvidenceOnly(false)
+    } else if (allBlobs.length > 0) {
+      setPendingEvidenceOnly(false)
     }
-  }, [pendingEvidenceOnly, linkedEvidenceArgIds, setPendingEvidenceOnly])
+  }, [pendingEvidenceOnly, linkedEvidenceArgIds, allBlobs.length, setPendingEvidenceOnly])
 
   // "Render anyway" escape from the blocked state — reset once back under the
   // limit, or when the document / hypothesis selection changes.
@@ -200,7 +205,7 @@ export function GraphView() {
 
       <div className={styles.canvas}>
         {showGraph && (
-          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} />
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} onToggleConceptPanel={() => setPanelOpen(v => !v)} />
         )}
         {showBlocked && (
           <div className={styles.blockedBanner} role="alert">

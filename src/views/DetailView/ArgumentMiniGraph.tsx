@@ -150,13 +150,13 @@ export function ArgumentMiniGraph({ detail, onPanelChange }: Props) {
       g.append('circle').attr('r', 6).attr('fill', '#118ab2').attr('stroke', '#fff').attr('stroke-width', 1.5)
       g.append('text').attr('class', 'mg-label')
         .attr('y', 16).attr('text-anchor', 'middle').attr('pointer-events', 'none')
-        .attr('fill', '#118ab2').attr('font-size', '7px').attr('font-weight', '600').attr('opacity', 0)
-        .text(d.label.length > 14 ? d.label.slice(0, 13) + '…' : d.label)
+        .attr('fill', '#118ab2').attr('font-size', '7px').attr('font-weight', '600')
+        .attr('stroke', '#fafbfc').attr('stroke-width', 3).style('paint-order', 'stroke')
+        .attr('opacity', 0.85)
+        .text(d.label.length > 10 ? d.label.slice(0, 9) + '…' : d.label)
     })
 
     nodeGroups
-      .on('mouseenter.label', function() { d3.select(this).select('.mg-label').attr('opacity', 1) })
-      .on('mouseleave.label', function() { d3.select(this).select('.mg-label').attr('opacity', 0) })
       .on('mouseenter', (_event, d) => {
         const rels = triples
           .filter(t => t.subject === d.id || t.object === d.id)
@@ -249,7 +249,7 @@ export function ArgumentMiniGraph({ detail, onPanelChange }: Props) {
 
   return (
     <div style={{ background: '#fafbfc' }}>
-      <svg ref={svgRef} style={{ width: '100%', height: 260, display: 'block' }} />
+      <svg ref={svgRef} style={{ width: '100%', height: 160, display: 'block' }} />
     </div>
   )
 }

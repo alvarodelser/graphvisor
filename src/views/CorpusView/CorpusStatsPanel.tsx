@@ -159,25 +159,42 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
     // Each series fills independently from 0 to its own value; no floor-computation
     // that jumps at crossover points.
     const byAvg = [...series].sort((a, b) => (d3.mean(b.vals) ?? 0) - (d3.mean(a.vals) ?? 0))
+    const areaByTerm = new Map<string, d3.Selection<SVGPathElement, any, null, undefined>>()
+    const lineByTerm = new Map<string, d3.Selection<SVGPathElement, any, null, undefined>>()
     byAvg.forEach(s => {
-      chart.append('path')
+      areaByTerm.set(s.term, chart.append('path')
         .datum(xs.map((x, xi) => ({ x, y: s.vals[xi] })))
         .attr('d', d3.area<{ x: number; y: number }>()
           .x(d => xScale(d.x)).y1(d => yScale(d.y)).y0(yScale(0))
           .curve(d3.curveCatmullRom.alpha(0.5)))
         .attr('fill', s.color)
-        .attr('opacity', 0.72)
+        .attr('opacity', 0.72))
     })
 
     // Lines
     series.forEach(s => {
-      chart.append('path')
+      lineByTerm.set(s.term, chart.append('path')
         .datum(xs.map((x, xi) => ({ x, val: s.vals[xi] })))
         .attr('d', d3.line<{ x: number; val: number }>()
           .x(d => xScale(d.x)).y(d => yScale(d.val))
           .curve(d3.curveCatmullRom.alpha(0.5)))
-        .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 1.5)
+        .attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 1.5))
     })
+
+    // Emphasise one concept (its area + line) and dim the rest; null restores all.
+    function highlightTerm(term: string | null) {
+      series.forEach(s => {
+        const active = term === null || s.term === term
+        areaByTerm.get(s.term)?.attr('opacity', term === null ? 0.72 : active ? 0.9 : 0.1)
+        lineByTerm.get(s.term)
+          ?.attr('opacity', term === null ? 1 : active ? 1 : 0.2)
+          .attr('stroke-width', active && term !== null ? 2.5 : 1.5)
+      })
+      if (term !== null) {
+        areaByTerm.get(term)?.raise()
+        lineByTerm.get(term)?.raise()
+      }
+    }
 
     // Right-edge labels — collision-resolved
     const MIN_GAP = 13
@@ -219,7 +236,10 @@ export function CorpusStatsPanel({ docs, height, xScale: extXScale, padLeft, pad
         .attr('y', labelY + 4)
         .attr('font-size', 10).attr('font-weight', 600)
         .attr('fill', l.color).attr('font-family', 'system-ui, sans-serif')
+        .style('cursor', 'pointer')
         .text(l.term)
+        .on('mouseenter', () => highlightTerm(l.term))
+        .on('mouseleave', () => highlightTerm(null))
     })
 
     // Y axis

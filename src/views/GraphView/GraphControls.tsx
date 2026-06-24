@@ -20,9 +20,10 @@ interface FilterProps {
   filters: FilterState
   setFilters: (partial: Partial<FilterState>) => void
   onReload: () => void
+  onToggleConceptPanel?: () => void
 }
 
-export function GraphFilterContent({ filters, setFilters, onReload }: FilterProps) {
+export function GraphFilterContent({ filters, setFilters, onReload, onToggleConceptPanel }: FilterProps) {
   const toggleRelationType = (type: string, checked: boolean) =>
     setFilters({ relationTypes: { ...filters.relationTypes, [type]: checked } })
 
@@ -117,6 +118,19 @@ export function GraphFilterContent({ filters, setFilters, onReload }: FilterProp
           )
         })}
       </FilterSection>
+
+      {onToggleConceptPanel && (
+        <div style={flatRow}>
+          <span style={sectionLabel}>Filter by Argument</span>
+          <button onClick={onToggleConceptPanel} style={reloadBtn} title="Open concept panel">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+              <rect x="1" y="2" width="9" height="1.3" rx="0.65" fill="currentColor"/>
+              <rect x="2.5" y="5" width="6" height="1.3" rx="0.65" fill="currentColor"/>
+              <rect x="4" y="8" width="3" height="1.3" rx="0.65" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div style={flatRow}>
         <span style={sectionLabel}>Reload</span>

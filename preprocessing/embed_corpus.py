@@ -30,7 +30,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dataset",
-        choices=["5", "112"],
         help="Dataset id (reads/writes src/data/corpus_<id>.json).",
     )
     parser.add_argument(

@@ -36,7 +36,7 @@ export function chainHomeForce(
       if (!chain) continue
       const home = centers.get(chain)
       if (!home) continue
-      const s = strength * alpha * Math.sqrt((model.chainSizes.get(chain) ?? 1) / maxSize)
+      const s = strength * alpha * Math.max(0.25, Math.sqrt((model.chainSizes.get(chain) ?? 1) / maxSize))
       n.vx = (n.vx ?? 0) + (home.x - (n.x ?? 0)) * s
       n.vy = (n.vy ?? 0) + (home.y - (n.y ?? 0)) * s
     }

@@ -1,5 +1,5 @@
-import corpus112 from './corpus_112.json'
-import hypothesis112 from './hypothesis_112.json'
+import corpus165 from './corpus_165.json'
+import hypothesis165 from './hipothesis_165.json'
 
 import docEmbeddings112Url from './corpus_112_doc_embeddings.bin?url'
 import conceptEmbeddings112Url from './corpus_112_concept_embeddings.bin?url'
@@ -15,16 +15,17 @@ export interface ConceptGrounding {
   radius: number
 }
 
-export const corpusJson = corpus112
+export const corpusJson = corpus165
 export const docEmbeddingsUrl = docEmbeddings112Url
 export const conceptEmbeddingsUrl = conceptEmbeddings112Url
 export const conceptsJson = concepts112 as unknown as ConceptGrounding[]
 export const topicsJson = topics112
 
-type RawHypothesis112 = {
+type RawHypothesisItem = {
   hypothesis: string
-  evidence?: string
+  evidence?: string | number | (string | number)[]
   rationale?: string
+  research_question?: string
   scores: {
     novelty: number
     scientific_plausibility?: number
@@ -36,25 +37,45 @@ type RawHypothesis112 = {
   }
 }
 
+function normalizeEvidence(raw: string | number | (string | number)[] | undefined): string[] {
+  if (!raw) return []
+  const arr = Array.isArray(raw) ? raw : [raw]
+  return arr.map(e => {
+    const s = String(e)
+    return s.startsWith('a') ? s : `a${s}`
+  })
+}
+
+function normalizeScores(s: RawHypothesisItem['scores']): Hypothesis['scores'] {
+  const novelty     = s.novelty
+  const plausibility = s.scientific_plausibility ?? s.plausibility ?? 5
+  const impact       = s.potential_impact ?? s.impact ?? 5
+  const commercial   = s.commercial_potential ?? s.creativity ?? 5
+  // Scores in range 0–1 need to be scaled to the 1–10 display scale
+  const scale = novelty <= 1 ? 10 : 1
+  return {
+    novelty:                novelty     * scale,
+    scientific_plausibility: plausibility * scale,
+    potential_impact:        impact       * scale,
+    commercial_potential:    commercial   * scale,
+  }
+}
+
 function normalizeHypotheses(raw: unknown): Hypothesis[] {
   if (Array.isArray(raw)) return raw as Hypothesis[]
 
-  const grouped = raw as Record<string, RawHypothesis112[]>
+  const grouped = raw as Record<string, RawHypothesisItem[]>
   return Object.entries(grouped).flatMap(([concept, items]) =>
     items.map(item => ({
-      hypothesis: item.hypothesis,
+      hypothesis:        item.hypothesis,
       concept,
-      evidence: item.evidence ?? '',
-      rationale: item.rationale,
-      decision: 'BORDERLINE' as const,
-      scores: {
-        novelty: item.scores.novelty,
-        scientific_plausibility: item.scores.scientific_plausibility ?? item.scores.plausibility ?? 5,
-        potential_impact: item.scores.potential_impact ?? item.scores.impact ?? 5,
-        commercial_potential: item.scores.commercial_potential ?? item.scores.creativity ?? 5,
-      },
+      evidence:          normalizeEvidence(item.evidence),
+      rationale:         item.rationale,
+      research_question: item.research_question,
+      decision:          'BORDERLINE' as const,
+      scores:            normalizeScores(item.scores),
     })),
   )
 }
 
-export const hypothesisJson = normalizeHypotheses(hypothesis112)
+export const hypothesisJson = normalizeHypotheses(hypothesis165)

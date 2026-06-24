@@ -331,8 +331,24 @@ export function DetailView() {
               >
                 {rel.sourceLabel}
               </span>
-              <svg width="32" height="14" viewBox="0 0 32 14" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M2 7H30M22 1L30 7L22 13" stroke={relColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg width="52" height="14" viewBox="0 -7 52 14" fill="none" style={{ flexShrink: 0, overflow: 'visible' }}>
+                <defs>
+                  <clipPath id="chev-rel-detail">
+                    <polygon points="0,-6 44,-6 52,0 44,6 0,6" />
+                  </clipPath>
+                </defs>
+                <polygon
+                  points="0,-6 44,-6 52,0 44,6 0,6"
+                  fill={`${relColor}15`}
+                  stroke={relColor}
+                  strokeWidth="1"
+                  strokeLinejoin="miter"
+                  opacity="0.85"
+                />
+                <g clipPath="url(#chev-rel-detail)">
+                  <polyline points="10,-6 18,0 10,6" fill="none" stroke={relColor} strokeWidth="2" strokeLinejoin="miter" opacity="0.55" />
+                  <polyline points="30,-6 38,0 30,6" fill="none" stroke={relColor} strokeWidth="2" strokeLinejoin="miter" opacity="0.55" />
+                </g>
               </svg>
               <span
                 style={{ color: '#118ab2', fontWeight: 700, fontSize: 12, cursor: 'pointer', flex: 1 }}
@@ -375,7 +391,7 @@ export function DetailView() {
               <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                   <span className="sl" style={{ margin: 0 }}>Concept</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#073b4c' }}>{conceptDetail.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#073b4c' }}>{conceptDetail.label}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#6b7280' }}>
                   {conceptDetail.arguments.length} argument{conceptDetail.arguments.length === 1 ? '' : 's'} across the corpus
@@ -450,11 +466,11 @@ export function DetailView() {
             {detail.argument.type === 'Argument' ? (
               <div className={styles.header}>
                 <div className="sl">{detail.argument.type}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#073b4c', marginBottom: 6 }}>
                   {detail.argument.source_document_title}
                 </div>
                 {detail.argument.full_text && (
-                  <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
                     "{detail.argument.full_text}"
                   </div>
                 )}
@@ -463,13 +479,13 @@ export function DetailView() {
               <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                   <span className="sl" style={{ margin: 0 }}>{detail.argument.type}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#073b4c' }}>{detail.argument.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#073b4c' }}>{detail.argument.label}</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
                   {detail.argument.source_document_title}
                 </div>
                 {detail.argument.full_text && (
-                  <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
                     "{detail.argument.full_text}"
                   </div>
                 )}
