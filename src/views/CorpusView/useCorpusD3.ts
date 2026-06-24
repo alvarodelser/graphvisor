@@ -19,6 +19,18 @@ const DOT_SELECTED = '#ef476f'
 
 const hasImpactData = (d: DocNode) => d.citations > 0
 
+const dotFill = (d: DocNode, selected: boolean, sizeBy: SizeBy) => {
+  if (selected) return DOT_SELECTED
+  if (sizeBy === 'impact' && !hasImpactData(d)) return 'white'
+  return DOT_DEFAULT
+}
+
+const dotStroke = (d: DocNode, selected: boolean, sizeBy: SizeBy) => {
+  if (selected) return DOT_SELECTED
+  if (sizeBy === 'impact' && !hasImpactData(d)) return DOT_DEFAULT
+  return 'none'
+}
+
 export function useCorpusD3(
   svgRef: RefObject<SVGSVGElement | null>,
   docs: DocNode[],
@@ -51,7 +63,7 @@ export function useCorpusD3(
     const sizeScale = opts.sizeBy === 'uniform' ? null : d3.scaleLinear().domain(sizeExt).range([4, 9])
     const getRadius = (d: DocNode) => {
       if (!sizeScale) return 6
-      if (opts.sizeBy === 'impact' && !hasImpactData(d)) return 6
+      if (opts.sizeBy === 'impact' && !hasImpactData(d)) return 4
       const val = opts.sizeBy === 'argument_count' ? d.argument_count : d.citations
       return sizeScale(val)
     }
@@ -67,10 +79,9 @@ export function useCorpusD3(
     for (let i = 0; i < 60; i++) sim.tick()
     simNodes.forEach(n => simPositions.current.set(n.id, { x: n.x, y: n.y }))
 
-    // Zoom bound to SVG
     const zoomG = svg.append('g').attr('class', 'zoom-group')
 
-    // Dot grid — first layer so it's always behind content
+    // Dot grid
     const gridDefs = svg.insert('defs', ':first-child')
     const pat = gridDefs.append('pattern')
       .attr('id', 'corpus-dot-grid').attr('patternUnits', 'userSpaceOnUse')
@@ -80,6 +91,7 @@ export function useCorpusD3(
     zoomG.append('rect')
       .attr('x', -5000).attr('y', -5000).attr('width', 10000).attr('height', 10000)
       .attr('fill', 'url(#corpus-dot-grid)').attr('pointer-events', 'none')
+
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 8])
       .on('zoom', (event) => {
@@ -88,62 +100,38 @@ export function useCorpusD3(
       })
     svg.call(zoom)
 
-    // ── Concept labels ────────────────────────────────────────────────────────
-    // Each concept name is placed at its PCA projection. A small force
-    // simulation separates labels from each other so they stay legible.
+    // Concept labels
     if (opts.conceptGroundings.length > 0) {
       const CHAR_PX = 4.2
-
       type LabelNode = d3.SimulationNodeDatum & {
-        g: ConceptGrounding
-        ax: number
-        ay: number
-        hw: number
-        label: string
+        g: ConceptGrounding; ax: number; ay: number; hw: number; label: string
       }
-
       const labelNodes: LabelNode[] = opts.conceptGroundings.map(g => {
         const label = g.concept.length > 24 ? g.concept.slice(0, 24) + '…' : g.concept
-        const ax = xScale(g.pca_x)
-        const ay = yScale(g.pca_y)
+        const ax = xScale(g.pca_x), ay = yScale(g.pca_y)
         return { g, x: ax, y: ay, ax, ay, hw: label.length * CHAR_PX * 0.5 + 3, label }
       })
-
       const labelSim = d3.forceSimulation<LabelNode>(labelNodes)
         .force('collide', d3.forceCollide<LabelNode>(n => n.hw + 2).strength(0.9))
         .force('x', d3.forceX<LabelNode>(n => n.ax).strength(0.18))
         .force('y', d3.forceY<LabelNode>(n => n.ay).strength(0.18))
         .stop()
       for (let i = 0; i < 200; i++) labelSim.tick()
-
       const labelG = zoomG.append('g').attr('class', 'concept-labels')
       labelNodes.forEach(n => {
         labelG.append('text')
-          .attr('x', n.x ?? n.ax)
-          .attr('y', n.y ?? n.ay)
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'middle')
+          .attr('x', n.x ?? n.ax).attr('y', n.y ?? n.ay)
+          .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
           .attr('pointer-events', 'none')
-          .attr('fill', '#8b5cf6')
-          .attr('font-size', '8px')
-          .attr('font-weight', '500')
-          .attr('letter-spacing', '0.05em')
-          .attr('opacity', 0.5)
+          .attr('fill', '#8b5cf6').attr('font-size', '8px').attr('font-weight', '500')
+          .attr('letter-spacing', '0.05em').attr('opacity', 0.5)
           .text(n.label)
       })
     }
 
-    // Background rect — lasso target (distinct from SVG zoom target)
-    const bgRect = zoomG.append('rect')
-      .attr('class', 'lasso-bg')
-      .attr('x', -width * 4).attr('y', -height * 4)
-      .attr('width', width * 8).attr('height', height * 8)
-      .attr('fill', 'transparent')
-      .attr('pointer-events', 'all')
+    // Dots — purely visual, no pointer events (hitRect below handles all interaction)
+    const dotLayer = zoomG.append('g').attr('class', 'dots').attr('pointer-events', 'none')
 
-    const dotLayer = zoomG.append('g').attr('class', 'dots')
-
-    // Dots — stopPropagation prevents lasso trigger on dot click
     dotLayer.selectAll<SVGCircleElement, DocNode>('circle')
       .data(docs, d => d.id)
       .join('circle')
@@ -151,28 +139,12 @@ export function useCorpusD3(
       .attr('cx', d => simPositions.current.get(d.id)?.x ?? xScale(d.pca_x))
       .attr('cy', d => simPositions.current.get(d.id)?.y ?? yScale(d.pca_y))
       .attr('r', d => getRadius(d))
-      .attr('fill', d => {
-        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
-        if (opts.sizeBy === 'impact' && !hasImpactData(d)) return 'none'
-        return DOT_DEFAULT
-      })
-      .attr('stroke', d => {
-        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
-        if (opts.sizeBy === 'impact' && !hasImpactData(d)) return DOT_DEFAULT
-        return 'none'
-      })
-      .attr('stroke-width', d => optsRef.current.selectedIds.has(d.id) ? 4 : 1.5)
-      .attr('stroke-opacity', d => optsRef.current.selectedIds.has(d.id) ? 0.4 : 1)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        event.stopPropagation()
-        optsRef.current.onClickToggle(d.id, event.shiftKey)
-      })
-      .on('mouseenter', (event, d) => {
-        const [mx, my] = d3.pointer(event, svgEl)
-        optsRef.current.setTooltip({ doc: d, x: mx, y: my })
-      })
-      .on('mouseleave', () => optsRef.current.setTooltip(null))
+      .attr('fill', d => dotFill(d, optsRef.current.selectedIds.has(d.id), opts.sizeBy))
+      .attr('stroke', d => dotStroke(d, optsRef.current.selectedIds.has(d.id), opts.sizeBy))
+      .attr('stroke-width', d => (opts.sizeBy === 'impact' && !hasImpactData(d)) ? 1.5 : 4)
+      .attr('stroke-opacity', d =>
+        (opts.sizeBy === 'impact' && !hasImpactData(d) && !optsRef.current.selectedIds.has(d.id)) ? 1 : 0.4
+      )
 
     // Title labels
     zoomG.append('g').attr('class', 'title-layer')
@@ -184,34 +156,85 @@ export function useCorpusD3(
       .attr('y', d => (simPositions.current.get(d.id)?.y ?? yScale(d.pca_y)) + getRadius(d) + 10)
       .attr('text-anchor', 'middle')
       .attr('pointer-events', 'none')
-      .attr('fill', '#073b4c')
-      .attr('font-size', '9px')
+      .attr('fill', '#073b4c').attr('font-size', '9px')
       .text(d => d.title.length > 20 ? d.title.slice(0, 20) + '…' : d.title)
 
-    // Lasso bound to bgRect (not SVG) — avoids zoom conflict
+    // ── Interaction overlay ──────────────────────────────────────────────────
+    // Sits on top of everything. Dots have pointer-events:none so this rect
+    // receives all mouse events uniformly — no dot can block a lasso start.
+    const hitRect = zoomG.append('rect')
+      .attr('class', 'hit-layer')
+      .attr('x', -width * 4).attr('y', -height * 4)
+      .attr('width', width * 8).attr('height', height * 8)
+      .attr('fill', 'transparent')
+      .attr('pointer-events', 'all')
+
+    // Nearest dot within its radius (used for hover and click)
+    const nearestDot = (mx: number, my: number, radiusMult = 1): DocNode | null => {
+      let nearest: DocNode | null = null
+      let nearestDist = Infinity
+      dotLayer.selectAll<SVGCircleElement, DocNode>('circle').each(function(d) {
+        const cx = +d3.select(this).attr('cx')
+        const cy = +d3.select(this).attr('cy')
+        const r = +d3.select(this).attr('r')
+        const dist = Math.sqrt((cx - mx) ** 2 + (cy - my) ** 2)
+        if (dist <= r * radiusMult && dist < nearestDist) { nearest = d; nearestDist = dist }
+      })
+      return nearest
+    }
+
+    // Hover / tooltip
+    hitRect
+      .on('mousemove', (event) => {
+        const [mx, my] = d3.pointer(event, zoomG.node()!)
+        const hit = nearestDot(mx, my, 1.5)
+        hitRect.style('cursor', hit ? 'pointer' : 'default')
+        if (hit) {
+          const [sx, sy] = d3.pointer(event, svgEl)
+          optsRef.current.setTooltip({ doc: hit, x: sx, y: sy })
+        } else {
+          optsRef.current.setTooltip(null)
+        }
+      })
+      .on('mouseleave', () => {
+        hitRect.style('cursor', 'default')
+        optsRef.current.setTooltip(null)
+      })
+
+    // Lasso + click (drag distinguishes the two)
     let lassoPath: [number, number][] = []
     let lassoEl: d3.Selection<SVGPathElement, unknown, null, undefined> | null = null
     let lassoShiftKey = false
+    let lassoActive = false
+    let dragOrigin: [number, number] = [0, 0]
 
     const lassoBehavior = d3.drag<SVGRectElement, unknown>()
       .on('start', (event) => {
         lassoShiftKey = !!event.sourceEvent?.shiftKey
         const [mx, my] = d3.pointer(event, zoomG.node()!)
+        dragOrigin = [mx, my]
         lassoPath = [[mx, my]]
-        lassoEl = zoomG.append('path')
-          .attr('class', 'lasso')
-          .attr('fill', 'rgba(244,161,36,0.08)')
-          .attr('stroke', '#F4A124')
-          .attr('stroke-width', 1.5)
-          .attr('stroke-dasharray', '5 3')
+        lassoActive = false
       })
       .on('drag', (event) => {
         const [mx, my] = d3.pointer(event, zoomG.node()!)
         lassoPath.push([mx, my])
-        lassoEl?.attr('d', 'M' + lassoPath.map(p => p.join(',')).join('L') + 'Z')
+        const dx = mx - dragOrigin[0], dy = my - dragOrigin[1]
+        if (!lassoActive && Math.sqrt(dx * dx + dy * dy) > 6) {
+          lassoActive = true
+          lassoEl = zoomG.append('path')
+            .attr('class', 'lasso')
+            .attr('fill', 'rgba(244,161,36,0.08)')
+            .attr('stroke', '#F4A124')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '5 3')
+        }
+        if (lassoActive) {
+          lassoEl?.attr('d', 'M' + lassoPath.map(p => p.join(',')).join('L') + 'Z')
+        }
       })
-      .on('end', () => {
-        if (lassoPath.length > 3) {
+      .on('end', (event) => {
+        if (lassoActive && lassoPath.length > 3) {
           const inside: string[] = []
           dotLayer.selectAll<SVGCircleElement, DocNode>('circle').each(function(d) {
             const cx = +d3.select(this).attr('cx')
@@ -219,13 +242,18 @@ export function useCorpusD3(
             if (isPointInPolygon([cx, cy], lassoPath)) inside.push(d.id)
           })
           optsRef.current.onLassoSelect(inside, lassoShiftKey)
+        } else if (!lassoActive) {
+          const [mx, my] = dragOrigin
+          const hit = nearestDot(mx, my, 1.5)
+          if (hit) optsRef.current.onClickToggle(hit.id, event.sourceEvent?.shiftKey || false)
         }
         lassoEl?.remove()
         lassoEl = null
         lassoPath = []
+        lassoActive = false
       })
 
-    bgRect.call(lassoBehavior)
+    hitRect.call(lassoBehavior)
 
     // ResizeObserver
     const observer = new ResizeObserver(() => {
@@ -234,38 +262,25 @@ export function useCorpusD3(
       if (w < 10 || h < 10) return
       xScaleRef.current.range([pad, w - pad])
       yScaleRef.current.range([h - pad, pad])
-      const xS = xScaleRef.current
-      const yS = yScaleRef.current
+      const xS = xScaleRef.current, yS = yScaleRef.current
       d3.select(svgEl).selectAll<SVGCircleElement, DocNode>('.corpus-dot')
-        .attr('cx', d => xS(d.pca_x))
-        .attr('cy', d => yS(d.pca_y))
+        .attr('cx', d => xS(d.pca_x)).attr('cy', d => yS(d.pca_y))
       d3.select(svgEl).selectAll<SVGTextElement, DocNode>('.doc-title')
-        .attr('x', d => xS(d.pca_x))
-        .attr('y', d => yS(d.pca_y) + 14)
-      bgRect.attr('x', -w * 4).attr('y', -h * 4)
-        .attr('width', w * 8).attr('height', h * 8)
+        .attr('x', d => xS(d.pca_x)).attr('y', d => yS(d.pca_y) + 14)
+      hitRect.attr('x', -w * 4).attr('y', -h * 4).attr('width', w * 8).attr('height', h * 8)
     })
     observer.observe(svgEl.parentElement ?? svgEl)
 
     return () => { observer.disconnect() }
   }, [docs, opts.sizeBy, opts.conceptGroundings])
 
-  // Sync dot colors
+  // Sync dot colors on selection change
   useEffect(() => {
     if (!svgRef.current) return
+    const { selectedIds, sizeBy } = optsRef.current
     d3.select(svgRef.current).selectAll<SVGCircleElement, DocNode>('.corpus-dot')
-      .attr('fill', d => {
-        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
-        if (optsRef.current.sizeBy === 'impact' && !hasImpactData(d)) return 'none'
-        return DOT_DEFAULT
-      })
-      .attr('stroke', d => {
-        if (optsRef.current.selectedIds.has(d.id)) return DOT_SELECTED
-        if (optsRef.current.sizeBy === 'impact' && !hasImpactData(d)) return DOT_DEFAULT
-        return 'none'
-      })
-      .attr('stroke-width', d => optsRef.current.selectedIds.has(d.id) ? 4 : 1.5)
-      .attr('stroke-opacity', d => optsRef.current.selectedIds.has(d.id) ? 0.4 : 1)
+      .attr('fill', d => dotFill(d, selectedIds.has(d.id), sizeBy))
+      .attr('stroke', d => dotStroke(d, selectedIds.has(d.id), sizeBy))
   }, [opts.selectedIds])
 
   return {}

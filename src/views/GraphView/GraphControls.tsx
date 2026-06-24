@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { RELATION_COLORS } from '../../utils/geometry'
 import type { FilterState } from '../../types'
 
@@ -21,9 +21,12 @@ interface FilterProps {
   setFilters: (partial: Partial<FilterState>) => void
   onReload: () => void
   onToggleConceptPanel?: () => void
+  showConceptPanel?: boolean
+  showMinimap?: boolean
+  onToggleMinimap?: () => void
 }
 
-export function GraphFilterContent({ filters, setFilters, onReload, onToggleConceptPanel }: FilterProps) {
+export function GraphFilterContent({ filters, setFilters, onReload, onToggleConceptPanel, showConceptPanel, showMinimap, onToggleMinimap }: FilterProps) {
   const toggleRelationType = (type: string, checked: boolean) =>
     setFilters({ relationTypes: { ...filters.relationTypes, [type]: checked } })
 
@@ -47,30 +50,26 @@ export function GraphFilterContent({ filters, setFilters, onReload, onToggleConc
         label="Node Types"
         allChecked={allNodeTypesOn}
         allIndeterminate={!allNodeTypesOn && anyNodeTypeOn}
-        onAllChange={checked => {
-          const nextNodeTypes = { ...filters.nodeTypes, Argument: checked, Entity: checked }
-          setFilters({ nodeTypes: nextNodeTypes })
-        }}
+        onAllChange={checked => setFilters({ nodeTypes: { ...filters.nodeTypes, Argument: checked, Entity: checked } })}
       >
         {nodeTypeKeys.map(type => (
-          <label key={type} style={checkRow}>
-            <input type="checkbox"
-              checked={filters.nodeTypes[type]}
-              onChange={e => setFilters({ nodeTypes: { ...filters.nodeTypes, [type]: e.target.checked } })}
-              style={{ accentColor: '#F4A124' }} />
+          <div key={type} style={tickRow}>
             <span style={labelText}>{type}</span>
-          </label>
+            <TickBox
+              checked={filters.nodeTypes[type]}
+              onChange={v => setFilters({ nodeTypes: { ...filters.nodeTypes, [type]: v } })}
+            />
+          </div>
         ))}
       </FilterSection>
 
       <FilterSection label="Min Confidence" hint={`≥ ${filters.minConfidence.toFixed(2)}`}>
-        <input type="range" min={0} max={1} step={0.05}
+        <input
+          type="range" className="styled-slider" min={0} max={1} step={0.05}
           value={filters.minConfidence}
           onChange={e => setFilters({ minConfidence: Number(e.target.value) })}
-          style={{ width: '100%', accentColor: '#F4A124', marginBottom: 4 }} />
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#F4A124' }}>
-          ≥ {filters.minConfidence.toFixed(2)}
-        </div>
+          style={{ '--pct': `${filters.minConfidence * 100}%`, '--slider-fill': '#F4A124' } as React.CSSProperties}
+        />
       </FilterSection>
 
       <FilterSection
@@ -90,28 +89,32 @@ export function GraphFilterContent({ filters, setFilters, onReload, onToggleConc
           const color = REL_GROUP_COLORS[group]
           return (
             <div key={group} style={{ opacity: groupDisabled ? 0.35 : 1, pointerEvents: groupDisabled ? 'none' : undefined }}>
-              <label style={{ ...checkRow, marginBottom: 4 }}>
-                <input type="checkbox"
+              <div style={{ ...tickRow, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ ...labelText, fontWeight: 700 }}>{label}</span>
+                </div>
+                <TickBox
                   checked={allOn}
+                  indeterminate={!allOn && !allOff && !groupDisabled}
+                  color={color}
+                  onChange={v => toggleAllInGroup(types, v)}
                   disabled={groupDisabled}
-                  ref={el => { if (el) el.indeterminate = !allOn && !allOff && !groupDisabled }}
-                  onChange={e => toggleAllInGroup(types, e.target.checked)}
-                  style={{ accentColor: color }} />
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'inline-block', flexShrink: 0 }} />
-                <span style={{ ...labelText, fontWeight: 700 }}>{label}</span>
-              </label>
-              <div style={{ paddingLeft: 24 }}>
+                />
+              </div>
+              <div style={{ paddingLeft: 16, marginBottom: 4 }}>
                 {types.map(type => (
-                  <label key={type} style={{ ...checkRow, marginBottom: 3 }}>
-                    <input type="checkbox"
-                      checked={filters.relationTypes[type] !== false}
-                      disabled={groupDisabled}
-                      onChange={e => toggleRelationType(type, e.target.checked)}
-                      style={{ accentColor: color }} />
-                    <span style={{ ...labelText, fontSize: 10, color: '#6b7280' }}>
+                  <div key={type} style={{ ...tickRow, marginBottom: 3 }}>
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>
                       {type.replace(/_/g, ' ').toLowerCase()}
                     </span>
-                  </label>
+                    <TickBox
+                      checked={filters.relationTypes[type] !== false}
+                      color={color}
+                      onChange={v => toggleRelationType(type, v)}
+                      disabled={groupDisabled}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -121,13 +124,46 @@ export function GraphFilterContent({ filters, setFilters, onReload, onToggleConc
 
       {onToggleConceptPanel && (
         <div style={flatRow}>
-          <span style={sectionLabel}>Filter by Argument</span>
-          <button onClick={onToggleConceptPanel} style={reloadBtn} title="Open concept panel">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-              <rect x="1" y="2" width="9" height="1.3" rx="0.65" fill="currentColor"/>
-              <rect x="2.5" y="5" width="6" height="1.3" rx="0.65" fill="currentColor"/>
-              <rect x="4" y="8" width="3" height="1.3" rx="0.65" fill="currentColor"/>
-            </svg>
+          <span style={sectionLabel}>Concept Panel</span>
+          <button
+            onClick={onToggleConceptPanel}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: showConceptPanel ? '#073b4c' : '#9ca3af', display: 'flex', alignItems: 'center' }}
+            title={showConceptPanel ? 'Hide concept panel' : 'Show concept panel'}
+          >
+            {showConceptPanel ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <ellipse cx="12" cy="12" rx="10" ry="6" stroke="currentColor" strokeWidth="1.8"/>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 3l18 18M10.58 10.58A3 3 0 0 0 14.83 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.4 18.4 0 0 1-3.1 4.1M6.5 6.5A18.4 18.4 0 0 0 1 12s4 8 11 8a9 9 0 0 0 5.76-2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
+
+      {onToggleMinimap && (
+        <div style={flatRow}>
+          <span style={sectionLabel}>Minimap</span>
+          <button
+            onClick={onToggleMinimap}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: showMinimap ? '#073b4c' : '#9ca3af', display: 'flex', alignItems: 'center' }}
+            title={showMinimap ? 'Hide minimap' : 'Show minimap'}
+          >
+            {showMinimap ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <ellipse cx="12" cy="12" rx="10" ry="6" stroke="currentColor" strokeWidth="1.8"/>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 3l18 18M10.58 10.58A3 3 0 0 0 14.83 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.4 18.4 0 0 1-3.1 4.1M6.5 6.5A18.4 18.4 0 0 0 1 12s4 8 11 8a9 9 0 0 0 5.76-2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            )}
           </button>
         </div>
       )}
@@ -193,13 +229,56 @@ export function GraphLegendContent({ filters }: { filters: FilterState }) {
   )
 }
 
-const checkRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer' }
+// ── Shared styles ─────────────────────────────────────────────────────────────
+
+const tickRow: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }
 const labelText: React.CSSProperties = { fontSize: 11, color: '#374151' }
 const flatRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(7,59,76,0.07)' }
 const sectionLabel: React.CSSProperties = { fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#073b4c', flex: 1 }
 const reloadBtn: React.CSSProperties = { background: '#073b4c', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }
 const legendRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }
 const legendText: React.CSSProperties = { fontSize: 11, color: '#374151' }
+
+// ── TickBox ───────────────────────────────────────────────────────────────────
+
+function TickBox({ checked, indeterminate, color = '#F4A124', onChange, disabled }: {
+  checked: boolean
+  indeterminate?: boolean
+  color?: string
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  const active = checked || !!indeterminate
+  return (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onChange(!checked) }}
+      disabled={disabled}
+      style={{
+        width: 14, height: 14, flexShrink: 0,
+        border: `1.5px solid ${active ? color : 'rgba(7,59,76,0.22)'}`,
+        borderRadius: 3,
+        background: checked ? color : indeterminate ? `${color}33` : 'transparent',
+        cursor: disabled ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 0, opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      {checked && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {!checked && indeterminate && (
+        <svg width="6" height="2" viewBox="0 0 6 2" aria-hidden="true">
+          <rect width="6" height="2" rx="1" fill={color}/>
+        </svg>
+      )}
+    </button>
+  )
+}
+
+// ── FilterSection ─────────────────────────────────────────────────────────────
 
 function FilterSection({ label, hint, allChecked, allIndeterminate, onAllChange, children }: {
   label: string
@@ -210,10 +289,6 @@ function FilterSection({ label, hint, allChecked, allIndeterminate, onAllChange,
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const checkRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (checkRef.current) checkRef.current.indeterminate = !!allIndeterminate
-  }, [allIndeterminate])
 
   return (
     <div>
@@ -225,13 +300,10 @@ function FilterSection({ label, hint, allChecked, allIndeterminate, onAllChange,
         <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#073b4c', flex: 1 }}>{label}</span>
         {hint && <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124', flexShrink: 0 }}>{hint}</span>}
         {onAllChange != null && (
-          <input
-            type="checkbox"
-            ref={checkRef}
+          <TickBox
             checked={!!allChecked}
-            onChange={e => onAllChange(e.target.checked)}
-            onClick={e => e.stopPropagation()}
-            style={{ accentColor: '#F4A124', cursor: 'pointer', flexShrink: 0 }}
+            indeterminate={allIndeterminate}
+            onChange={v => onAllChange(v)}
           />
         )}
       </div>

@@ -6,7 +6,27 @@ import { ControlPanel } from '../../components/ControlPanel/ControlPanel'
 import type { Hypothesis } from '../../types'
 import styles from './DiscoverView.module.css'
 
+import type { CSSProperties } from 'react'
+
 type SortKey = 'overall' | 'novelty' | 'scientific_plausibility' | 'potential_impact' | 'commercial_potential'
+
+const dEyeBtn = (on: boolean): CSSProperties => ({
+  background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+  color: on ? '#073b4c' : '#9ca3af', display: 'flex', alignItems: 'center',
+})
+
+const eyeOpen = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <ellipse cx="12" cy="12" rx="10" ry="6" stroke="currentColor" strokeWidth="1.8"/>
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+  </svg>
+)
+const eyeSlash = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M3 3l18 18M10.58 10.58A3 3 0 0 0 14.83 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <path d="M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.4 18.4 0 0 1-3.1 4.1M6.5 6.5A18.4 18.4 0 0 0 1 12s4 8 11 8a9 9 0 0 0 5.76-2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+)
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'overall',                 label: 'Overall' },
@@ -116,63 +136,48 @@ export function DiscoverView() {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span className="sl">Show concept badges</span>
-        <button
-          onClick={() => setShowConcepts(v => !v)}
-          style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, cursor: 'pointer',
-            border: '1px solid rgba(139,92,246,0.35)',
-            background: showConcepts ? 'rgba(139,92,246,0.18)' : 'transparent',
-            color: showConcepts ? '#8b5cf6' : '#6b7280',
-            transition: 'all 0.15s',
-          }}
-        >
-          {showConcepts ? 'ON' : 'OFF'}
+        <button onClick={() => setShowConcepts(v => !v)} style={dEyeBtn(showConcepts)} title={showConcepts ? 'Hide' : 'Show'}>
+          {showConcepts ? eyeOpen : eyeSlash}
         </button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span className="sl">Show research questions</span>
-        <button
-          onClick={() => setShowResearchQuestions(v => !v)}
-          style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 10, cursor: 'pointer',
-            border: '1px solid rgba(107,114,128,0.35)',
-            background: showResearchQuestions ? 'rgba(107,114,128,0.18)' : 'transparent',
-            color: showResearchQuestions ? '#6b7280' : '#d1d5db',
-            transition: 'all 0.15s',
-          }}
-        >
-          {showResearchQuestions ? 'ON' : 'OFF'}
+        <button onClick={() => setShowResearchQuestions(v => !v)} style={dEyeBtn(showResearchQuestions)} title={showResearchQuestions ? 'Hide' : 'Show'}>
+          {showResearchQuestions ? eyeOpen : eyeSlash}
         </button>
       </div>
-      <div>
-        <div className="sl">Argument confidence</div>
-        <input type="range" min={0} max={1} step={0.05}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span className="sl">Argument confidence</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>≥ {filters.minConfidence.toFixed(2)}</span>
+        </div>
+        <input type="range" className="styled-slider" min={0} max={1} step={0.05}
           value={filters.minConfidence}
           onChange={e => setFilters({ minConfidence: Number(e.target.value) })}
-          style={{ width: '100%', accentColor: '#8b5cf6', marginBottom: 4 }} />
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>
-          ≥ {filters.minConfidence.toFixed(2)}
-        </div>
+          style={{ '--pct': `${filters.minConfidence * 100}%`, '--slider-fill': '#F4A124' } as React.CSSProperties}
+        />
       </div>
-      <div>
-        <div className="sl">Concept similarity</div>
-        <input type="range" min={0} max={1} step={0.05}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span className="sl">Concept similarity</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>≥ {conceptSimilarityThreshold.toFixed(2)}</span>
+        </div>
+        <input type="range" className="styled-slider" min={0} max={1} step={0.05}
           value={conceptSimilarityThreshold}
           onChange={e => setConceptSimilarityThreshold(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#8b5cf6', marginBottom: 4 }} />
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>
-          ≥ {conceptSimilarityThreshold.toFixed(2)}
-        </div>
+          style={{ '--pct': `${conceptSimilarityThreshold * 100}%`, '--slider-fill': '#F4A124' } as React.CSSProperties}
+        />
       </div>
-      <div>
-        <div className="sl">Concept aggregate score</div>
-        <input type="range" min={0} max={10} step={0.5}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span className="sl">Concept aggregate</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A124' }}>≥ {conceptAggregateThreshold.toFixed(1)}</span>
+        </div>
+        <input type="range" className="styled-slider" min={0} max={10} step={0.5}
           value={conceptAggregateThreshold}
           onChange={e => setConceptAggregateThreshold(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#8b5cf6', marginBottom: 4 }} />
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>
-          ≥ {conceptAggregateThreshold.toFixed(1)}
-        </div>
+          style={{ '--pct': `${conceptAggregateThreshold * 10}%`, '--slider-fill': '#F4A124' } as React.CSSProperties}
+        />
       </div>
     </>
   )

@@ -85,11 +85,16 @@ export function CorpusView() {
       {sizeBy !== 'uniform' && (
         <div>
           <div className="sl">Min {sizeBy === 'argument_count' ? 'arguments' : 'citations'}</div>
-          <input type="range" min={0} max={sizeBy === 'argument_count' ? argMax : impactMax} step={1}
+          <input type="range" className="styled-slider"
+            min={0} max={sizeBy === 'argument_count' ? argMax : impactMax} step={1}
             value={sizeBy === 'argument_count' ? minArgCount : minImpact}
             onChange={e => sizeBy === 'argument_count' ? setMinArgCount(Number(e.target.value)) : setMinImpact(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#F4A124', marginBottom: 4 }} />
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#F4A124' }}>
+            style={{
+              '--pct': `${((sizeBy === 'argument_count' ? minArgCount : minImpact) / (sizeBy === 'argument_count' ? argMax : impactMax)) * 100}%`,
+              '--slider-fill': '#F4A124',
+            } as React.CSSProperties}
+          />
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#F4A124', marginTop: 4 }}>
             ≥ {sizeBy === 'argument_count' ? minArgCount : minImpact}
             <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: 4 }}>
               ({filteredDocs.length} docs shown)

@@ -54,6 +54,62 @@ body {
 }
 
 
+/* ── Custom range slider ─────────────────────────────────────────────────── */
+.styled-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 99px;
+  cursor: pointer;
+  outline: none;
+  border: none;
+  background: linear-gradient(
+    to right,
+    var(--slider-fill, #F4A124) 0%,
+    var(--slider-fill, #F4A124) var(--pct, 0%),
+    rgba(7, 59, 76, 0.13) var(--pct, 0%),
+    rgba(7, 59, 76, 0.13) 100%
+  );
+}
+.styled-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 99px;
+}
+.styled-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--slider-fill, #F4A124);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px rgba(7, 59, 76, 0.28);
+  cursor: pointer;
+  margin-top: -5px;
+  transition: transform 0.1s;
+}
+.styled-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.styled-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(7, 59, 76, 0.13);
+}
+.styled-slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--slider-fill, #F4A124);
+}
+.styled-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--slider-fill, #F4A124);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 5px rgba(7, 59, 76, 0.28);
+  cursor: pointer;
+}
+
 /* GraphVisor v3: Chevron edge animations (replace v2 dash animations) */
 /* Chevrons are STATIC by default — the infinite animation runs only when the SVG
    carries `.edge-anim` (Full LOD on non-Safari). WebKit can't GPU-composite this

@@ -205,7 +205,7 @@ export function GraphView() {
 
       <div className={styles.canvas}>
         {showGraph && (
-          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} onToggleConceptPanel={() => setPanelOpen(v => !v)} />
+          <GraphCanvasView nodes={fnodes} edges={fedges} blobs={fblobs} isActive={isActive} hoveredConceptId={hoveredConceptId} lod={renderMode} onToggleConceptPanel={() => setPanelOpen(v => !v)} showConceptPanel={panelOpen} />
         )}
         {showBlocked && (
           <div className={styles.blockedBanner} role="alert">

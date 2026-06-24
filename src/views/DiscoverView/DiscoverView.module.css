@@ -37,40 +37,48 @@
 
 .selectWrap {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
 }
 
 .sortSelect {
   appearance: none;
   -webkit-appearance: none;
-  padding: 4px 26px 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(7, 59, 76, 0.16);
-  background: #f4f6f8;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 5px 28px 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(7, 59, 76, 0.18);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
   color: #073b4c;
+  letter-spacing: 0.01em;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  box-shadow: 0 1px 3px rgba(7, 59, 76, 0.07);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .sortSelect:hover {
-  border-color: rgba(7, 59, 76, 0.28);
-  background: #eef1f4;
+  border-color: rgba(7, 59, 76, 0.32);
+  box-shadow: 0 1px 5px rgba(7, 59, 76, 0.12);
 }
 
 .sortSelect:focus {
-  border-color: #073b4c;
-  background: #fff;
+  border-color: #F4A124;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
 }
 
 .selectChevron {
   position: absolute;
-  right: 8px;
+  right: 9px;
   pointer-events: none;
-  color: rgba(7, 59, 76, 0.45);
+  color: rgba(7, 59, 76, 0.4);
+  transition: color 0.15s;
+}
+
+.sortSelect:focus ~ .selectChevron,
+.sortSelect:hover ~ .selectChevron {
+  color: #F4A124;
 }
 
 /* ── Selection actions ─────────────────────────────── */

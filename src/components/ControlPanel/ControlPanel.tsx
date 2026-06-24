@@ -19,8 +19,6 @@ export function ControlPanel({ isActive, filterContent, legendContent, fabBottom
 
   const hasBoth = !!(filterContent && legendContent)
   const singleLabel = legendContent && !filterContent ? 'Legend' : 'Filters'
-  const singleIcon = legendContent && !filterContent ? '◈' : '⚙'
-  const fabIcon = hasBoth ? '≡' : singleIcon
 
   useEffect(() => { if (!isActive) setOpen(false) }, [isActive])
 
@@ -61,7 +59,11 @@ export function ControlPanel({ isActive, filterContent, legendContent, fabBottom
         aria-label={hasBoth ? 'Filters & Legend' : singleLabel}
         title={hasBoth ? 'Filters & Legend' : singleLabel}
       >
-        {fabIcon}
+        <svg width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden="true">
+          <rect width="14" height="2" rx="1" fill="currentColor"/>
+          <rect y="4.5" width="14" height="2" rx="1" fill="currentColor"/>
+          <rect y="9" width="14" height="2" rx="1" fill="currentColor"/>
+        </svg>
       </button>
 
       {open && pos && createPortal(

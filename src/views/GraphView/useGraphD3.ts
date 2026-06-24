@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import type { RefObject } from 'react'
+import type { RefObject, MutableRefObject } from 'react'
 import type { GraphNode, GraphEdge, FilterState, ArgumentBlob } from '../../types'
 import { buildEdgeShape, positionEdgeShape, type EdgeShape } from './edgeStyles'
 import { buildGraphModel } from '../../graph/graphModel'
@@ -79,6 +79,8 @@ interface Options {
   onEdgeClick?: (edge: GraphEdge, sourceNode: GraphNode, targetNode: GraphNode) => void
   onHover?: (item: HoverItem) => void
   onCanvasClick?: () => void
+  onZoomChange?: (t: { k: number; x: number; y: number }) => void
+  blobCentroidsRef?: MutableRefObject<Map<string, { x: number; y: number }>>
 }
 
 const ARG_CARD_STROKE = 'rgba(7,59,76,0.32)'
@@ -106,6 +108,7 @@ export function useGraphD3(
   const zoomKRef = useRef(1)
   const collapseRef = useRef(0)   // 0→1 collapse progress, driven by scroll past the lock
   const highlightFnRef = useRef<() => void>(() => {})
+  const panToRef = useRef<(x: number, y: number) => void>(() => {})
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -184,9 +187,11 @@ export function useGraphD3(
       .on('zoom', (e) => {
         zoomG.attr('transform', e.transform)
         zoomKRef.current = e.transform.k
+        optsRef.current.onZoomChange?.({ k: e.transform.k, x: e.transform.x, y: e.transform.y })
         scheduleRender()   // recompute LOD live during zoom, even when the sim is idle
       })
     svg.call(zoom)
+    panToRef.current = (gx, gy) => { zoom.translateTo(svg, gx, gy) }
 
     // Wheel: zoom until the lock, then the SAME scroll drives collapse progress.
     let collapseCool: ReturnType<typeof setTimeout> | undefined
@@ -753,6 +758,17 @@ export function useGraphD3(
         }
         return cnt ? { x: sx / cnt, y: sy / cnt } : null
       }
+
+      // Write live centroid positions for the minimap
+      const centroidsRef = optsRef.current.blobCentroidsRef
+      if (centroidsRef) {
+        centroidsRef.current.clear()
+        for (const arg of model.arguments) {
+          const c = memberCentroid(arg.id)
+          if (c) centroidsRef.current.set(arg.id, c)
+        }
+      }
+
       argNodeGroups
         .style('display', d => (argumentsVisible && nodeArgIds.has(d.id) && memberCentroid(d.id)) ? null : 'none')
         .attr('transform', d => {
@@ -789,6 +805,9 @@ export function useGraphD3(
     sim.tick(150)
     sim.on('tick', renderFrame)
     renderFrame()
+    // Notify minimap of initial transform so it can render the viewport rect
+    // before the user has interacted with zoom/pan.
+    optsRef.current.onZoomChange?.({ k: 1, x: 0, y: 0 })
     sim.restart()
 
     const observer = new ResizeObserver(() => {
@@ -800,7 +819,7 @@ export function useGraphD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { alive = false; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
+    return () => { alive = false; panToRef.current = () => {}; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
   }, [nodes, edges, opts.filters, opts.lod])
 
   // ── showBlobs / blob list change → reheat ──────────────────────────────────────
@@ -811,5 +830,6 @@ export function useGraphD3(
 
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()
-  return { reheat, freeze }
+  const panTo = (x: number, y: number) => panToRef.current(x, y)
+  return { reheat, freeze, panTo }
 }
