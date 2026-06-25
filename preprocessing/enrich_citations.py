@@ -24,6 +24,9 @@ from config import (
 from openalex_client import OpenAlexError, search_paper as openalex_search
 from semanticscholar_client import S2Error, search_paper as s2_search
 
+# Default seed corpus to transfer citations from before hitting external APIs.
+SEED_DATASET = "112"
+
 
 def clean_title(source: str) -> str:
     """Strip a trailing ``" - <Journal>"`` suffix from a corpus ``source`` string.
@@ -135,6 +138,53 @@ def write_corpus(
     tmp_path.replace(path)
 
 
+def seed_citations_from(
+    docs: list[dict[str, Any]],
+    seed_path: Path,
+    *,
+    force: bool = False,
+) -> int:
+    """Copy citation counts from a seed corpus into *docs* by title similarity.
+
+    For each doc in *docs* that is missing ``citations`` (or all docs when
+    *force* is True), the function looks for the closest-matching title in the
+    seed corpus.  Only docs in the seed corpus that already have a
+    ``citations`` field are considered.  Returns the number of docs seeded.
+    """
+    if not seed_path.exists():
+        return 0
+
+    try:
+        with seed_path.open(encoding="utf-8") as fh:
+            seed_docs = json.load(fh)
+    except Exception as exc:
+        print(f"Warning: could not load seed corpus {seed_path}: {exc}")
+        return 0
+
+    # Build a list of (title, citation_count) for seed docs that have counts.
+    seed_candidates = [
+        {"display_name": clean_title(d.get("source", "")), "_citations": d["citations"]}
+        for d in seed_docs
+        if "citations" in d and clean_title(d.get("source", ""))
+    ]
+    if not seed_candidates:
+        return 0
+
+    seeded = 0
+    for doc in docs:
+        if "citations" in doc and not force:
+            continue
+        title = clean_title(doc.get("source", ""))
+        if not title:
+            continue
+        match = best_match(title, seed_candidates, "display_name")
+        if match is not None:
+            doc["citations"] = match["_citations"]
+            seeded += 1
+
+    return seeded
+
+
 def lookup_citations(title: str) -> tuple[int | None, str | None]:
     """Return ``(citation_count, source)`` for a title, or ``(None, None)``.
 
@@ -165,6 +215,13 @@ def main() -> int:
     args = parse_args()
     input_path, output_path = resolve_paths(args)
     docs = load_corpus(input_path)
+
+    # --- Seed from corpus_112 before hitting external APIs ---
+    seed_path = corpus_path(SEED_DATASET)
+    if seed_path.resolve() != input_path.resolve():
+        seeded = seed_citations_from(docs, seed_path, force=args.force)
+        if seeded:
+            print(f"Seeded {seeded} citation(s) from {seed_path.name}")
 
     matched_s2 = 0
     matched_openalex = 0
