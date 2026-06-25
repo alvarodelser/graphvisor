@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="180"
+   height="180"
+   viewBox="0 0 180.00415 180"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(-14.673589,-28.475939)">
+    <path
+       style="fill:#073b4c;stroke-width:6.45496;stroke-linecap:round;stroke-linejoin:round"
+       d="m 14.676203,118.47595 c 0.323797,6.52405 50.000004,50 89.999997,50 40,0 90.3238,-43.47595 90,-50 -0.42047,-8.47171 -50,-50.000015 -90,-50.000015 -39.999993,0 -90.420459,41.528305 -89.999997,50.000015 z" />
+    <ellipse style="fill:#ffffff" cx="84.676201" cy="133.65865" rx="32.500004" ry="32.5" />
+    <ellipse style="fill:#ffffff" cx="124.6762" cy="96.158646" rx="10" ry="9.999999" />
+    <ellipse style="fill:#ffffff" cx="144.67621" cy="126.15864" rx="5" ry="4.9999995" />
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:4.99999;stroke-linecap:round;stroke-linejoin:round"
+       d="M 79.676204,136.15865 124.6762,96.158645" />
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"
+       d="m 144.6762,126.15864 -20,-29.999995" />
+  </g>
+</svg>
