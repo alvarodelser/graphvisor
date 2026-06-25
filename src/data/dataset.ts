@@ -1,10 +1,10 @@
 import corpus165 from './corpus_165.json'
 import hypothesis165 from './hipothesis_165.json'
 
-import docEmbeddings112Url from './corpus_112_doc_embeddings.bin?url'
-import conceptEmbeddings112Url from './corpus_112_concept_embeddings.bin?url'
-import concepts112 from './corpus_112_concepts.json'
-import topics112 from './corpus_112_topics.json'
+import docEmbeddings165Url from './corpus_165_doc_embeddings.bin?url'
+import conceptEmbeddings165Url from './corpus_165_concept_embeddings.bin?url'
+import concepts165 from './corpus_165_concepts.json'
+import topics165 from './corpus_165_topics.json'
 
 import type { Hypothesis } from '../types'
 
@@ -16,10 +16,10 @@ export interface ConceptGrounding {
 }
 
 export const corpusJson = corpus165
-export const docEmbeddingsUrl = docEmbeddings112Url
-export const conceptEmbeddingsUrl = conceptEmbeddings112Url
-export const conceptsJson = concepts112 as unknown as ConceptGrounding[]
-export const topicsJson = topics112
+export const docEmbeddingsUrl = docEmbeddings165Url
+export const conceptEmbeddingsUrl = conceptEmbeddings165Url
+export const conceptsJson = concepts165 as unknown as ConceptGrounding[]
+export const topicsJson = topics165
 
 type RawHypothesisItem = {
   hypothesis: string

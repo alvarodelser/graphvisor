@@ -185,30 +185,39 @@ def seed_citations_from(
     return seeded
 
 
-def lookup_citations(title: str) -> tuple[int | None, str | None]:
-    """Return ``(citation_count, source)`` for a title, or ``(None, None)``.
+def lookup_citations(title: str, skip_sources: set[str] | None = None) -> tuple[int | None, str | None, set[str]]:
+    """Return ``(citation_count, source, not_found_sources)`` for a title.
 
     Tries OpenAlex first (its free API is reliable), then Semantic Scholar as a
     fallback (its unauthenticated tier throttles heavily). ``source`` is
     ``"openalex"`` or ``"s2"`` for a confident match, else ``None``.
     """
-    try:
-        oa_candidates = openalex_search(title)
-        match = best_match(title, oa_candidates, "display_name")
-        if match and match.get("cited_by_count") is not None:
-            return int(match["cited_by_count"]), "openalex"
-    except OpenAlexError as exc:
-        print(f"  OpenAlex lookup failed: {exc}")
+    skip_sources = skip_sources or set()
+    not_found = set()
 
-    try:
-        s2_candidates = s2_search(title)
-        match = best_match(title, s2_candidates, "title")
-        if match and match.get("citationCount") is not None:
-            return int(match["citationCount"]), "s2"
-    except S2Error as exc:
-        print(f"  Semantic Scholar lookup failed: {exc}")
+    if "openalex" not in skip_sources:
+        try:
+            oa_candidates = openalex_search(title)
+            match = best_match(title, oa_candidates, "display_name")
+            if match and match.get("cited_by_count") is not None:
+                return int(match["cited_by_count"]), "openalex", not_found
+            else:
+                not_found.add("openalex")
+        except OpenAlexError as exc:
+            print(f"  OpenAlex lookup failed: {exc}")
 
-    return None, None
+    if "s2" not in skip_sources:
+        try:
+            s2_candidates = s2_search(title)
+            match = best_match(title, s2_candidates, "title")
+            if match and match.get("citationCount") is not None:
+                return int(match["citationCount"]), "s2", not_found
+            else:
+                not_found.add("s2")
+        except S2Error as exc:
+            print(f"  Semantic Scholar lookup failed: {exc}")
+
+    return None, None, not_found
 
 
 def main() -> int:
@@ -238,7 +247,19 @@ def main() -> int:
             unmatched.append(f"(doc {index}: empty source)")
             continue
 
-        count, source = lookup_citations(title)
+        skip_sources = set(doc.get("citation_not_found", []))
+        if "openalex" in skip_sources and "s2" in skip_sources and not args.force:
+            unmatched.append(title)
+            print(f"[{index + 1}/{len(docs)}] previously unmatched: {title}")
+            continue
+
+        count, source, new_not_found = lookup_citations(title, skip_sources)
+        
+        if new_not_found:
+            current = set(doc.get("citation_not_found", []))
+            current.update(new_not_found)
+            doc["citation_not_found"] = sorted(list(current))
+
         if source == "s2":
             doc["citations"] = count
             matched_s2 += 1
