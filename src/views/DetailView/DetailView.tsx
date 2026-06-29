@@ -68,7 +68,7 @@ function EntityHoverPanel({ info }: { info: DocHoverInfo }) {
         <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 4 }}>Not directly related</div>
       )}
       <div style={{ fontSize: 9, color: '#9ca3af', borderTop: '1px solid rgba(7,59,76,0.06)', paddingTop: 4, marginTop: 4 }}>
-        {info.doc.citations} citations · {info.doc.argument_count} args
+        {info.doc.citations > 0 ? `${info.doc.citations} citations · ` : ''}{info.doc.argument_count} args
       </div>
     </>
   )
@@ -126,7 +126,7 @@ function ConceptHoverPanel({ info }: { info: ConceptHoverInfo }) {
         <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 4 }}>No arguments with this concept</div>
       )}
       <div style={{ fontSize: 9, color: '#9ca3af', borderTop: '1px solid rgba(7,59,76,0.06)', paddingTop: 4, marginTop: 4 }}>
-        {info.doc.citations} citations · {info.doc.argument_count} args
+        {info.doc.citations > 0 ? `${info.doc.citations} citations · ` : ''}{info.doc.argument_count} args
       </div>
     </>
   )

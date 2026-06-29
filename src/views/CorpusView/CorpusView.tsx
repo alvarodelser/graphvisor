@@ -128,6 +128,12 @@ export function CorpusView() {
             <span style={{ ...dot, width: 18, height: 18, background: '#74b9d6' }} />
             <span style={{ ...legendText, color: '#374151' }}>{sizeExtent[1]} {sizeByLabel} (max)</span>
           </div>
+          {sizeBy === 'impact' && (
+            <div style={legendRow}>
+              <span style={{ ...dot, width: 8, height: 8, background: 'white', border: '1.5px solid #74b9d6', flexShrink: 0 }} />
+              <span style={{ ...legendText, color: '#9ca3af' }}>No citation data</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -139,10 +145,7 @@ export function CorpusView() {
             background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, rgba(124,58,237,0) 100%)',
             border: '1.5px dashed #a855f7', display: 'inline-block',
           }} />
-          <span style={{ ...legendText, color: '#7c3aed' }}>Semantic grounding area</span>
-        </div>
-        <div style={{ fontSize: 9, color: '#9ca3af', lineHeight: 1.4, marginTop: 2 }}>
-          Violet circles show the projected 2D extent of each concept's semantic space.
+          <span style={{ ...legendText, color: '#7c3aed' }}>Topic name</span>
         </div>
       </div>
 

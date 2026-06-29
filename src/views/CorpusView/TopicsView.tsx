@@ -91,7 +91,7 @@ export function TopicsView({ docs, selectedIds }: Props) {
             {tooltip.doc.title}
           </div>
           <div style={{ fontSize: 10, color: '#6b7280' }}>
-            {tooltip.doc.citations} citations · {tooltip.doc.argument_count} arguments
+            {tooltip.doc.citations > 0 ? `${tooltip.doc.citations} citations · ` : ''}{tooltip.doc.argument_count} arguments
           </div>
         </FloatingCard>
       )}

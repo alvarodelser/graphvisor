@@ -108,6 +108,16 @@
   border-color: rgba(7, 59, 76, 0.26);
 }
 
+.copyBtnSuffix {
+  display: inline;
+}
+
+@media (max-width: 600px) {
+  .copyBtnSuffix {
+    display: none;
+  }
+}
+
 .evidenceBtn {
   padding: 4px 10px;
   border-radius: 6px;

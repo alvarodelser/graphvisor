@@ -215,7 +215,7 @@ export function DiscoverView() {
             </svg>
             {copied
               ? 'Copied!'
-              : `Copy ${hypothesesToCopy.length} hypothes${hypothesesToCopy.length === 1 ? 'is' : 'es'} to clipboard`}
+              : <>Copy {hypothesesToCopy.length}<span className={styles.copyBtnSuffix}> hypothes{hypothesesToCopy.length === 1 ? 'is' : 'es'} to clipboard</span></>}
           </button>
           <button
             className={styles.selBtn}

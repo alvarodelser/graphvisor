@@ -376,7 +376,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
       )}
 
       {/* ── Beeswarm ─────────────────────────────────────────────────────────── */}
-      <svg ref={svgRef} style={{ width: '100%', height: BEESWARM_H, display: 'block' }} />
+      <svg ref={svgRef} style={{ width: '100%', height: BEESWARM_H, display: 'block', touchAction: 'none' }} />
 
       {/* ── Shared year axis ─────────────────────────────────────────────────── */}
       {width > 0 && (
@@ -459,7 +459,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
         <FloatingCard style={{ position: 'fixed', left: tooltip.x + 12, top: tooltip.y + 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#073b4c', marginBottom: 4 }}>{tooltip.doc.title}</div>
           <div style={{ fontSize: 10, color: '#6b7280' }}>
-            {tooltip.doc.year} · {tooltip.doc.citations} citations · {tooltip.doc.argument_count} arguments
+            {tooltip.doc.year}{tooltip.doc.citations > 0 ? ` · ${tooltip.doc.citations} citations` : ''} · {tooltip.doc.argument_count} arguments
           </div>
         </FloatingCard>
       )}
