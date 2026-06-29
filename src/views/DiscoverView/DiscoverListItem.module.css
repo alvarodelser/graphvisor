@@ -38,3 +38,10 @@
   line-height: 1.5;
   word-break: break-word;
 }
+
+@media (max-width: 640px) {
+  .item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
