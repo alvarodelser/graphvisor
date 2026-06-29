@@ -5,10 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -19,8 +17,8 @@ from sklearn.decomposition import NMF
 from config import (
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_OLLAMA_URL,
-    corpus_path,
-    topics_path,
+    CORPUS_PATH,
+    TOPICS_PATH,
 )
 
 
@@ -28,31 +26,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="NMF topic clustering on corpus concepts with Ollama labeling.",
     )
-    parser.add_argument("--dataset", help="Dataset id.")
-    parser.add_argument("--input", type=Path, help="Explicit corpus JSON path.")
-    parser.add_argument("--output-topics", type=Path, help="Output topics JSON path.")
-    parser.add_argument("--output-corpus", type=Path, help="Output corpus JSON path.")
     parser.add_argument("--n-topics", type=int, help="Number of topics/clusters.")
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL, help="Ollama base URL.")
     parser.add_argument("--ollama-model", default=DEFAULT_OLLAMA_MODEL, help="Ollama model name.")
     parser.add_argument("--ollama-timeout", type=float, default=600.0, help="HTTP timeout per attempt.")
     parser.add_argument("--ollama-retries", type=int, default=3, help="Max retry attempts for Ollama calls.")
     parser.add_argument("--dry-run", action="store_true", help="Compute but do not write.")
+    parser.add_argument("--force", action="store_true", help="Re-cluster even if topics file already exists.")
     return parser.parse_args()
-
-
-def resolve_paths(args: argparse.Namespace) -> tuple[Path, Path, Path]:
-    if args.input and args.dataset:
-        raise SystemExit("Use either --dataset or --input, not both.")
-    input_path = args.input or corpus_path(args.dataset or "112")
-    if not input_path.exists():
-        raise SystemExit(f"Corpus file not found: {input_path}")
-    if args.dataset:
-        topics_json_path = args.output_topics or topics_path(args.dataset)
-    else:
-        topics_json_path = args.output_topics or input_path.with_name(input_path.stem + "_topics.json")
-    output_corpus_path = args.output_corpus or input_path
-    return input_path, topics_json_path, output_corpus_path
 
 
 def load_corpus(path: Path) -> list[dict[str, Any]]:
@@ -110,11 +91,7 @@ def query_ollama_label(ollama_url: str, model: str, top_concepts: list[tuple[str
     return None
 
 
-def write_json(path: Path, data: Any, *, backup_source: Path | None = None) -> None:
-    if backup_source and backup_source.exists() and backup_source.samefile(path):
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        backup_path = path.with_suffix(path.suffix + f".bak.{stamp}")
-        shutil.copy2(path, backup_path)
+def write_json(path: Path, data: Any) -> None:
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     with tmp_path.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, ensure_ascii=False, indent=4)
@@ -124,7 +101,14 @@ def write_json(path: Path, data: Any, *, backup_source: Path | None = None) -> N
 
 def main() -> int:
     args = parse_args()
-    input_path, topics_json_path, output_corpus_path = resolve_paths(args)
+
+    if TOPICS_PATH.exists() and not args.force:
+        print("Topics already exist; skipping. Pass --force to re-cluster.")
+        return 0
+
+    input_path = CORPUS_PATH
+    topics_json_path = TOPICS_PATH
+    output_corpus_path = CORPUS_PATH
 
     docs = load_corpus(input_path)
     concepts = gather_unique_concepts(docs)
@@ -222,8 +206,7 @@ def main() -> int:
         return 0
 
     write_json(topics_json_path, topics_list)
-    in_place = input_path.resolve() == output_corpus_path.resolve()
-    write_json(output_corpus_path, docs, backup_source=input_path if in_place else None)
+    write_json(CORPUS_PATH, docs)
     return 0
 
 
