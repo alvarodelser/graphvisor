@@ -19,9 +19,9 @@ Two services must be reachable:
 ## Running the pipeline
 
 ```bash
-./run.sh           # run all steps; skip steps whose outputs already exist
-./run.sh --force   # re-run everything from scratch
-./run.sh --dry-run # compute but do not write files
+./run_enrichment.sh           # run all steps; skip steps whose outputs already exist
+./run_enrichment.sh --force   # re-run everything from scratch
+./run_enrichment.sh --dry-run # compute but do not write files
 ```
 
 ## Steps
