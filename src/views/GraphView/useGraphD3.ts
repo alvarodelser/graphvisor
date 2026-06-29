@@ -21,6 +21,7 @@ const ENTITY_R = 8
 const LOCK_K = 0.45
 const ZOOM_MAX = 4
 const COLLAPSE_WHEEL_STEP = 0.0016   // collapse progress per wheel-pixel past the lock
+const PINCH_COLLAPSE_SCALE = 0.002   // collapse progress per pixel of pinch distance change
 
 // Argument card (blob-style rounded rectangle holding the argument text)
 const ARG_CARD_W = 96         // graph units
@@ -213,6 +214,47 @@ export function useGraphD3(
       }
     }
     svgEl.addEventListener('wheel', onWheel, { passive: false })
+
+    // Touch: two-finger pinch-in drives collapse forward, pinch-out reverses it.
+    let pinchStartDist: number | null = null
+
+    function pinchDist(e: TouchEvent): number {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchStartDist = pinchDist(e)
+      } else {
+        pinchStartDist = null
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!optsRef.current.showBlobs) return
+      if (e.touches.length !== 2 || pinchStartDist === null) return
+      const atLock = zoomKRef.current <= LOCK_K + 1e-4
+      if (!atLock && collapseRef.current === 0) return
+      const newDist = pinchDist(e)
+      const delta = (pinchStartDist - newDist) * PINCH_COLLAPSE_SCALE
+      collapseRef.current = Math.max(0, Math.min(1, collapseRef.current + delta))
+      pinchStartDist = newDist
+      sim.alphaTarget(0.3).restart()
+      clearTimeout(collapseCool)
+      collapseCool = setTimeout(() => sim.alphaTarget(0), 300)
+      scheduleRender()
+      e.preventDefault()
+    }
+
+    function onTouchEnd() {
+      pinchStartDist = null
+    }
+
+    svgEl.addEventListener('touchstart', onTouchStart, { passive: true })
+    svgEl.addEventListener('touchmove', onTouchMove, { passive: false })
+    svgEl.addEventListener('touchend', onTouchEnd, { passive: true })
 
     // ── Collapse hint ─────────────────────────────────────────────────────────
     // Screen-fixed pill (NOT in zoomG) that appears once zoom is locked, telling
@@ -819,7 +861,7 @@ export function useGraphD3(
     observer.observe(svgEl.parentElement ?? svgEl)
 
     simRef.current = sim
-    return () => { alive = false; panToRef.current = () => {}; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
+    return () => { alive = false; panToRef.current = () => {}; sim.stop(); observer.disconnect(); svgEl.removeEventListener('wheel', onWheel); svgEl.removeEventListener('touchstart', onTouchStart); svgEl.removeEventListener('touchmove', onTouchMove); svgEl.removeEventListener('touchend', onTouchEnd); clearTimeout(collapseCool); if (particleRaf) cancelAnimationFrame(particleRaf) }
   }, [nodes, edges, opts.filters, opts.lod])
 
   // ── showBlobs / blob list change → reheat ──────────────────────────────────────
