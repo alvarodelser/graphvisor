@@ -140,11 +140,6 @@ export function CorpusView() {
       <div>
         <div className="sl">Concept regions</div>
         <div style={legendRow}>
-          <span style={{
-            width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-            background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, rgba(124,58,237,0) 100%)',
-            border: '1.5px dashed #a855f7', display: 'inline-block',
-          }} />
           <span style={{ ...legendText, color: '#7c3aed' }}>Topic name</span>
           <span style={{ ...legendText, color: '#374151' }}>— semantic area</span>
         </div>
