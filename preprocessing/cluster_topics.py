@@ -108,7 +108,6 @@ def main() -> int:
 
     input_path = CORPUS_PATH
     topics_json_path = TOPICS_PATH
-    output_corpus_path = CORPUS_PATH
 
     docs = load_corpus(input_path)
     concepts = gather_unique_concepts(docs)

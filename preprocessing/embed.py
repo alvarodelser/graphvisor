@@ -189,7 +189,7 @@ def main() -> int:
     indices_to_embed: list[int] = []
 
     for i in range(len(docs)):
-        if i < len(existing_doc_vectors) and not args.force:
+        if i < len(existing_doc_vectors):
             doc_vectors[i] = existing_doc_vectors[i]
         else:
             indices_to_embed.append(i)

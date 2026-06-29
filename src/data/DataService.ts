@@ -156,7 +156,7 @@ export async function ensureInitialized(): Promise<void> {
         console.warn('Failed to load concept embeddings binary.')
       }
 
-      // conceptsJson is ConceptGrounding[] when produced by embed_concepts.py,
+      // conceptsJson is ConceptGrounding[] when produced by embed.py,
       // or legacy string[] from the placeholder. Normalise here.
       const rawConcepts = conceptsJson as unknown as Array<ConceptGrounding | string>
       if (rawConcepts.length > 0 && typeof rawConcepts[0] === 'object') {

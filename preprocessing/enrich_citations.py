@@ -136,8 +136,7 @@ def lookup_citations(title: str, skip_sources: set[str] | None = None) -> tuple[
 
 def main() -> int:
     args = parse_args()
-    input_path = output_path = CORPUS_PATH
-    docs = load_corpus(input_path)
+    docs = load_corpus(CORPUS_PATH)
 
     docs_needing_enrichment = [
         doc for doc in docs
@@ -202,7 +201,7 @@ def main() -> int:
         return 0
 
     write_corpus(CORPUS_PATH, docs)
-    print(f"\nWrote enriched corpus to {output_path}")
+    print(f"\nWrote enriched corpus to {CORPUS_PATH}")
     return 0
 
 
