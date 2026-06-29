@@ -8,6 +8,8 @@ interface HypothesisRadarChartProps {
   size?: number
   /** When sorting by a specific dimension, that dimension's value stays visible without hover. */
   highlightDimension?: keyof Hypothesis['scores']
+  /** When true, always show full dimension names and scores without requiring hover. */
+  alwaysExpanded?: boolean
 }
 
 const LABELS: Record<string, string> = {
@@ -29,7 +31,7 @@ const LABELS_FULL: Record<string, string> = {
 const PAD_L = 30
 const PAD_R = 58
 
-export function HypothesisRadarChart({ scores, size = 100, highlightDimension }: HypothesisRadarChartProps) {
+export function HypothesisRadarChart({ scores, size = 100, highlightDimension, alwaysExpanded = false }: HypothesisRadarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
 
   const svgWidth = size + PAD_L + PAD_R
@@ -116,7 +118,7 @@ export function HypothesisRadarChart({ scores, size = 100, highlightDimension }:
           .attr('font-size', '9px')
           .attr('font-weight', '700')
           .attr('fill', polyColor)
-          .attr('opacity', persistent ? 1 : 0)
+          .attr('opacity', (alwaysExpanded || persistent) ? 1 : 0)
           .attr('data-persistent', persistent ? '1' : '0')
           .text(Number(scores[dim]).toFixed(1))
       )
@@ -129,7 +131,7 @@ export function HypothesisRadarChart({ scores, size = 100, highlightDimension }:
         .attr('font-size', '9px')
         .attr('font-weight', '600')
         .attr('fill', '#9ca3af')
-        .text(LABELS[dim])
+        .text(alwaysExpanded ? LABELS_FULL[dim] : LABELS[dim])
       nameLabels.push({ sel: nameLabel, dim })
     })
 
@@ -156,16 +158,18 @@ export function HypothesisRadarChart({ scores, size = 100, highlightDimension }:
       .attr('fill', polyColor)
       .text(avg)
 
-    svg
-      .on('mouseenter', () => {
-        valueLabels.forEach(t => t.attr('opacity', 1))
-        nameLabels.forEach(({ sel, dim }) => sel.text(LABELS_FULL[dim]))
-      })
-      .on('mouseleave', () => {
-        valueLabels.forEach(t => t.attr('opacity', t.attr('data-persistent') === '1' ? 1 : 0))
-        nameLabels.forEach(({ sel, dim }) => sel.text(LABELS[dim]))
-      })
-  }, [scores, size, highlightDimension])
+    if (!alwaysExpanded) {
+      svg
+        .on('mouseenter', () => {
+          valueLabels.forEach(t => t.attr('opacity', 1))
+          nameLabels.forEach(({ sel, dim }) => sel.text(LABELS_FULL[dim]))
+        })
+        .on('mouseleave', () => {
+          valueLabels.forEach(t => t.attr('opacity', t.attr('data-persistent') === '1' ? 1 : 0))
+          nameLabels.forEach(({ sel, dim }) => sel.text(LABELS[dim]))
+        })
+    }
+  }, [scores, size, highlightDimension, alwaysExpanded])
 
   return (
     <svg ref={svgRef} width={svgWidth} height={svgHeight} overflow="visible" style={{ flexShrink: 0, margin: '12px' }} />

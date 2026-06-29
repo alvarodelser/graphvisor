@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { Hypothesis } from '../../types'
 import { useStore } from '../../store/useStore'
 import { HypothesisRadarChart } from './HypothesisRadarChart'
@@ -13,6 +14,13 @@ interface DiscoverListItemProps {
 export function DiscoverListItem({ hypothesis, highlightDimension, showConcept = false, showResearchQuestion = true }: DiscoverListItemProps) {
   const { selectedHypothesisIds, selectHypothesis } = useStore()
   const isSelected = selectedHypothesisIds.includes(hypothesis.hypothesis)
+
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 640)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const handleClick = (e: React.MouseEvent) => {
     if (window.getSelection()?.toString()) return
@@ -56,7 +64,7 @@ export function DiscoverListItem({ hypothesis, highlightDimension, showConcept =
           </div>
         )}
       </div>
-      <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} />
+      <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} alwaysExpanded={isMobile} />
     </div>
   )
 }
