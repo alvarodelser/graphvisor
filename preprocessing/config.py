@@ -23,25 +23,9 @@ CITATION_MATCH_THRESHOLD = 0.85  # min title similarity to accept a match
 CITATION_MAX_RETRIES = 5  # per-request retry budget on 429 / transport error
 
 
-def corpus_path(dataset: str) -> Path:
-    return DATA_DIR / f"corpus_{dataset}.json"
-
-
-def hypothesis_path(dataset: str) -> Path:
-    return DATA_DIR / f"hypothesis_{dataset}.json"
-
-
-def doc_embeddings_path(dataset: str) -> Path:
-    return DATA_DIR / f"corpus_{dataset}_doc_embeddings.bin"
-
-
-def concept_embeddings_path(dataset: str) -> Path:
-    return DATA_DIR / f"corpus_{dataset}_concept_embeddings.bin"
-
-
-def concepts_path(dataset: str) -> Path:
-    return DATA_DIR / f"corpus_{dataset}_concepts.json"
-
-
-def topics_path(dataset: str) -> Path:
-    return DATA_DIR / f"corpus_{dataset}_topics.json"
+CORPUS_PATH = DATA_DIR / "corpus.json"
+HYPOTHESIS_PATH = DATA_DIR / "hypothesis.json"
+DOC_EMBEDDINGS_PATH = DATA_DIR / "doc_embeddings.bin"
+CONCEPT_EMBEDDINGS_PATH = DATA_DIR / "concept_embeddings.bin"
+CONCEPTS_PATH = DATA_DIR / "concepts.json"
+TOPICS_PATH = DATA_DIR / "topics.json"

@@ -1,0 +1,146 @@
+[
+    {
+        "concept": "Activation-induced cytidine deaminase–mediated antibody diversification",
+        "pca_x": 0.002520962274453392,
+        "pca_y": -0.004736761066361644,
+        "radius": 0.6640919476457335
+    },
+    {
+        "concept": "Bacterial SOS response",
+        "pca_x": -0.01992519169667606,
+        "pca_y": -0.010100733319908184,
+        "radius": 0.6535415664685982
+    },
+    {
+        "concept": "Bacterial mutagenicity assays",
+        "pca_x": -0.0281224091179519,
+        "pca_y": -0.03496271224306369,
+        "radius": 0.6632103809899138
+    },
+    {
+        "concept": "Base excision repair and single-strand break repair",
+        "pca_x": 0.02480786927891948,
+        "pca_y": 0.028807987896369326,
+        "radius": 0.6536633132052316
+    },
+    {
+        "concept": "DNA adducts and chemical carcinogenesis",
+        "pca_x": -0.10071969463045376,
+        "pca_y": 0.026126449379071597,
+        "radius": 0.6644734675403947
+    },
+    {
+        "concept": "DNA damage response and cell-cycle checkpoints",
+        "pca_x": -0.052947645892407635,
+        "pca_y": -0.005700984861870803,
+        "radius": 0.6613939842872566
+    },
+    {
+        "concept": "DNA methylation in strand discrimination and mutational bias",
+        "pca_x": 0.04067310445523303,
+        "pca_y": -0.007331601946412081,
+        "radius": 0.6548142679428518
+    },
+    {
+        "concept": "DNA mismatch repair",
+        "pca_x": 0.05267175767639057,
+        "pca_y": -0.033431185213001174,
+        "radius": 0.6500279832542893
+    },
+    {
+        "concept": "DNA replication fidelity",
+        "pca_x": 0.02078565746797917,
+        "pca_y": -0.026746388755067116,
+        "radius": 0.6607705323130187
+    },
+    {
+        "concept": "Epigenetic alterations and biological aging",
+        "pca_x": -0.0978667141454182,
+        "pca_y": -0.07150641818504576,
+        "radius": 0.669081256022827
+    },
+    {
+        "concept": "Epigenetic inheritance of gene expression states",
+        "pca_x": -0.073850865457605,
+        "pca_y": -0.08545418220906474,
+        "radius": 0.6674409377700938
+    },
+    {
+        "concept": "Extreme bacterial radioresistance via protein protection and recombinational reassembly",
+        "pca_x": -0.028583608178675127,
+        "pca_y": -0.00995470157751041,
+        "radius": 0.6690244266549208
+    },
+    {
+        "concept": "Homologous recombination–mediated double-strand break repair",
+        "pca_x": 0.05012505661250305,
+        "pca_y": -0.0036263042336068946,
+        "radius": 0.6490264661197119
+    },
+    {
+        "concept": "Horizontal gene transfer and recombination barriers",
+        "pca_x": 0.02087488950678701,
+        "pca_y": -0.0525000516312151,
+        "radius": 0.658911403898378
+    },
+    {
+        "concept": "Mismatch repair–mediated suppression of homeologous recombination",
+        "pca_x": 0.023485018795532664,
+        "pca_y": -0.025055205585189852,
+        "radius": 0.662809109499073
+    },
+    {
+        "concept": "Mitochondrial dysfunction and metabolic reprogramming",
+        "pca_x": -0.14726143859393334,
+        "pca_y": -0.051008977192342556,
+        "radius": 0.6737350735245246
+    },
+    {
+        "concept": "Multistage carcinogenesis and genomic instability",
+        "pca_x": -0.0689885674180047,
+        "pca_y": -0.049159663235878864,
+        "radius": 0.6618411291681722
+    },
+    {
+        "concept": "Mutation-rate plasticity and mutator dynamics",
+        "pca_x": -0.005206958082194721,
+        "pca_y": -0.03953074053509066,
+        "radius": 0.6629859807827105
+    },
+    {
+        "concept": "Nucleotide excision repair and transcription-coupled repair",
+        "pca_x": 0.012910337250758241,
+        "pca_y": 0.01737643690140775,
+        "radius": 0.6605215320174486
+    },
+    {
+        "concept": "Oxidative stress and proteome damage",
+        "pca_x": -0.17765041526502956,
+        "pca_y": 0.023441674205282086,
+        "radius": 0.6655587148143898
+    },
+    {
+        "concept": "Proteostasis and protein quality control",
+        "pca_x": -0.19119446815985613,
+        "pca_y": -0.028649531912568138,
+        "radius": 0.6520581741064456
+    },
+    {
+        "concept": "Restriction–modification systems",
+        "pca_x": -0.006912749380079117,
+        "pca_y": -0.08240255970756667,
+        "radius": 0.6604800252918749
+    },
+    {
+        "concept": "Translesion DNA synthesis",
+        "pca_x": -0.008413894252296189,
+        "pca_y": -0.004250692711062765,
+        "radius": 0.6647001799562441
+    },
+    {
+        "concept": "tRNA modifications in translational fidelity",
+        "pca_x": -0.015517691030227626,
+        "pca_y": -0.007099841968658857,
+        "radius": 0.6672545274285744
+    }
+]
