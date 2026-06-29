@@ -113,6 +113,29 @@
 }
 
 @media (max-width: 600px) {
+  .toolbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    gap: 4px 8px;
+  }
+
+  .sortGroup {
+    flex: 1;
+  }
+
+  .selectionGroup {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .selBtn,
+  .evidenceBtn {
+    flex: 1 1 calc(50% - 2px);
+    justify-content: center;
+    text-align: center;
+  }
+
   .copyBtnSuffix {
     display: none;
   }

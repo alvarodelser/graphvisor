@@ -210,15 +210,14 @@ export function useCorpusD3(
 
     const lassoBehavior = d3.drag<SVGRectElement, unknown>()
       .on('start', (event) => {
-        event.sourceEvent?.stopPropagation()  // prevent zoom pan from firing on SVG parent
         lassoShiftKey = !!event.sourceEvent?.shiftKey
-        const [mx, my] = d3.pointer(event, zoomG.node()!)
+        const mx = event.x, my = event.y
         dragOrigin = [mx, my]
         lassoPath = [[mx, my]]
         lassoActive = false
       })
       .on('drag', (event) => {
-        const [mx, my] = d3.pointer(event, zoomG.node()!)
+        const mx = event.x, my = event.y
         lassoPath.push([mx, my])
         const dx = mx - dragOrigin[0], dy = my - dragOrigin[1]
         if (!lassoActive && Math.sqrt(dx * dx + dy * dy) > 6) {

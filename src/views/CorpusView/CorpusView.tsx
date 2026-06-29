@@ -146,6 +146,7 @@ export function CorpusView() {
             border: '1.5px dashed #a855f7', display: 'inline-block',
           }} />
           <span style={{ ...legendText, color: '#7c3aed' }}>Topic name</span>
+          <span style={{ ...legendText, color: '#374151' }}>— semantic area</span>
         </div>
       </div>
 

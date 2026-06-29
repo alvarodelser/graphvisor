@@ -201,22 +201,22 @@ export function TimelineView({ docs, selectedIds }: Props) {
     let dragActive = false
 
     const dragBehavior = d3.drag<SVGRectElement, unknown>()
-      .on('start', function(event) {
-        const mx = d3.pointer(event, this)[0]
+      .on('start', (event) => {
+        const mx = event.x
         dragStartX = mx
         dragActive = false
         setIsDragging(true)
 
         const startYear = Math.round(invertYear(mx))
-        const shiftKey = (event.sourceEvent as MouseEvent).shiftKey
+        const shiftKey = !!(event.sourceEvent as MouseEvent).shiftKey
         const insideRange = selectedYearRangesRef.current.some(([s, e]) => startYear >= s && startYear <= e)
 
         if (shiftKey && insideRange) dragMode = 'subtract'
         else if (shiftKey) dragMode = 'add'
         else dragMode = 'replace'
       })
-      .on('drag', function(event) {
-        const mx = d3.pointer(event, this)[0]
+      .on('drag', (event) => {
+        const mx = event.x
         if (!dragActive && Math.abs(mx - dragStartX) > 4) dragActive = true
         if (!dragActive) return
 
@@ -231,7 +231,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
           dragOverlayRef.current.style.opacity = '1'
         }
       })
-      .on('end', function(event) {
+      .on('end', (event) => {
         selectionBand.attr('opacity', 0)
         if (dragOverlayRef.current) dragOverlayRef.current.style.opacity = '0'
         setIsDragging(false)
@@ -239,7 +239,7 @@ export function TimelineView({ docs, selectedIds }: Props) {
         if (!dragActive) { dragActive = false; return }
         dragActive = false
 
-        const mx = d3.pointer(event, this)[0]
+        const mx = event.x
         const y0 = Math.round(invertYear(Math.min(dragStartX, mx)))
         const y1 = Math.round(invertYear(Math.max(dragStartX, mx)))
         const dragRange: [number, number] = [y0, y1]
