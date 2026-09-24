@@ -7,7 +7,7 @@ import logging
 import numpy as np
 from fastapi import APIRouter
 
-from app.shared import llm_json, neo4j, vectorizer
+from app.shared import events, llm_json, neo4j, vectorizer
 from app.shared.documents import clear_arguments, require_document
 from app.shared.models import DocRef
 
@@ -64,6 +64,7 @@ def save_L1_arguments(body: L1In):
 
     clear_arguments(body.collection, body.id)
     doc_uid = neo4j.uid(body.collection, body.id)
+    neo4j.write("MATCH (d:Document {uid: $uid}) SET d.l1_at = timestamp()", uid=doc_uid)
     rows = [{"local_id": rank_pos, "text": texts[i], "cos": cos}
             for rank_pos, (i, cos) in enumerate(ranked)]
     neo4j.write(
@@ -76,6 +77,9 @@ def save_L1_arguments(body: L1In):
             cosine_similarity: row.cos, in_graph: false})
         """,
         doc_uid=doc_uid, c=body.collection, id=body.id, rows=rows)
+    if rows:  # with no arguments the document goes straight to done
+        events.stage(body.collection, body.id, "classification", arguments=len(rows),
+                     skipped_responses=skipped)
     return {"collection": body.collection, "id": body.id, "skipped_responses": skipped,
             # not "arguments": n8n expressions refuse to read a property with that name
             "argument_list": [{"local_id": r["local_id"], "TEXT": r["text"]} for r in rows]}

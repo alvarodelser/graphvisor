@@ -94,7 +94,8 @@
         },
         "options": {
           "num_ctx": 8192,
-          "system": "{{PROMPT:concept_constructor.system}}"
+          "system": "{{PROMPT:concept_constructor.system}}",
+          "think": false
         }
       },
       "id": "d1f2c1e6-e603-58c4-93fc-b4679102fb63",
@@ -200,7 +201,8 @@
         },
         "options": {
           "num_ctx": 32768,
-          "system": "{{PROMPT:concept_validation.system}}"
+          "system": "{{PROMPT:concept_validation.system}}",
+          "think": false
         }
       },
       "id": "3ac08dce-569f-548a-98ee-0ec29d2544e6",
@@ -492,7 +494,8 @@
           ]
         },
         "options": {
-          "num_ctx": 8192
+          "num_ctx": 8192,
+          "think": false
         }
       },
       "id": "8e8cc06b-29a2-599f-955c-1c272c9aceb2",
@@ -700,7 +703,8 @@
           ]
         },
         "options": {
-          "num_ctx": 8192
+          "num_ctx": 8192,
+          "think": false
         }
       },
       "id": "61caff5a-c30d-5f5a-b5ec-13c9b1e8db2e",
@@ -1320,7 +1324,8 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveExecutionProgress": true
   },
   "pinData": {},
   "tags": []

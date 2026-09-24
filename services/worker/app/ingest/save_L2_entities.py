@@ -151,4 +151,5 @@ def save_L2_entities(body: L2In):
         _write_argument(body.collection, f"{doc_uid}:{item.ARG_ID}", relations)
         saved.append(item.ARG_ID)
     delete_orphan_entities(body.collection)
+    neo4j.write("MATCH (d:Document {uid: $uid}) SET d.l2_at = timestamp()", uid=doc_uid)
     return {"collection": body.collection, "id": body.id, "saved": saved, "invalid": invalid}

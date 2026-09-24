@@ -175,7 +175,8 @@
           ]
         },
         "options": {
-          "system": "You are a service check. Return ONLY valid JSON, with no other text."
+          "system": "You are a service check. Return ONLY valid JSON, with no other text.",
+          "think": false
         }
       },
       "id": "bbefbd04-8aa2-5244-be0d-70be62ab1244",
@@ -300,7 +301,8 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveExecutionProgress": true
   },
   "pinData": {},
   "tags": []

@@ -2,7 +2,12 @@
 # graphvisor-neo4j:7687; host ports are localhost-only and shifted by one so
 # they never collide with another Neo4j on the default 7474/7687.
 #
+# `up` also applies schema.cypher (constraints + vector indexes): the one-shot
+# graphvisor-neo4j-schema container waits for Neo4j to be healthy, runs it with
+# cypher-shell and exits. Every statement is IF NOT EXISTS, so each `up` is safe.
+#
 #   docker compose --env-file services/.env -f services/graphdb/docker-compose.yml up -d
+#   docker logs graphvisor-neo4j-schema      # what the schema step did
 services:
   graphvisor-neo4j:
     image: neo4j:5.26-community
@@ -24,6 +29,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  graphvisor-neo4j-schema:
+    image: neo4j:5.26-community
+    container_name: graphvisor-neo4j-schema
+    depends_on:
+      graphvisor-neo4j:
+        condition: service_healthy
+    # Retried a few times in case Bolt opens a moment after the HTTP healthcheck.
+    restart: "on-failure:5"
+    entrypoint: ["cypher-shell", "-a", "bolt://graphvisor-neo4j:7687", "-u", "neo4j",
+                 "-p", "${NEO4J_PASSWORD}", "-f", "/schema.cypher"]
+    volumes:
+      - ./schema.cypher:/schema.cypher:ro
+    networks:
+      - n8n-net
 
 volumes:
   graphvisor-neo4j-data:

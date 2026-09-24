@@ -1,5 +1,5 @@
 // GraphVisor schema. Idempotent: every statement is IF NOT EXISTS.
-// Applied by apply-schema.sh. Model: docs/superpowers/specs/2026-09-23-auto-ingestion-design.md §5.
+// Applied on every `docker compose up` by the graphvisor-neo4j-schema container. Model: docs/superpowers/specs/2026-09-23-auto-ingestion-design.md §5.
 //
 // Community edition has no composite node keys, so every node carries a
 // single `uid` that already includes its collection:

@@ -41,7 +41,7 @@ def check_neo4j() -> str:
     names = {r["name"] for r in rows}
     constraints = {r["name"] for r in neo4j.read("SHOW CONSTRAINTS YIELD name RETURN name")}
     missing = sorted((REQUIRED_CONSTRAINTS - constraints) | (REQUIRED_VECTOR_INDEXES - names))
-    _expect(not missing, f"missing schema items {missing}: run services/graphdb/apply-schema.sh")
+    _expect(not missing, f"missing schema items {missing}: re-run `docker compose ... graphdb/docker-compose.yml up -d` and check `docker logs graphvisor-neo4j-schema`")
     offline = [r["name"] for r in rows if r["name"] in REQUIRED_VECTOR_INDEXES and r["state"] != "ONLINE"]
     _expect(not offline, f"vector indexes not ONLINE: {offline}")
     return f"connected; {len(constraints)} constraints, vector indexes online"

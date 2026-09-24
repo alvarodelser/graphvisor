@@ -3,7 +3,7 @@ is finished, which is n8n's cue to run graphvisor_finalize."""
 
 from fastapi import APIRouter
 
-from app.shared import neo4j
+from app.shared import events, neo4j
 from app.shared.models import DocRef
 
 router = APIRouter()
@@ -35,9 +35,36 @@ def _close(ref: DocRef, status: str, step: str = None, error: str = None) -> dic
         status=status, step=step, error=error)[0]
     out = {"collection": ref.collection, "id": ref.id, **row,
            "collection_complete": row["done"] + row["failed"] >= row["expected"]}
+    _emit_document_event(ref, status, step, error)
+    events.stage(ref.collection, ref.id, status, failed_step=step)
     if status == "failed":
         out.update(step=step, error=error)  # the DLQ message is this response
     return out
+
+
+def _emit_document_event(ref: DocRef, status: str, step: str | None, error: str | None) -> None:
+    """document_done / document_failed for the dashboard: time per stage and sizes."""
+    rows = neo4j.read(
+        """
+        MATCH (d:Document {uid: $uid})
+        CALL (d) { OPTIONAL MATCH (d)-[:HAS_CHUNK]->(c) RETURN count(c) AS chunks }
+        CALL (d) { OPTIONAL MATCH (d)-[:HAS_ARGUMENT]->(a) RETURN count(a) AS arguments,
+                   sum(CASE WHEN a.in_graph THEN 1 ELSE 0 END) AS graph_arguments }
+        CALL (d) { OPTIONAL MATCH (d)-[:HAS_ARGUMENT]->()-[:HAS_SUBJECT|HAS_OBJECT]->(e)
+                   RETURN count(DISTINCT e) AS entities }
+        RETURN d {.source, .loaded_at, .chunked_at, .abstract_at, .l1_at, .classified_at, .l2_at} AS d,
+               chunks, arguments, graph_arguments, entities, timestamp() AS now
+        """,
+        uid=neo4j.uid(ref.collection, ref.id))
+    if not rows:
+        return
+    r = rows[0]
+    events.emit("document_done" if status == "done" else "document_failed",
+                level="info" if status == "done" else "error",
+                collection=ref.collection, doc_id=f"{ref.collection}:{ref.id}", source=r["d"]["source"],
+                failed_step=step, error=error, chunks=r["chunks"], arguments=r["arguments"],
+                graph_arguments=r["graph_arguments"], entities=r["entities"],
+                **events.stage_seconds(r["d"], r["now"]))
 
 
 @router.post("/documents/done")

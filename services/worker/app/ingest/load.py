@@ -7,7 +7,7 @@ from functools import lru_cache
 import jsonschema
 from fastapi import APIRouter, HTTPException
 
-from app.shared import neo4j
+from app.shared import events, neo4j
 from app.shared.config import settings
 from app.shared.models import DocRef
 
@@ -53,7 +53,7 @@ def load(ref: DocRef):
             """
             MATCH (c:Collection {uid: $c})
             MERGE (d:Document {uid: $uid})
-            SET d.collection = $c, d.id = $id, d.source = 'json', d.status = coalesce(d.status, 'processing'),
+            SET d.collection = $c, d.id = $id, d.source = 'json', d.status = coalesce(d.status, 'processing'), d.loaded_at = timestamp(),
                 d.title = $title, d.year = $year, d.doi = $doi,
                 d.abstract = $abstract, d.citations = $citations
             MERGE (c)-[:CONTAINS]->(d)
@@ -61,6 +61,7 @@ def load(ref: DocRef):
             c=ref.collection, uid=uid, id=doc.get("id") or ref.id, title=doc["title"],
             year=int(doc["year"]), doi=doc.get("doi"), abstract=doc.get("abstract") or None,
             citations=doc.get("citations"))
+        events.stage(ref.collection, ref.id, "prepare", source="json")
         return {"collection": ref.collection, "id": ref.id, "kind": "json",
                 "content_parsed": build_markdown(doc["body"])}
 
@@ -69,10 +70,11 @@ def load(ref: DocRef):
             """
             MATCH (c:Collection {uid: $c})
             MERGE (d:Document {uid: $uid})
-            SET d.collection = $c, d.id = $id, d.source = 'pdf', d.status = coalesce(d.status, 'processing')
+            SET d.collection = $c, d.id = $id, d.source = 'pdf', d.status = coalesce(d.status, 'processing'), d.loaded_at = timestamp()
             MERGE (c)-[:CONTAINS]->(d)
             """,
             c=ref.collection, uid=uid, id=ref.id)
+        events.stage(ref.collection, ref.id, "prepare", source="pdf")
         return {"collection": ref.collection, "id": ref.id, "kind": "pdf"}
 
     raise HTTPException(404, f"no {ref.id}.json or {ref.id}.pdf in {folder}")

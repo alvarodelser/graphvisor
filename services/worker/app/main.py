@@ -1,13 +1,25 @@
 """GraphVisor worker: one endpoint per non-LLM pipeline step, plus the read API.
 Design: docs/superpowers/specs/2026-09-23-auto-ingestion-design.md §4."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from app import api, concepts, diagnose, enrichment, ingest
-from app.shared import neo4j, vectorizer
+from app.shared import events, neo4j, vectorizer
 
-app = FastAPI(title="GraphVisor worker")
+events.setup_logging()
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    events.start_pollers()  # collection_progress + ollama_status for the dashboard
+    yield
+
+
+app = FastAPI(title="GraphVisor worker", lifespan=lifespan)
+app.add_middleware(events.StepEventsMiddleware)
 app.include_router(ingest.router)
 app.include_router(concepts.router)
 app.include_router(enrichment.router)

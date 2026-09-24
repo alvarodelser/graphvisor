@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.shared import llm_json, neo4j
+from app.shared import events, llm_json, neo4j
 from app.shared.documents import require_document
 from app.shared.models import DocRef
 
@@ -54,6 +54,8 @@ def save_classification(body: ClassificationIn):
                          body.collection, body.id, item.local_id, exc)
             skipped.append(item.local_id)
 
+    neo4j.write("MATCH (d:Document {uid: $uid}) SET d.classified_at = timestamp()",
+                uid=neo4j.uid(body.collection, body.id))
     saved = neo4j.write(
         """
         UNWIND $rows AS row
@@ -67,5 +69,8 @@ def save_classification(body: ClassificationIn):
         doc_uid=neo4j.uid(body.collection, body.id), rows=rows)
     graph_args = [{"ARG_ID": r["local_id"], "FULL_ARGUMENT": r["text"]}
                   for r in saved if r["type"] in GRAPH_TYPES]
+    if graph_args:
+        events.stage(body.collection, body.id, "l2_entities", graph_arguments=len(graph_args),
+                     skipped=len(skipped))
     return {"collection": body.collection, "id": body.id, "skipped": skipped,
             "graph_arguments": graph_args}

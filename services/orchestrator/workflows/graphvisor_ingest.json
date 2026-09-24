@@ -398,7 +398,8 @@
         },
         "options": {
           "num_ctx": 8192,
-          "system": "{{PROMPT:L1_extraction.system}}"
+          "system": "{{PROMPT:L1_extraction.system}}",
+          "think": false
         }
       },
       "id": "5e2b5287-1bd4-51e5-ae78-cf2a59a20a77",
@@ -521,7 +522,8 @@
         },
         "options": {
           "num_ctx": 8192,
-          "system": "{{PROMPT:argument_classification.system}}"
+          "system": "{{PROMPT:argument_classification.system}}",
+          "think": false
         }
       },
       "id": "3906c5dc-32e7-5f5f-8c36-a2dc1aabc077",
@@ -710,7 +712,8 @@
         },
         "options": {
           "num_ctx": 8192,
-          "system": "{{PROMPT:L2_entities.system}}"
+          "system": "{{PROMPT:L2_entities.system}}",
+          "think": false
         }
       },
       "id": "79e35585-85a6-52f9-b3b0-d8e0e4e3e05b",
@@ -1558,7 +1561,8 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveExecutionProgress": true
   },
   "pinData": {},
   "tags": []

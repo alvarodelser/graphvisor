@@ -11,6 +11,9 @@ services:
     environment:
       NEO4J_URI: bolt://graphvisor-neo4j:7687
       INPUT_DIR: /input
+    # The GPU check (ollama_status events) reads the pipeline's Ollama on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8090:8000"
     volumes:

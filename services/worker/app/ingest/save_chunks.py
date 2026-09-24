@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from app.shared import neo4j
+from app.shared import events, neo4j
 from app.shared.documents import require_document
 from app.shared.models import DocRef
 
@@ -50,7 +50,7 @@ def save_chunks(body: ChunksIn):
     neo4j.write(
         """
         MATCH (d:Document {uid: $uid})
-        SET d.text = $text, d.abstract = $abstract
+        SET d.text = $text, d.abstract = $abstract, d.chunked_at = timestamp()
         WITH d
         OPTIONAL MATCH (d)-[:HAS_CHUNK]->(old:Chunk)
         DETACH DELETE old
@@ -61,6 +61,8 @@ def save_chunks(body: ChunksIn):
         """,
         uid=uid, c=body.collection, text=body.content_parsed, abstract=abstract,
         chunks=chunks, titles=titles)
+    events.stage(body.collection, body.id, "abstraction" if abstract is None else "l1_extraction",
+                 chunks=len(chunks))
     return {"collection": body.collection, "id": body.id,
             "needs_abstract": abstract is None,
             "chunk_list": chunks, "chunk_title": titles,

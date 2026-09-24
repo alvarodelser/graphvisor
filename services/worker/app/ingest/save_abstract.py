@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.shared import neo4j
+from app.shared import events, neo4j
 from app.shared.documents import require_document
 from app.shared.models import DocRef
 
@@ -18,6 +18,7 @@ def save_abstract(body: AbstractIn):
     if not body.abstract.strip():
         raise HTTPException(422, "empty abstract")
     require_document(body.collection, body.id)
-    neo4j.write("MATCH (d:Document {uid: $uid}) SET d.abstract = $abstract",
+    neo4j.write("MATCH (d:Document {uid: $uid}) SET d.abstract = $abstract, d.abstract_at = timestamp()",
                 uid=neo4j.uid(body.collection, body.id), abstract=body.abstract.strip())
+    events.stage(body.collection, body.id, "l1_extraction")
     return {"collection": body.collection, "id": body.id}

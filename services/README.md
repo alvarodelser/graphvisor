@@ -7,7 +7,8 @@ Design: `docs/superpowers/specs/2026-09-23-auto-ingestion-design.md`. Plan and s
 |---|---|
 | `orchestrator/` | Config for the **existing** n8n: `workflows/graphvisor_{start,ingest,finalize,diagnose}.json`, `prompts/` (the old backend's, verbatim), `render.py` + `sync-to-n8n.sh` |
 | `messaging/` | Config for the **existing** RabbitMQ: `queues.json` (`graphvisor_ingest` + `graphvisor_ingest_dlq`, in IARAG's vhost) and `sync-to-rabbit.sh` |
-| `graphdb/` | Our **own** Neo4j 5 Community container: `schema.cypher` (constraints, vector indexes) and `apply-schema.sh` |
+| `graphdb/` | Our **own** Neo4j 5 Community container: `schema.cypher` (constraints, vector indexes), applied automatically on `up` |
+| `observability/` | The **GraphVisor Ingestion** dashboard for IARAG's Grafana, and `sync-to-grafana.sh` |
 | `worker/` | Our **own** FastAPI service: one endpoint per non-LLM step (`app/ingest`, `app/concepts`, `app/enrichment`) and GraphVisor's read API (`app/api`) |
 
 Shared services from IARAG are used as they are, on docker network `n8n-net`: OCR, chunker, abstraction service, vectorizer, and Ollama (through n8n's "Ollama account" credential). Nothing in IARAG is modified. Every script here only touches `graphvisor_*` resources.
@@ -19,12 +20,19 @@ cp services/.env.example services/.env   # fill in RabbitMQ management credentia
 ```
 The workflows reuse the existing n8n credentials "RabbitMQ Credentials" and "Ollama account"; nothing to create in n8n.
 
+### Neo4j (first time)
+
+Neo4j is our own container, `graphvisor-neo4j`: bolt on `127.0.0.1:7688`, browser on `127.0.0.1:7475`, and `graphvisor-neo4j:7687` on `n8n-net`.
+
+1. **Choose the password before the first start.** Put it in `services/.env` as `NEO4J_PASSWORD`, for example the output of `openssl rand -base64 24 | tr -d '/+='` (at least 8 characters, letters and digits). Neo4j stores it in its data volume on the first start and ignores the variable after that. To change it later, run `ALTER CURRENT USER SET PASSWORD` in Neo4j, or delete the `graphvisor-neo4j-data` volume, which wipes the graph.
+2. **Start it:** `docker compose --env-file services/.env -f services/graphdb/docker-compose.yml up -d`. This also applies the schema (uniqueness constraints and the two vector indexes): a one-shot `graphvisor-neo4j-schema` container waits for Neo4j to be healthy, runs `schema.cypher` and exits. Every statement is `IF NOT EXISTS`, so each `up` is safe.
+3. **Check:** `docker logs graphvisor-neo4j-schema` shows no errors and `docker inspect -f '{{.State.ExitCode}}' graphvisor-neo4j-schema` prints `0`. `diagnose.sh` then shows `worker -> neo4j … vector indexes online`. If you edit `schema.cypher`, run the same `up -d` again.
+
 ## Deploy / update
 
 ```bash
-# 1. Neo4j: start the container, apply constraints + vector indexes
+# 1. Neo4j: start the container; the schema (constraints + vector indexes) is applied on up
 docker compose --env-file services/.env -f services/graphdb/docker-compose.yml up -d
-services/graphdb/apply-schema.sh
 
 # 2. Worker: build and start (mounts input/ read-only; checks Neo4j + vectorizer)
 docker compose --env-file services/.env -f services/worker/docker-compose.yml up -d --build
@@ -38,8 +46,47 @@ services/orchestrator/sync-to-n8n.sh
 
 # 5. Check everything end to end (see Diagnose)
 services/diagnose.sh
+
+# 6. Grafana: create/update the GraphVisor dashboard (see Monitoring)
+services/observability/sync-to-grafana.sh
 ```
 Then, in the n8n UI, **publish `graphvisor_ingest` and `graphvisor_finalize`**. The import leaves them unpublished, and until `graphvisor_ingest` is published, messages wait in the queue. Re-run the matching step after changing a schema, the worker code, the queues, or a workflow or prompt.
+
+## Pipeline, step by step
+
+Who does each step, and what it produces. **LLM** is gemma4:31b through n8n's Ollama node, using the old pipeline's prompts (`orchestrator/prompts/`).
+
+**Start** (`graphvisor_start`, run by hand): the worker lists `input/<collection>/`, deletes whatever the collection had in Neo4j before, and records how many documents to expect. n8n queues one message per document in `graphvisor_ingest`.
+
+**Phase 1: each document** (`graphvisor_ingest`, one at a time)
+1. **Worker, load:** for a JSON, it validates it, creates the Document (title, year, DOI, abstract) and rebuilds the text as markdown. For a PDF only, it creates an empty Document.
+2. **OCR** (PDF only): n8n downloads the PDF from the worker and gets markdown text back.
+3. **Chunker:** n8n gets the text split into chunks, each with its section title.
+4. **Worker** saves the chunks. "Abstract"/"Summary" chunks become the abstract.
+5. **Abstraction service** (only if there is still no abstract) writes one, and the worker saves it.
+6. **LLM, L1:** once per chunk, it lists the claims and arguments.
+7. **Worker** embeds the arguments and the abstract (vectorizer), ranks the arguments by similarity to the abstract, and saves them.
+8. **LLM, classification:** once per argument, it gives the type (causal, evidence, …), confidence and reasoning. The worker keeps the 6 graph types.
+9. **LLM, L2:** once per kept argument, it gives subject–relation–object triples. An invalid answer is asked again, up to 3 times.
+10. **Worker** writes the graph: Entities, typed Entity→Entity relations, and Argument→Entity links.
+11. **Worker** marks the document done. After the last document, n8n starts finalize.
+
+A failure marks the document `failed` (with the step and the error) and puts the message in `graphvisor_ingest_dlq`. The other documents continue.
+
+**Phase 2: concepts** (`graphvisor_finalize`, whole collection)
+1. **Worker** groups the graph arguments 15 at a time.
+2. **LLM, concept constructor:** once per group, it proposes concepts.
+3. **LLM, concept validation:** a single call over all proposals, giving the final concept set (retried up to 3 times on invalid JSON).
+4. **Worker** saves and embeds the concepts, then links each argument to its 3 closest concepts.
+
+**Phase 3: enrichment** (`graphvisor_finalize`)
+1. **Title/year** (PDF-only documents): the worker tries the filename, then OpenAlex, then asks the LLM.
+2. **Citations:** the worker asks OpenAlex (by DOI, else by title), with Semantic Scholar as the fallback. This step is best effort.
+3. **Document vectors** (title + abstract) and **map positions** (PCA) for documents and concepts, computed by the worker.
+4. **Topics:** the worker clusters the documents by concept; the LLM names each topic.
+5. **Worker** marks the collection `ready`.
+
+**Viewing:** GraphVisor asks the worker which collections are ready and loads the one in `?collection=<name>`, otherwise the first ready one alphabetically. When there are several collections, a picker in the status bar switches between them; collections still processing are listed but disabled.
 
 ## Diagnose
 
@@ -53,6 +100,26 @@ One read-only report, with one PASS/FAIL/WARN line per check, and a non-zero exi
 
 The n8n part runs `n8n execute` inside the n8n container, on its own task-broker port. You can also run `graphvisor_diagnose` by hand from the n8n UI; its *Report* node shows the same results.
 
+## Monitoring
+
+GraphVisor reuses IARAG's observability stack (`IARAG/services/observability`) as it is. Promtail already ships the logs of every container on `n8n-net` to Loki, including `graphvisor-worker`. `iarag-metrics` already logs the depth of every RabbitMQ queue, ours included. The worker logs JSON events for the dashboard:
+
+| Event | When | Fields |
+|---|---|---|
+| `document_stage` | a document enters a stage; repeated every minute while it stays there | `doc_id`, `stage`, `stage_code` (1 prepare … 6 done, 7 failed) |
+| `document_done` / `document_failed` | a document closes | seconds per stage (`prepare_s`, `abstract_s`, `l1_s`, `classification_s`, `l2_s`, `total_s`), chunks, arguments, entities, `failed_step` |
+| `worker_step` | every pipeline request | `step`, `doc_id`, `status`, `duration_ms` |
+| `collection_progress` | every minute | status, expected/done/failed, arguments, entities, concepts, topics |
+| `ollama_status` | every minute | model loaded on `OLLAMA_STATUS_URL` and `gpu_percent` (`level=error` at 0%, i.e. running on the CPU) |
+
+`services/observability/sync-to-grafana.sh` pushes `graphvisor-ingestion.json` into a **GraphVisor** folder through Grafana's API (`GRAFANA_URL`, `GRAFANA_USER` and `GRAFANA_PASSWORD` in `services/.env`). IARAG's files are not touched, and only `graphvisor-*` dashboards are written. The dashboard is at `https://wiig.dia.fi.upm.es/logs/d/graphvisor-ingestion`:
+- **Document progress:** one row per document, coloured by stage over time (prepare → abstraction → L1 → classification → L2 → done). Hover a segment for when it started and how long it took.
+- **Time per stage:** a stacked bar per finished document.
+- **Collections table**, done and failed counts, and the average time per document.
+- **Pipeline model on GPU:** turns red if gemma4 falls back to the CPU.
+- Worker steps per minute, queue depth and consumers, and OCR/chunker/abstraction durations for our documents.
+- Worker warnings and errors, the GraphVisor lines in the n8n logs, and a full trace for one `doc_id` (set it at the top).
+
 ## Run a collection
 
 1. Put the documents in `input/<collection>/` (see `input/README.md`). For the PMC corpus: `python3 input/sci_corpus/fetch_corpus.py`.
@@ -62,7 +129,7 @@ The n8n part runs `n8n execute` inside the n8n container, on its own task-broker
 
 ## GraphVisor
 
-GraphVisor reads `/graphvisor/api/*` and shows the first ready collection, or `?collection=<name>`. A picker in the status bar switches between collections.
+GraphVisor reads `/graphvisor/api/*` (see *Viewing* above for which collection it shows).
 - **Development:** `npm run dev`. Vite proxies `/graphvisor/api` to the worker on `localhost:8090` (override with `GRAPHVISOR_WORKER`).
 - **Production:** whatever serves `dist/` must proxy `/graphvisor/api/` to `http://graphvisor-worker:8000/api/` (or `127.0.0.1:8090/api/`), or build with `VITE_GRAPHVISOR_API` set to the API's URL.
 

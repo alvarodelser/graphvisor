@@ -29,6 +29,10 @@ Not extracted (available from these sources if needed later):
   The last full-metadata version of this script and its output are archived
   in ../.backups/sci_corpus_json_raw_*.tar.gz.
 
+Published errata (PubMed publication type "Published Erratum") are skipped:
+a correction notice has no arguments to extract. Their files are deleted if
+an earlier run downloaded them.
+
 Malformed articles (no title or no body text after filtering) are deleted
 (PDF + JSON) and reported.
 
@@ -49,6 +53,8 @@ OUT = Path(__file__).resolve().parent
 CSV = OUT / "csv-list of articles.csv"
 BUCKET = "https://pmc-oa-opendata.s3.amazonaws.com"
 BIOC = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/{}/unicode"
+ESUMMARY = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id={}"
+SKIPPED_PUBLICATION_TYPES = {"Published Erratum"}
 
 NON_CONTENT_SECTIONS = {"ABBR", "AUTH_CONT", "COMP_INT", "REVIEW_INFO", "ACK_FUND", "SUPPL"}
 
@@ -227,6 +233,20 @@ def normalize_existing(rows):
     print(f"normalized {n} existing JSON file(s)")
 
 
+def skipped_by_type(rows):
+    """{pmcid: publication type} for the rows PubMed classifies as a skipped
+    publication type. One esummary request per 200 PMIDs."""
+    by_pmid = {r["PMID"].strip(): r["PMCID"].strip() for r in rows if r["PMID"].strip()}
+    pmids, skipped = list(by_pmid), {}
+    for i in range(0, len(pmids), 200):
+        result = json.loads(get(ESUMMARY.format(",".join(pmids[i:i + 200]))))["result"]
+        for pmid in result.get("uids", []):
+            types = set(result[pmid].get("pubtype", [])) & SKIPPED_PUBLICATION_TYPES
+            if types:
+                skipped[by_pmid[pmid]] = sorted(types)[0]
+    return skipped
+
+
 def malformed_reason(json_path):
     try:
         article = json.loads(json_path.read_text(encoding="utf-8"))
@@ -256,6 +276,12 @@ def remove_malformed(rows):
 
 def main():
     rows = list(csv.DictReader(open(CSV, encoding="utf-8-sig")))
+    skipped = skipped_by_type(rows)
+    for pmcid, kind in sorted(skipped.items()):
+        (OUT / f"{pmcid}.json").unlink(missing_ok=True)
+        (OUT / f"{pmcid}.pdf").unlink(missing_ok=True)
+        print(f"{pmcid} skipped: {kind}")
+    rows = [r for r in rows if r["PMCID"].strip() not in skipped]
     with cf.ThreadPoolExecutor(6) as ex:
         results = list(ex.map(fetch, rows))
     for pmcid, notes in results:
@@ -269,8 +295,8 @@ def main():
             print(f"  {pmcid}  {reason}  - {title[:90]}")
     n_pdf = sum((OUT / f"{r['PMCID'].strip()}.pdf").exists() for r in rows)
     n_json = sum((OUT / f"{r['PMCID'].strip()}.json").exists() for r in rows)
-    print(f"\n{len(rows)} articles in CSV: {n_json} kept as JSON, {n_pdf} PDFs, "
-          f"{len(removed)} removed as malformed")
+    print(f"\n{len(rows) + len(skipped)} articles in CSV, {len(skipped)} skipped by publication type: "
+          f"{n_json} kept as JSON, {n_pdf} PDFs, {len(removed)} removed as malformed")
 
 
 if __name__ == "__main__":
