@@ -13,3 +13,9 @@ input/sci_corpus/*.pdf
 
 # Template for services/.env (the real one is covered by .env above)
 !services/.env.example
+
+# Corpus data: GraphVisor reads collections from the worker API (services/worker).
+src/data/*.json
+src/data/*.bin
+src/data/*.bak*
+src/data/hypothesis_medils/

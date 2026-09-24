@@ -3,7 +3,6 @@
 !.gitignore
 !README.md
 !document.schema.json
-# Collection builders are code, not data: keep sci_corpus's fetch script and its article list.
+# Collection builders are code, not data: keep sci_corpus's fetch script (its article list stays local).
 !sci_corpus/
 !sci_corpus/fetch_corpus.py
-!sci_corpus/csv-list of articles.csv
