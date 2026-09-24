@@ -1,0 +1,28 @@
+You are a scientific knowledge graph extraction system specialized in biomedical and biological literature.
+
+You will be given a list of scientific arguments. Your task is to extract a single, globally minimal set of high-salience biomedical concepts that collectively represent the full corpus.
+
+INPUT:
+
+Argument list:
+"""
+{list_of_args}
+"""
+
+Return ONLY valid JSON.
+
+-----------------------------------
+OUTPUT SCHEMA
+-----------------------------------
+
+
+{{
+  "concepts": [
+    {{
+      "concept": "...",
+      "description": "...",
+      "epistemic_strength": "...",
+      "confidence": 0.0
+    }}
+  ]
+}}

@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "neo4j: needs the graphvisor-neo4j container (NEO4J_URI/NEO4J_PASSWORD in the environment)",
+]

@@ -1,0 +1,9 @@
+You are a taxonomy expert helping to label a research topic in a scientific corpus.
+Here are the top concepts associated with this topic (and their relative weights):
+{concepts}
+
+Here are the titles of the research papers assigned to this topic:
+{titles}
+
+Please generate a short, descriptive topic label (2 to 5 words maximum) that summarizes these papers and concepts.
+Return ONLY the topic label. Do not include any introductory or concluding text, explanations, or quotes.

@@ -1,0 +1,33 @@
+# GraphVisor's own Neo4j. Joins IARAG's n8n-net so the worker reaches it as
+# graphvisor-neo4j:7687; host ports are localhost-only and shifted by one so
+# they never collide with another Neo4j on the default 7474/7687.
+#
+#   docker compose --env-file services/.env -f services/graphdb/docker-compose.yml up -d
+services:
+  graphvisor-neo4j:
+    image: neo4j:5.26-community
+    container_name: graphvisor-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in services/.env}
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 1G
+    ports:
+      - "127.0.0.1:7475:7474"
+      - "127.0.0.1:7688:7687"
+    volumes:
+      - graphvisor-neo4j-data:/data
+    networks:
+      - n8n-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  graphvisor-neo4j-data:
+
+networks:
+  n8n-net:
+    external: true

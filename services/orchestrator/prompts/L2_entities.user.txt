@@ -1,0 +1,64 @@
+Extract one or more scientific relations from the following scientific argument.
+
+INPUT:
+
+Argument ID:
+{ARG_ID}
+
+Full argument:
+"""
+{FULL_ARGUMENT}
+"""
+
+
+-----------------------------------
+EXTRACTION INSTRUCTIONS
+-----------------------------------
+
+- Extract one or more scientifically meaningful relations.
+- Preserve uncertainty and speculative language.
+- Do NOT over-infer causality.
+- Include intermediate mechanistic relations if present.
+- Keep entities concise and biologically meaningful.
+- Extract relations at the appropriate biological abstraction level.
+
+-----------------------------------
+OUTPUT REQUIREMENTS
+-----------------------------------
+
+For EACH extracted relation:
+- identify the subject
+- identify the relation predicate
+- identify the object
+- classify the argument_type
+- estimate epistemic strength
+- estimate confidence
+
+Return ONLY valid JSON.
+
+-----------------------------------
+OUTPUT SCHEMA
+-----------------------------------
+
+
+{{
+  "relations": [
+    {{
+      "subject": "...",
+
+      "relation": "...",
+
+      "object": "...",
+
+      "argument_type": "...",
+
+      "epistemic_strength": "strong | moderate | weak | speculative | uncertain",
+
+      "confidence": 0.0,
+
+      "source_argument_id": ...,
+
+      "reasoning": "..."
+    }}
+  ]
+}}

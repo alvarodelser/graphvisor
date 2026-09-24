@@ -1,0 +1,14 @@
+{
+  "id": "DOC1",
+  "title": "Autophagy flux protects neurons from proteotoxic stress",
+  "year": 2024,
+  "doi": "10.0000/fixture.1",
+  "abstract": "",
+  "body": [
+    {"headings": ["Introduction"], "text": "Autophagy removes misfolded proteins."},
+    {"headings": ["Introduction"], "text": "Its failure is linked to neurodegeneration."},
+    {"headings": ["Results", "Atg7 ablation"], "text": "Atg7 loss caused inclusion bodies in neurons."},
+    {"headings": ["Results", "Rescue"], "text": "Rapamycin restored autophagic flux."},
+    {"headings": ["Discussion"], "text": "Enhancing autophagy may slow disease progression."}
+  ]
+}

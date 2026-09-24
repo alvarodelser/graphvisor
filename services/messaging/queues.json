@@ -1,0 +1,19 @@
+{
+  "_comment": "GraphVisor queues, declared in IARAG's vhost by sync-to-rabbit.sh. Only graphvisor_* names are allowed; nothing is ever deleted. graphvisor_ingest holds its message unacked for a whole document (dozens to hundreds of LLM calls), so it raises RabbitMQ's 30-min default consumer timeout to 6 h for this queue only. Queue arguments can't change after creation: to change them, delete the (empty) queue by hand and re-run the sync.",
+  "queues": [
+    {
+      "name": "graphvisor_ingest",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-consumer-timeout": 21600000
+      }
+    },
+    {
+      "name": "graphvisor_ingest_dlq",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ]
+}

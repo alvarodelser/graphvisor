@@ -1,0 +1,26 @@
+Extract all arguments and major claims from the following chunk.
+
+Strictly follow:
+- Do not include explanations
+- Do not include text outside JSON
+- Do not paraphrase 
+
+Return ONLY a valid JSON object.
+
+Text:
+{input_text}
+
+OUTPUT FORMAT (STRICT JSON ONLY)
+
+{{
+  "MajorClaim": [
+    {{
+      "text": "..."
+    }}
+  ],
+  "Arguments": [
+    {{
+      "text": "..."
+    }}
+  ]
+}}

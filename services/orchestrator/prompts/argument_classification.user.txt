@@ -1,0 +1,27 @@
+Analyze the following scientific argument.
+
+Argument text:
+"""
+{TEXT}
+"""
+
+
+Classify the argument according to the predefined argument types.
+
+Return:
+- primary_type
+- secondary_types
+- epistemic_strength
+- confidence
+- reasoning
+- signals supporting the classification
+
+Output schema:
+
+{{
+  "primary_type": "...",
+  "secondary_types": [...],
+  "epistemic_strength": "...",
+  "confidence": 0.0,
+  "reasoning": "..."
+}}

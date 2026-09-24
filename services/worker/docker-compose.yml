@@ -1,0 +1,23 @@
+# GraphVisor worker: every non-LLM pipeline step + the read API for GraphVisor.
+# On IARAG's n8n-net it is graphvisor-worker:8000; the host port is localhost-only.
+#
+#   docker compose --env-file services/.env -f services/worker/docker-compose.yml up -d --build
+services:
+  graphvisor-worker:
+    build: .
+    container_name: graphvisor-worker
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      NEO4J_URI: bolt://graphvisor-neo4j:7687
+      INPUT_DIR: /input
+    ports:
+      - "127.0.0.1:8090:8000"
+    volumes:
+      - ../../input:/input:ro
+    networks:
+      - n8n-net
+
+networks:
+  n8n-net:
+    external: true

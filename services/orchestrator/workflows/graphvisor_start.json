@@ -1,0 +1,149 @@
+{
+  "id": "GvStart000000001",
+  "name": "graphvisor_start",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4f0bd2cf-b7c4-51a8-b6b8-5652d008428f",
+      "name": "Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1506c907-2bcc-5550-9209-1c9d20db2e38",
+              "name": "collection",
+              "value": "sci_corpus",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "af1e1443-e8fe-5124-b710-50ce62aed092",
+      "name": "Collection",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Set the collection name (a folder under input/) before running.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $json.collection }}/start",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "3ed2ff8a-5f3e-5721-860e-2bb088f21f90",
+      "name": "Start collection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "documents",
+        "options": {}
+      },
+      "id": "5b041e21-080a-591a-a778-2563c8445bfe",
+      "name": "One per document",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "queue": "graphvisor_ingest",
+        "sendInputData": true,
+        "options": {
+          "assertQueue": false,
+          "durable": true
+        }
+      },
+      "id": "ec434136-29c8-5cb8-b86f-c339ee24630a",
+      "name": "Queue: graphvisor_ingest",
+      "type": "n8n-nodes-base.rabbitmq",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "rabbitmq": {
+          "id": "Ok4e4t8UDBRfAVsY",
+          "name": "RabbitMQ Credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run": {
+      "main": [
+        [
+          {
+            "node": "Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collection": {
+      "main": [
+        [
+          {
+            "node": "Start collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start collection": {
+      "main": [
+        [
+          {
+            "node": "One per document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per document": {
+      "main": [
+        [
+          {
+            "node": "Queue: graphvisor_ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "graphvisor/input-document",
+  "title": "GraphVisor input document",
+  "description": "Shape of input/<collection>/<id>.json. Only fields the pipeline uses; extra fields are ignored. Source-specific cleanup (dropping non-content sections, etc.) is the job of whatever produces these files. Which pipeline steps run depends on which optional fields are present: see input/README.md.",
+  "type": "object",
+  "required": ["title", "year", "body"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Document id within the collection. Defaults to the filename without .json."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "year": { "type": "integer", "minimum": 1000, "maximum": 9999 },
+    "doi": {
+      "type": ["string", "null"],
+      "description": "Enables exact citation lookup in OpenAlex; otherwise matched by title."
+    },
+    "abstract": {
+      "type": "string",
+      "description": "If missing or empty, the pipeline generates one."
+    },
+    "citations": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Citation count. If present, the citation lookup is skipped."
+    },
+    "body": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Argument-bearing paragraphs in reading order. The pipeline rebuilds the full text from them (headings as section titles) and sends it to the wiig chunker, exactly like OCR output.",
+      "items": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "headings": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Section path, outermost first, e.g. [\"Results\", \"Autophagy flux\"]."
+          }
+        }
+      }
+    }
+  }
+}

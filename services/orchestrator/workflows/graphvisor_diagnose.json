@@ -1,0 +1,307 @@
+{
+  "id": "GvDiagnose000001",
+  "name": "graphvisor_diagnose",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c9837bc6-6760-5d4f-b12f-dab3f5167e18",
+      "name": "Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Checks every service the pipeline calls from n8n; run by services/diagnose.sh or by hand.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ENV:WORKER_URL}}/diagnose?quick=true",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "abb3d4fc-5912-5b2b-bdd8-8cc9072b6085",
+      "name": "Worker diagnose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ENV:WORKER_URL}}/diagnose/sample.pdf",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "5d4229dc-d08c-59f6-a0f0-c2a7f0d5dd48",
+      "name": "Download sample PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ocr_api:8084/services/ocr",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "type_name",
+              "value": "pdf"
+            },
+            {
+              "name": "doc_id",
+              "value": "graphvisor-diagnose"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "a01e6d77-9ec5-552b-9d7c-4ef9769e71ea",
+      "name": "OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://chunker:8084/services/chunking/doc",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content_parsed",
+              "value": "# Abstract\n\nAutophagy removes misfolded proteins from neurons.\n\n# Results\n\nAtg7 loss caused inclusion bodies in neurons. Rapamycin restored autophagic flux."
+            },
+            {
+              "name": "doc_id",
+              "value": "graphvisor-diagnose"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "60666032-5660-5891-9ab9-ba571e4e48a6",
+      "name": "Chunker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const enc = (k, v) => encodeURIComponent(k) + '=' + encodeURIComponent(v);\nconst chunks = ['Autophagy removes misfolded proteins from neurons.',\n                'Atg7 loss caused inclusion bodies in neurons. Rapamycin restored autophagic flux.'];\nconst parts = [...chunks.map(c => enc('chunk_list', c)), enc('chunk_title', 'Introduction'),\n               enc('chunk_title', 'Results'), enc('doc_id', 'graphvisor-diagnose')];\nreturn [{ json: { form: parts.join('&') } }];"
+      },
+      "id": "cf738469-3401-5f4f-8ae0-e2ae2472ce3c",
+      "name": "Abstraction form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://abstraction-module:8084/services/abstractions/generate",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/x-www-form-urlencoded",
+        "body": "={{ $json.form }}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "id": "4bfb9352-4c43-5ab0-a40d-e5f51bab2557",
+      "name": "Abstraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Return exactly this JSON object: {\"ok\": true, \"service\": \"graphvisor\"}"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are a service check. Return ONLY valid JSON, with no other text."
+        }
+      },
+      "id": "bbefbd04-8aa2-5244-be0d-70be62ab1244",
+      "name": "Ollama",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One pass/fail line per check; services/diagnose.sh prints this item.\nconst out = (name) => { try { return $(name).first().json } catch (e) { return { error: 'did not run' } } };\nconst err = (j) => j.error ? String(j.error.message ?? j.error) : null;\nconst checks = [];\nconst add = (check, ok, detail, required = true) => checks.push({ check, ok, required, detail });\n\n// The worker's own checks are reported from the host by diagnose.sh; here\n// only n8n's route to the worker matters.\nconst w = out('Worker diagnose');\nadd('n8n -> worker', !err(w) && Array.isArray(w.checks),\n    err(w) ?? `reached graphvisor-worker (its checks: ${w.ok ? 'passing' : 'FAILING, see the worker section'})`);\n\nconst ocr = out('OCR');\nconst text = String(ocr.content_parsed ?? '');\nadd('n8n -> OCR', !err(ocr) && /graphvisor/i.test(text),\n    err(ocr) ?? (text ? `${text.length} chars: ${JSON.stringify(text.slice(0, 80))}` : 'empty content_parsed'));\n\nconst ch = out('Chunker');\nconst titles = ch.chunk_title ?? [], chunks = ch.chunk_list ?? [];\nconst chunkOk = !err(ch) && chunks.length > 0 && titles.length === chunks.length\n  && titles.some(t => String(t).trim().toLowerCase() === 'abstract');\nadd('n8n -> chunker', chunkOk, err(ch) ?? `${chunks.length} chunks, titles ${JSON.stringify(titles)}`);\n\nconst ab = out('Abstraction');\nconst abstract = typeof ab.abstract === 'string' ? ab.abstract : '';\nadd('n8n -> abstraction', !err(ab) && abstract.length > 20,\n    err(ab) ?? (abstract ? `${abstract.length} chars: ${JSON.stringify(abstract.slice(0, 80))}` : 'no abstract'));\n\nconst ol = out('Ollama');\nlet parsed = null;\ntry {\n  parsed = JSON.parse(String(ol.content ?? '').replace(/<think>[\\s\\S]*?<\\/think>/g, '')\n    .trim().replace(/^```(?:json)?\\s*|\\s*```$/g, ''));\n} catch (e) {}\nadd('n8n -> ollama (JSON with system prompt)', !err(ol) && parsed?.ok === true,\n    err(ol) ?? `answer ${JSON.stringify(String(ol.content ?? '').slice(0, 80))}`);\n\nreturn [{ json: { ok: checks.every(c => c.ok || c.required === false), checks } }];\n"
+      },
+      "id": "06773a64-ca00-54d7-9074-6785da4aef43",
+      "name": "Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Run": {
+      "main": [
+        [
+          {
+            "node": "Worker diagnose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker diagnose": {
+      "main": [
+        [
+          {
+            "node": "Download sample PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download sample PDF": {
+      "main": [
+        [
+          {
+            "node": "OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR": {
+      "main": [
+        [
+          {
+            "node": "Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunker": {
+      "main": [
+        [
+          {
+            "node": "Abstraction form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abstraction form": {
+      "main": [
+        [
+          {
+            "node": "Abstraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abstraction": {
+      "main": [
+        [
+          {
+            "node": "Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama": {
+      "main": [
+        [
+          {
+            "node": "Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

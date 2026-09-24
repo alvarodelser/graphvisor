@@ -1,0 +1,15 @@
+Analyze and curate the following concepts and their descriptions according to the instructions.
+
+Concept list:
+
+{list_of_concepts}
+
+
+Each entry must follow this schema:
+
+{{
+  "concept": "canonical biological concept name",
+  "description": "scientifically accurate, concise definition",
+  "epistemic_strength": "high | moderate | low",
+  "confidence": 0.0 to 1.0
+}}

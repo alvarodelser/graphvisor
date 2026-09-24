@@ -1,0 +1,1565 @@
+{
+  "id": "GvIngest00000001",
+  "name": "graphvisor_ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "queue": "graphvisor_ingest",
+        "options": {
+          "acknowledge": "executionFinishes",
+          "jsonParseBody": true,
+          "onlyContent": true,
+          "parallelMessages": 1,
+          "assertQueue": false
+        }
+      },
+      "id": "f8da430e-34ce-5238-9784-447434864693",
+      "name": "graphvisor_ingest",
+      "type": "n8n-nodes-base.rabbitmqTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "rabbitmq": {
+          "id": "Ok4e4t8UDBRfAVsY",
+          "name": "RabbitMQ Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ce9ff93b-38f6-54be-8673-80c0f6cff59d",
+              "name": "collection",
+              "value": "={{ $json.collection }}",
+              "type": "string"
+            },
+            {
+              "id": "4a163c46-3bff-555c-96e8-feb46cf6cf1d",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d6650fa3-8846-5480-867a-d590ffa14b8c",
+      "name": "Document",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/load",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $json.collection, id: $json.id }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "4087d63a-0429-5482-b8ee-ff28163a0524",
+      "name": "Load",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1a17719f-8787-5de8-bcb2-a21a36638ab7",
+              "leftValue": "={{ $json.kind === 'pdf' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7a8959a1-8387-5ac2-920f-497830bf89b7",
+      "name": "PDF only?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ENV:WORKER_URL}}/documents/{{ $('Document').first().json.collection }}/{{ $('Document').first().json.id }}/pdf",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "6698b48c-126f-5ca6-b62c-7414c232f5e5",
+      "name": "Download PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ocr_api:8084/services/ocr",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "type_name",
+              "value": "pdf"
+            },
+            {
+              "name": "doc_id",
+              "value": "={{ $('Document').first().json.collection }}:{{ $('Document').first().json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "b7660a05-fffd-512e-b92a-93e98dc6a4c0",
+      "name": "OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9e4bc8c8-ce53-52fa-b8bf-1ead983772e0",
+              "name": "content_parsed",
+              "value": "={{ $json.content_parsed }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2145ee57-397b-5443-a054-f03e303963d7",
+      "name": "Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://chunker:8084/services/chunking/doc",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content_parsed",
+              "value": "={{ $json.content_parsed }}"
+            },
+            {
+              "name": "doc_id",
+              "value": "={{ $('Document').first().json.collection }}:{{ $('Document').first().json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "5ad88cae-318b-5c94-a7db-f6d3c132828b",
+      "name": "Chunker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/chunks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, content_parsed: $('Content').first().json.content_parsed, chunk_list: $json.chunk_list, chunk_title: $json.chunk_title }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "13db4e2a-2169-53a4-821f-be62b043fc6b",
+      "name": "Save chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1055ccaf-df61-5d0c-82fe-fbcd9f695134",
+              "leftValue": "={{ $json.needs_abstract }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6a198b7f-c86e-5538-844c-51d31590db06",
+      "name": "Needs abstract?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The abstraction service takes form lists (chunk_list=..&chunk_list=..), as\n// the old pipeline sent them with requests; n8n's form fields are fixed, so\n// the urlencoded body is built here.\nconst sc = $('Save chunks').first().json;\nconst enc = (k, v) => encodeURIComponent(k) + '=' + encodeURIComponent(v ?? '');\nconst parts = [\n  ...sc.chunk_list.map(c => enc('chunk_list', c)),\n  ...sc.chunk_title.map(t => enc('chunk_title', t)),\n  enc('doc_id', sc.collection + ':' + sc.id),\n];\nreturn [{ json: { form: parts.join('&') } }];"
+      },
+      "id": "6e10ffea-5af4-5d40-8e3c-0e8872e1f903",
+      "name": "Abstraction form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://abstraction-module:8084/services/abstractions/generate",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/x-www-form-urlencoded",
+        "body": "={{ $json.form }}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "id": "c91a3314-f4c5-58b3-b552-f8624c223575",
+      "name": "Abstraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        -200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/abstract",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, abstract: $json.abstract }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "e51f7d23-9c33-526c-895f-e7e1eaf14c1a",
+      "name": "Save abstract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        -200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1dbd44a-a635-5d2d-97be-344e3ca6c936",
+              "name": "chunks",
+              "value": "={{ $('Save chunks').first().json.chunks }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26bc5963-fa74-52d7-8df6-b071317ba797",
+      "name": "Chunks",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "chunks",
+        "options": {}
+      },
+      "id": "88a962cf-6d21-5e41-840e-6739c549bfaf",
+      "name": "One per chunk",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:L1_extraction.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192,
+          "system": "{{PROMPT:L1_extraction.system}}"
+        }
+      },
+      "id": "5e2b5287-1bd4-51e5-ae78-cf2a59a20a77",
+      "name": "L1 extraction",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "cba0b26a-804f-55ac-a6bf-7c96b0b93203",
+      "name": "Collect L1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/arguments",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, responses: $json.items.map(i => i.content) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "ef3c7ef7-0ff8-58d9-b104-05d867c50a5c",
+      "name": "Save L1 arguments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4cffb247-f6f4-594b-b643-2b2c9296a925",
+              "leftValue": "={{ $json.argument_list.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "36c2fa30-8552-5f8e-bc00-08838e221a7c",
+      "name": "Any arguments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "argument_list",
+        "options": {}
+      },
+      "id": "b1e80218-053c-5578-a586-839902f761bb",
+      "name": "One per argument",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:argument_classification.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192,
+          "system": "{{PROMPT:argument_classification.system}}"
+        }
+      },
+      "id": "3906c5dc-32e7-5f5f-8c36-a2dc1aabc077",
+      "name": "Classification",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        4800,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "071a05df-e09b-5e44-9eb5-21e6b4b647a6",
+              "name": "local_id",
+              "value": "={{ $('One per argument').item.json.local_id }}",
+              "type": "number"
+            },
+            {
+              "id": "74ebd06c-50e0-5f7f-8643-af2dce2f0bdf",
+              "name": "raw",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "944d877b-ddaf-5c4e-8bfb-6cfabb21be44",
+      "name": "Classification result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "results",
+        "options": {}
+      },
+      "id": "d959a6ee-d897-5899-9b03-eceab7795c19",
+      "name": "Collect classification",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        5280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/classification",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, results: $json.results }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "50372385-9445-5eb0-ad5a-8a3f43cef866",
+      "name": "Save classification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5520,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5b012d68-2feb-534c-871d-27db3fb7fd6e",
+              "leftValue": "={{ $json.graph_arguments.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b52b0efe-aca6-5dcf-ae9b-0d503e8db6e9",
+      "name": "Any graph arguments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "graph_arguments",
+        "options": {}
+      },
+      "id": "eb383aab-2fa7-5a59-a53c-adf77cdc8a3b",
+      "name": "One per graph argument",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        6000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "634a3e19-dc7f-587c-a79a-bcf80831b40f",
+              "name": "ARG_ID",
+              "value": "={{ $json.ARG_ID }}",
+              "type": "number"
+            },
+            {
+              "id": "558d9dd5-1290-51fe-9be4-f7251a13712f",
+              "name": "FULL_ARGUMENT",
+              "value": "={{ $json.FULL_ARGUMENT }}",
+              "type": "string"
+            },
+            {
+              "id": "fc68aa5c-0b60-5b4b-93be-60f675f44022",
+              "name": "attempt",
+              "value": "={{ $json.attempt ?? 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0de32937-34ed-5e46-9a6a-712ea451da1f",
+      "name": "L2 items",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6240,
+        0
+      ],
+      "notes": "Entry of the L2 loop: first pass from the split, retries from 'Retry invalid L2'.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:L2_entities.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192,
+          "system": "{{PROMPT:L2_entities.system}}"
+        }
+      },
+      "id": "79e35585-85a6-52f9-b3b0-d8e0e4e3e05b",
+      "name": "L2 entities",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        6480,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5d4c83a-a385-5286-8db5-aed944f1427a",
+              "name": "ARG_ID",
+              "value": "={{ $('L2 items').item.json.ARG_ID }}",
+              "type": "number"
+            },
+            {
+              "id": "ebe26862-c021-5797-b04d-669e443122d8",
+              "name": "attempt",
+              "value": "={{ $('L2 items').item.json.attempt }}",
+              "type": "number"
+            },
+            {
+              "id": "74ebd06c-50e0-5f7f-8643-af2dce2f0bdf",
+              "name": "raw",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aaaaa75b-1699-562a-9ac2-5b0a5d47bcae",
+      "name": "L2 result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "results",
+        "options": {}
+      },
+      "id": "8a9aaa32-971b-5c93-a208-4b9f44375aa4",
+      "name": "Collect L2",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        6960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/entities",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, results: $json.results.map(r => ({ ARG_ID: r.ARG_ID, raw: r.raw })) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "ea2a9098-7844-58ed-ac12-a0113fdd16e8",
+      "name": "Save L2 entities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7200,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a847e490-d071-5339-bdac-29d1106607dc",
+              "leftValue": "={{ $json.invalid.length > 0 && $('Collect L2').last().json.results[0].attempt < 3 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "25cd70b0-79fe-5495-baf6-7f7c514ef057",
+      "name": "Retry L2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7440,
+        0
+      ],
+      "notes": "The old pipeline retried each L2 argument up to 3 times.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const invalid = new Set($json.invalid);\nconst attempt = $('Collect L2').last().json.results[0].attempt + 1;\nreturn $('Save classification').first().json.graph_arguments\n  .filter(a => invalid.has(a.ARG_ID))\n  .map(a => ({ json: { ...a, attempt } }));"
+      },
+      "id": "f291c94f-bfe5-5421-abea-0eefcec4e6fa",
+      "name": "Retry invalid L2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/done",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "8674bc11-88e0-5494-895d-8e330b522203",
+      "name": "Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7680,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/failed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, step: $prevNode.name, error: String($json.error?.message ?? JSON.stringify($json.error ?? $json)).slice(0, 2000) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "b27f5086-71ea-5d6c-abeb-f3440d32e892",
+      "name": "Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        500
+      ],
+      "notes": "Every step's error output lands here; step = the node that failed.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "maxItems": 1
+      },
+      "id": "648edd58-5216-5e28-a3b9-76ce7532274a",
+      "name": "Once",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "queue": "graphvisor_ingest_dlq",
+        "sendInputData": true,
+        "options": {
+          "assertQueue": false,
+          "durable": true
+        }
+      },
+      "id": "90393a08-0873-5af5-9b32-ccb01076095a",
+      "name": "Queue: graphvisor_ingest_dlq",
+      "type": "n8n-nodes-base.rabbitmq",
+      "typeVersion": 1.1,
+      "position": [
+        4320,
+        650
+      ],
+      "credentials": {
+        "rabbitmq": {
+          "id": "Ok4e4t8UDBRfAVsY",
+          "name": "RabbitMQ Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09c498cd-1494-5414-bb83-a57599e6b343",
+              "leftValue": "={{ $json.collection_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0f4bf289-4ca8-5f13-919f-bd4e372e952c",
+      "name": "Collection complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7920,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "GvFinalize000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "collection": "={{ $json.collection }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "collection",
+              "displayName": "collection",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "bfae0c7d-28a0-57f6-89aa-11c6d44a6e5d",
+      "name": "Run graphvisor_finalize",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        8160,
+        250
+      ],
+      "notes": "Fire and forget: the ingest message is acked without waiting for finalize.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "graphvisor_ingest": {
+      "main": [
+        [
+          {
+            "node": "Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document": {
+      "main": [
+        [
+          {
+            "node": "Load",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load": {
+      "main": [
+        [
+          {
+            "node": "PDF only?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF only?": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "OCR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR": {
+      "main": [
+        [
+          {
+            "node": "Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content": {
+      "main": [
+        [
+          {
+            "node": "Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunker": {
+      "main": [
+        [
+          {
+            "node": "Save chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save chunks": {
+      "main": [
+        [
+          {
+            "node": "Needs abstract?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs abstract?": {
+      "main": [
+        [
+          {
+            "node": "Abstraction form",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abstraction form": {
+      "main": [
+        [
+          {
+            "node": "Abstraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abstraction": {
+      "main": [
+        [
+          {
+            "node": "Save abstract",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save abstract": {
+      "main": [
+        [
+          {
+            "node": "Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunks": {
+      "main": [
+        [
+          {
+            "node": "One per chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per chunk": {
+      "main": [
+        [
+          {
+            "node": "L1 extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L1 extraction": {
+      "main": [
+        [
+          {
+            "node": "Collect L1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect L1": {
+      "main": [
+        [
+          {
+            "node": "Save L1 arguments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save L1 arguments": {
+      "main": [
+        [
+          {
+            "node": "Any arguments?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any arguments?": {
+      "main": [
+        [
+          {
+            "node": "One per argument",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per argument": {
+      "main": [
+        [
+          {
+            "node": "Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification": {
+      "main": [
+        [
+          {
+            "node": "Classification result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification result": {
+      "main": [
+        [
+          {
+            "node": "Collect classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect classification": {
+      "main": [
+        [
+          {
+            "node": "Save classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save classification": {
+      "main": [
+        [
+          {
+            "node": "Any graph arguments?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any graph arguments?": {
+      "main": [
+        [
+          {
+            "node": "One per graph argument",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per graph argument": {
+      "main": [
+        [
+          {
+            "node": "L2 items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L2 items": {
+      "main": [
+        [
+          {
+            "node": "L2 entities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L2 entities": {
+      "main": [
+        [
+          {
+            "node": "L2 result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L2 result": {
+      "main": [
+        [
+          {
+            "node": "Collect L2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect L2": {
+      "main": [
+        [
+          {
+            "node": "Save L2 entities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save L2 entities": {
+      "main": [
+        [
+          {
+            "node": "Retry L2?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry L2?": {
+      "main": [
+        [
+          {
+            "node": "Retry invalid L2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry invalid L2": {
+      "main": [
+        [
+          {
+            "node": "L2 items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done": {
+      "main": [
+        [
+          {
+            "node": "Collection complete?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collection complete?": {
+      "main": [
+        [
+          {
+            "node": "Run graphvisor_finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed": {
+      "main": [
+        [
+          {
+            "node": "Once",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Once": {
+      "main": [
+        [
+          {
+            "node": "Queue: graphvisor_ingest_dlq",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collection complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

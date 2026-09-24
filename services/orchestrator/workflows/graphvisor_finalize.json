@@ -1,0 +1,1327 @@
+{
+  "id": "GvFinalize000001",
+  "name": "graphvisor_finalize",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "collection"
+            }
+          ]
+        }
+      },
+      "id": "0653a4de-63fc-5d83-ae2d-48e7002b5f43",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Called by graphvisor_ingest when a collection's last document closes; can also be run by hand.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ce9ff93b-38f6-54be-8673-80c0f6cff59d",
+              "name": "collection",
+              "value": "={{ $json.collection }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "989dc320-230b-50be-910c-10a2544ce376",
+      "name": "Collection",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/concept-batches",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "2754a0c7-8e03-53cd-bced-d21bb1e7aa64",
+      "name": "Concept batches",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "batches",
+        "options": {}
+      },
+      "id": "692a32e0-6eb7-58b9-88a0-d9bce814fc4b",
+      "name": "One per batch",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:concept_constructor.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192,
+          "system": "{{PROMPT:concept_constructor.system}}"
+        }
+      },
+      "id": "d1f2c1e6-e603-58c4-93fc-b4679102fb63",
+      "name": "Concept constructor",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "e699a65e-a58a-5da0-a338-811f6e8f888b",
+      "name": "Collect candidates",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/concept-candidates",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ responses: $json.items.map(i => i.content) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "746abdef-b8bf-5398-928d-7598536878bc",
+      "name": "Save candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a14703d9-e765-5690-903c-1b22b69a7492",
+              "name": "list_of_concepts",
+              "value": "={{ $json.list_of_concepts }}",
+              "type": "string"
+            },
+            {
+              "id": "fc68aa5c-0b60-5b4b-93be-60f675f44022",
+              "name": "attempt",
+              "value": "={{ $json.attempt ?? 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6133ea3d-60be-58cd-8be0-800f76ba3930",
+      "name": "Validation input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        0
+      ],
+      "notes": "Entry of the validation loop (retried up to 3 times on invalid JSON).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:concept_validation.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 32768,
+          "system": "{{PROMPT:concept_validation.system}}"
+        }
+      },
+      "id": "3ac08dce-569f-548a-98ee-0ec29d2544e6",
+      "name": "Concept validation",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "notes": "One call over every candidate concept, as the old pipeline did.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/concepts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json.content }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "0af3047e-5912-5d4a-8f48-dcb06c020db2",
+      "name": "Save concepts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b3c6fcf7-11c3-53f0-a922-97703d08949e",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "708367fe-5469-56e3-a4c8-8f5ee8cafe92",
+      "name": "Valid concepts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "05defe19-7aa5-5194-b84b-0235febf23d5",
+              "leftValue": "={{ $('Validation input').last().json.attempt < 3 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "73ad8fec-2961-50df-b3a9-c6bdd2ca801f",
+      "name": "Retry validation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "10f247c6-f56c-50c0-9402-27a34baf7aa5",
+              "name": "list_of_concepts",
+              "value": "={{ $('Save candidates').first().json.list_of_concepts }}",
+              "type": "string"
+            },
+            {
+              "id": "9a8e90f2-6668-53da-afef-48409bdd2a21",
+              "name": "attempt",
+              "value": "={{ $('Validation input').last().json.attempt + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0141ccc7-6042-5ba6-b796-48e48603628f",
+      "name": "Next validation attempt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a72fc262-9723-5768-8f19-3107d122afc9",
+              "name": "error",
+              "value": "=concept validation returned invalid JSON 3 times: {{ $('Save concepts').last().json.error }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d09cd03-c1e9-5937-86ea-002bd3911e3b",
+      "name": "Validation invalid 3 times",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/concepts/index",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "1a869e19-5347-5526-9d30-ab965b790572",
+      "name": "Concept indexing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/concepts/link",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 3600000
+        }
+      },
+      "id": "a5607800-b0d5-508f-a6d6-53a03b4fc599",
+      "name": "Argument-concept linking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/metadata",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 3600000
+        }
+      },
+      "id": "e3a45786-fefa-5c10-a86a-4e5db918b53b",
+      "name": "Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2ad43c1e-8286-51e8-81a1-de84743ad2dc",
+              "leftValue": "={{ $json.needs_llm.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e1482eb-2633-5167-a176-dafff601a0c2",
+      "name": "Any metadata for the LLM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "needs_llm",
+        "options": {}
+      },
+      "id": "61e17157-8606-5b4f-9257-d0eeb1249a53",
+      "name": "One per document",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        3840,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:metadata.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192
+        }
+      },
+      "id": "8e8cc06b-29a2-599f-955c-1c272c9aceb2",
+      "name": "Metadata LLM",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        -200
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Best effort: a document keeps its file-name title if this fails.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/documents/metadata",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Collection').first().json.collection, id: $('One per document').item.json.id, raw: $json.content ?? '' }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "e4397acc-2335-5a93-ac11-db6489714edc",
+      "name": "Save metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4320,
+        -200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "3f79ce92-ade0-5514-8988-418ecaa426cc",
+      "name": "Metadata done",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/citations",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 3600000
+        }
+      },
+      "id": "28c64401-b604-503c-b206-c24a7236b2ae",
+      "name": "Citations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4800,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/doc-embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 3600000
+        }
+      },
+      "id": "141680af-cfb8-5a14-b7b8-d22dc5941bf2",
+      "name": "Document embeddings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5040,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/grounding",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "da3b22df-ef04-5e61-8507-387d64d75adf",
+      "name": "Grounding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5280,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/topics",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "909b3b73-cdec-59ff-aed1-a8b6f7718e10",
+      "name": "Topics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5520,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6ad00e4c-4a46-5947-bf93-82989abef962",
+              "leftValue": "={{ $json.to_label.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1df2945d-7bad-5cfc-bbae-9e9e14cef031",
+      "name": "Any topic to label?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "to_label",
+        "options": {}
+      },
+      "id": "acdcd96a-a958-54bd-a274-9f8acd450bc5",
+      "name": "One per topic",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        6000,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:topic_label.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 8192
+        }
+      },
+      "id": "61caff5a-c30d-5f5a-b5ec-13c9b1e8db2e",
+      "name": "Topic label",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        6240,
+        -200
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "2A51aTowMwDWVKVc",
+          "name": "Ollama account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Best effort: a topic without a label falls back to its top concepts.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9734bc95-3027-5c88-aa08-f749f75e5edd",
+              "name": "topic_id",
+              "value": "={{ $('One per topic').item.json.topic_id }}",
+              "type": "number"
+            },
+            {
+              "id": "5c83f82b-19ce-5a09-8193-2ca1e0da36fc",
+              "name": "raw",
+              "value": "={{ $json.content ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c4c10f48-25ee-5ac2-8cd0-ebb90ace2b89",
+      "name": "Topic label result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6480,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "26ae6e4c-f722-5d23-910f-a8db587e1b37",
+      "name": "Collect labels",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        6720,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/topic-labels",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: ($json.items ?? []).map(i => ({ topic_id: i.topic_id, raw: i.raw })) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "b4de60b6-7c2b-59e3-be30-325395a2633a",
+      "name": "Save topic labels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6960,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/ready",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "1e8b9627-29e4-556c-9234-a0b979818ccb",
+      "name": "Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7200,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/finalize-failed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ step: $prevNode.name, error: String($json.error?.message ?? $json.error ?? JSON.stringify($json)).slice(0, 2000) }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "1672200c-0e68-52ad-8f04-6242285a76b8",
+      "name": "Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        500
+      ],
+      "notes": "Every step's error output lands here; the collection is marked failed.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collection": {
+      "main": [
+        [
+          {
+            "node": "Concept batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concept batches": {
+      "main": [
+        [
+          {
+            "node": "One per batch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per batch": {
+      "main": [
+        [
+          {
+            "node": "Concept constructor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concept constructor": {
+      "main": [
+        [
+          {
+            "node": "Collect candidates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect candidates": {
+      "main": [
+        [
+          {
+            "node": "Save candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save candidates": {
+      "main": [
+        [
+          {
+            "node": "Validation input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation input": {
+      "main": [
+        [
+          {
+            "node": "Concept validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concept validation": {
+      "main": [
+        [
+          {
+            "node": "Save concepts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save concepts": {
+      "main": [
+        [
+          {
+            "node": "Valid concepts?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid concepts?": {
+      "main": [
+        [
+          {
+            "node": "Concept indexing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retry validation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry validation?": {
+      "main": [
+        [
+          {
+            "node": "Next validation attempt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation invalid 3 times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next validation attempt": {
+      "main": [
+        [
+          {
+            "node": "Validation input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation invalid 3 times": {
+      "main": [
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concept indexing": {
+      "main": [
+        [
+          {
+            "node": "Argument-concept linking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Argument-concept linking": {
+      "main": [
+        [
+          {
+            "node": "Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Metadata": {
+      "main": [
+        [
+          {
+            "node": "Any metadata for the LLM?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any metadata for the LLM?": {
+      "main": [
+        [
+          {
+            "node": "One per document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Citations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per document": {
+      "main": [
+        [
+          {
+            "node": "Metadata LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Metadata LLM": {
+      "main": [
+        [
+          {
+            "node": "Save metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save metadata": {
+      "main": [
+        [
+          {
+            "node": "Metadata done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Metadata done": {
+      "main": [
+        [
+          {
+            "node": "Citations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citations": {
+      "main": [
+        [
+          {
+            "node": "Document embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document embeddings": {
+      "main": [
+        [
+          {
+            "node": "Grounding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grounding": {
+      "main": [
+        [
+          {
+            "node": "Topics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topics": {
+      "main": [
+        [
+          {
+            "node": "Any topic to label?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any topic to label?": {
+      "main": [
+        [
+          {
+            "node": "One per topic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save topic labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per topic": {
+      "main": [
+        [
+          {
+            "node": "Topic label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic label": {
+      "main": [
+        [
+          {
+            "node": "Topic label result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic label result": {
+      "main": [
+        [
+          {
+            "node": "Collect labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect labels": {
+      "main": [
+        [
+          {
+            "node": "Save topic labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save topic labels": {
+      "main": [
+        [
+          {
+            "node": "Ready",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

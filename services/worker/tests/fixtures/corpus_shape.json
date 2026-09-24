@@ -1,0 +1,39 @@
+{
+ "document": [
+  "abstract",
+  "data",
+  "pca_x",
+  "pca_y",
+  "source",
+  "topic_id",
+  "year"
+ ],
+ "argument": [
+  "arg_id",
+  "argument_type",
+  "concept_level",
+  "confidence",
+  "full_argument",
+  "reasoning",
+  "relations"
+ ],
+ "concept_level": [
+  "concept_id",
+  "confidence",
+  "descriptions",
+  "epistemic_strength",
+  "parent_concepts",
+  "parent_concepts_cos"
+ ],
+ "relation": [
+  "argument_type",
+  "confidence",
+  "epistemic_strength",
+  "object",
+  "reasoning",
+  "relation",
+  "relation_type",
+  "source_argument_id",
+  "subject"
+ ]
+}

@@ -1,0 +1,13 @@
+Below is the beginning of a scientific article. Identify its title and its year of publication.
+
+Text:
+"""
+{text}
+"""
+
+Return ONLY valid JSON, with null for a value that cannot be determined from the text:
+
+{{
+  "title": "...",
+  "year": 2020
+}}
