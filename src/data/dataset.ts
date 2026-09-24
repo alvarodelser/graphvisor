@@ -1,12 +1,10 @@
-import corpusData from './corpus.json'
-import hypothesisData from './hypothesis.json'
-
-import docEmbBinUrl from './doc_embeddings.bin?url'
-import conceptEmbBinUrl from './concept_embeddings.bin?url'
-import conceptsData from './concepts.json'
-import topicsData from './topics.json'
-
 import type { Hypothesis } from '../types'
+
+// GraphVisor reads a collection from the ingestion worker's read API
+// (services/worker/app/api). The API serves the same shapes the static files
+// used to have: corpus JSON, topics, concept groundings and float32 embeddings.
+// In development, vite.config.ts proxies this path to the local worker.
+export const API_BASE: string = import.meta.env.VITE_GRAPHVISOR_API ?? '/graphvisor/api'
 
 export interface ConceptGrounding {
   concept: string
@@ -15,11 +13,61 @@ export interface ConceptGrounding {
   radius: number
 }
 
-export const corpusJson = corpusData
-export const docEmbeddingsUrl = docEmbBinUrl
-export const conceptEmbeddingsUrl = conceptEmbBinUrl
-export const conceptsJson = conceptsData as unknown as ConceptGrounding[]
-export const topicsJson = topicsData
+export interface CollectionInfo {
+  name: string
+  status: 'processing' | 'ready' | 'failed'
+  expected: number
+  done: number
+  failed: number
+}
+
+export interface Dataset {
+  collection: string
+  corpus: unknown[]
+  topics: Array<{ id: number; label: string; docIds: string[]; argCount: number }>
+  concepts: ConceptGrounding[]
+  hypotheses: Hypothesis[]
+  docEmbeddingsUrl: string
+  conceptEmbeddingsUrl: string
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`)
+  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+export function listCollections(): Promise<CollectionInfo[]> {
+  return getJson<CollectionInfo[]>('/collections')
+}
+
+// The collection shown is ?collection=<name>, else the first ready one.
+export async function resolveCollection(): Promise<string> {
+  const requested = new URLSearchParams(window.location.search).get('collection')
+  if (requested) return requested
+  const ready = (await listCollections()).find(c => c.status === 'ready')
+  if (!ready) throw new Error('No ready collection on the GraphVisor API')
+  return ready.name
+}
+
+export async function loadDataset(collection: string): Promise<Dataset> {
+  const base = `/collections/${encodeURIComponent(collection)}`
+  const [corpus, topics, concepts, hypotheses] = await Promise.all([
+    getJson<unknown[]>(`${base}/corpus`),
+    getJson<Dataset['topics']>(`${base}/topics`),
+    getJson<ConceptGrounding[]>(`${base}/concepts`),
+    getJson<unknown>(`${base}/hypotheses`),
+  ])
+  return {
+    collection,
+    corpus,
+    topics,
+    concepts,
+    hypotheses: normalizeHypotheses(hypotheses),
+    docEmbeddingsUrl: `${API_BASE}${base}/doc_embeddings.bin`,
+    conceptEmbeddingsUrl: `${API_BASE}${base}/concept_embeddings.bin`,
+  }
+}
 
 type RawHypothesisItem = {
   hypothesis: string
@@ -78,4 +126,3 @@ function normalizeHypotheses(raw: unknown): Hypothesis[] {
   )
 }
 
-export const hypothesisJson = normalizeHypotheses(hypothesisData)

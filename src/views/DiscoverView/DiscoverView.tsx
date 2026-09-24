@@ -234,6 +234,9 @@ export function DiscoverView() {
         </div>
       </div>
       <div className={styles.list}>
+        {allHypotheses.length === 0 && (
+          <p className={styles.empty}>No hypotheses for this collection.</p>
+        )}
         {sorted.map(h => (
           <DiscoverListItem
             key={h.hypothesis}

@@ -1,5 +1,5 @@
 import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
-import { corpusJson, hypothesisJson, docEmbeddingsUrl, conceptEmbeddingsUrl, conceptsJson, topicsJson, type ConceptGrounding } from './dataset'
+import { loadDataset, resolveCollection, type ConceptGrounding } from './dataset'
 import { relationGroupOf } from '../graph/relations'
 
 export interface DataServiceInterface {
@@ -94,7 +94,13 @@ function buildDocEmbeddings(docs: RawDoc[]): number[][] {
 
 // ── Lazy initialization variables ────────────────────────────────────────────
 
-const rawDocs = corpusJson as unknown as RawDoc[]
+let rawDocs: RawDoc[] = []
+let HYPOTHESES: Hypothesis[] = []
+let COLLECTION = ''
+
+export function currentCollection(): string {
+  return COLLECTION
+}
 
 let isInitialized = false
 let initPromise: Promise<void> | null = null
@@ -135,10 +141,16 @@ export async function ensureInitialized(): Promise<void> {
 
   initPromise = (async () => {
     try {
+      // 0. The collection's corpus, topics and concept groundings, from the API
+      const dataset = await loadDataset(await resolveCollection())
+      COLLECTION = dataset.collection
+      rawDocs = dataset.corpus as RawDoc[]
+      HYPOTHESES = dataset.hypotheses
+
       // 1. Load document embeddings (binary) — fall back to heuristic BoW vectors
       let docsEmbeds: number[][] = []
       try {
-        docsEmbeds = await loadFloat32Binary(docEmbeddingsUrl, 1024)
+        docsEmbeds = await loadFloat32Binary(dataset.docEmbeddingsUrl, 1024)
         if (docsEmbeds.length !== rawDocs.length) {
           console.warn(`Doc embeddings count (${docsEmbeds.length}) ≠ corpus count (${rawDocs.length}). Using heuristic fallback.`)
           docsEmbeds = buildDocEmbeddings(rawDocs)
@@ -151,25 +163,18 @@ export async function ensureInitialized(): Promise<void> {
 
       // 2. Load concept embeddings (binary) and concept grounding JSON
       try {
-        CONCEPT_EMBEDDINGS = await loadFloat32Binary(conceptEmbeddingsUrl, 1024)
+        CONCEPT_EMBEDDINGS = await loadFloat32Binary(dataset.conceptEmbeddingsUrl, 1024)
       } catch {
         console.warn('Failed to load concept embeddings binary.')
       }
 
-      // conceptsJson is ConceptGrounding[] when produced by embed.py,
-      // or legacy string[] from the placeholder. Normalise here.
-      const rawConcepts = conceptsJson as unknown as Array<ConceptGrounding | string>
-      if (rawConcepts.length > 0 && typeof rawConcepts[0] === 'object') {
-        CONCEPT_GROUNDINGS = rawConcepts as ConceptGrounding[]
-        CONCEPT_GROUNDINGS.forEach((g, idx) => CONCEPT_NAME_TO_INDEX.set(g.concept, idx))
-      } else {
-        // legacy flat string array — no grounding positions yet
-        ;(rawConcepts as string[]).forEach((name, idx) => CONCEPT_NAME_TO_INDEX.set(name, idx))
-      }
+      // Concept groundings come in the same order as the concept embeddings.
+      CONCEPT_GROUNDINGS = dataset.concepts
+      CONCEPT_GROUNDINGS.forEach((g, idx) => CONCEPT_NAME_TO_INDEX.set(g.concept, idx))
 
-      // 3. Load pre-computed topics produced by cluster_topics.py
-      //    If the JSON is populated, use it; otherwise fall back to an empty list.
-      const rawTopics = topicsJson as unknown as Array<{ id: number; label: string; docIds: string[]; argCount: number }>
+      // 3. Topics computed by the worker's topic step (docIds are doc_<index>).
+      //    If there are none, fall back to a single topic.
+      const rawTopics = dataset.topics
       if (rawTopics.length > 0) {
         // Build assignment array from the loaded topics
         const assignments = new Array<number>(rawDocs.length).fill(0)
@@ -189,7 +194,7 @@ export async function ensureInitialized(): Promise<void> {
         }
       }
 
-      // 4. Pre-compute doc cache (needs TOPIC_DATA and pca_x/pca_y from corpus JSON)
+      // 4. Pre-compute doc cache (needs TOPIC_DATA and pca_x/pca_y from the corpus)
       CACHED_DOCS = buildDocs()
       CACHED_GRAPH = buildGraphData()
 
@@ -578,8 +583,9 @@ export class RealDataService implements DataServiceInterface {
     return { conceptId: `concept-${conceptLabel}`, label: conceptLabel, arguments: args, docStats }
   }
 
-  getHypotheses(): Promise<Hypothesis[]> {
-    return Promise.resolve(hypothesisJson as Hypothesis[])
+  async getHypotheses(): Promise<Hypothesis[]> {
+    await ensureInitialized()
+    return HYPOTHESES
   }
 
   async getTopics(): Promise<Topic[]> {
@@ -610,11 +616,10 @@ export class RealDataService implements DataServiceInterface {
     await ensureInitialized()
     if (CONCEPT_EMBEDDINGS.length === 0) return []
 
-    const sims = conceptsJson.map((concept, idx) => {
+    const sims = CONCEPT_GROUNDINGS.map((grounding, idx) => {
       const vec = CONCEPT_EMBEDDINGS[idx]
       const similarity = vec ? cosineSimilarity(embedding, vec) : 0
-      const name = typeof concept === 'object' && concept !== null ? concept.concept : (concept as unknown as string)
-      return { concept: name, similarity }
+      return { concept: grounding.concept, similarity }
     })
 
     return sims

@@ -7,3 +7,9 @@ dist/
 .superpowers/
 .idea/
 .playwright-mcp/
+
+# Downloaded corpus PDFs (regenerate with input/sci_corpus/fetch_corpus.py)
+input/sci_corpus/*.pdf
+
+# Template for services/.env (the real one is covered by .env above)
+!services/.env.example

@@ -10,3 +10,9 @@
 .chip { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.7); letter-spacing: 0.04em; }
 .dot  { color: rgba(255,255,255,0.3); font-size: 9px; }
 .chevron { color: rgba(255,255,255,0.4); font-size: 11px; line-height: 1; }
+.select {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.85); background: transparent;
+  border: 1px solid rgba(255,255,255,0.25); border-radius: 4px; padding: 1px 4px;
+}
+.select option { color: #073b4c; }

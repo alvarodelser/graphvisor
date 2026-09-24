@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import { RealDataService } from '../src/data/DataService'
+import { describe, it, expect, vi } from 'vitest'
+import { apiFetch } from './fixtures/apiCollection'
+
+// DataService loads its collection from the worker API on first use.
+vi.stubGlobal('fetch', vi.fn(apiFetch))
+
+import { RealDataService, currentCollection } from '../src/data/DataService'
 
 const svc = new RealDataService()
 
@@ -116,7 +121,7 @@ describe('RealDataService.getArgumentDetail — reasoning', () => {
 
 describe('RealDataService.getConceptDetail', () => {
   it('returns arguments and per-document stats for a concept', async () => {
-    const conceptName = 'Mismatch repair–mediated suppression of homeologous recombination'
+    const conceptName = 'Autophagy'
     const cd = await svc.getConceptDetail(conceptName)
     expect(cd.label).toBe(conceptName)
     expect(cd.conceptId).toBe('concept-' + conceptName)
@@ -159,5 +164,21 @@ describe('RealDataService.getHypotheses', () => {
         expect(v).toBeLessThanOrEqual(10)
       }
     }
+  })
+})
+
+describe('RealDataService — API collection', () => {
+  it('picks the first ready collection and serves its topics and groundings', async () => {
+    const docs = await svc.getDocuments()
+    expect(currentCollection()).toBe('test')
+    expect(docs.map(d => d.topic_id)).toEqual([0, 1])
+    expect((await svc.getTopics()).map(t => t.label)).toEqual(['Autophagy', 'Aging'])
+    expect((await svc.getConceptGroundings()).map(g => g.concept)).toEqual(['Autophagy', 'Neurodegeneration'])
+  })
+
+  it('finds similar concepts through the concept embeddings', async () => {
+    const vec = (await svc.getConceptEmbedding('Neurodegeneration'))!
+    const [best] = await svc.findSimilarConcepts(vec, 1)
+    expect(best.concept).toBe('Neurodegeneration')
   })
 })
