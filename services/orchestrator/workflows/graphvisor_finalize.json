@@ -108,8 +108,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,
@@ -215,8 +215,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,
@@ -508,8 +508,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,
@@ -563,7 +563,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({}) }}",
         "options": {
-          "timeout": 3600000
+          "timeout": 10800000
         }
       },
       "id": "28c64401-b604-503c-b206-c24a7236b2ae",
@@ -717,8 +717,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,

@@ -159,7 +159,7 @@
           ]
         },
         "options": {
-          "timeout": 600000
+          "timeout": 1800000
         }
       },
       "id": "b7660a05-fffd-512e-b92a-93e98dc6a4c0",
@@ -172,7 +172,8 @@
       ],
       "retryOnFail": true,
       "maxTries": 2,
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "waitBetweenTries": 30000
     },
     {
       "parameters": {
@@ -308,7 +309,7 @@
         "rawContentType": "application/x-www-form-urlencoded",
         "body": "={{ $json.form }}",
         "options": {
-          "timeout": 1800000
+          "timeout": 5400000
         }
       },
       "id": "c91a3314-f4c5-58b3-b552-f8624c223575",
@@ -321,7 +322,8 @@
       ],
       "retryOnFail": true,
       "maxTries": 2,
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "waitBetweenTries": 30000
     },
     {
       "parameters": {
@@ -412,8 +414,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,
@@ -536,8 +538,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,
@@ -726,8 +728,8 @@
       ],
       "credentials": {
         "ollamaApi": {
-          "id": "2A51aTowMwDWVKVc",
-          "name": "Ollama account"
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
         }
       },
       "retryOnFail": true,

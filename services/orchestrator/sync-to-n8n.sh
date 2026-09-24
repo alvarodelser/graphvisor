@@ -15,7 +15,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/../env.sh"
-require_env N8N_CONTAINER N8N_PROJECT_ID
+require_env N8N_CONTAINER N8N_PROJECT_ID N8N_OLLAMA_CREDENTIAL_ID OLLAMA_MODEL WORKER_URL
 
 CONTAINER="$N8N_CONTAINER"
 STAGE_LOCAL="$(mktemp -d)"

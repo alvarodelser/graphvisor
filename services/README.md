@@ -11,14 +11,18 @@ Design: `docs/superpowers/specs/2026-09-23-auto-ingestion-design.md`. Plan and s
 | `observability/` | The **GraphVisor Ingestion** dashboard for IARAG's Grafana, and `sync-to-grafana.sh` |
 | `worker/` | Our **own** FastAPI service: one endpoint per non-LLM step (`app/ingest`, `app/concepts`, `app/enrichment`) and GraphVisor's read API (`app/api`) |
 
-Shared services from IARAG are used as they are, on docker network `n8n-net`: OCR, chunker, abstraction service, vectorizer, and Ollama (through n8n's "Ollama account" credential). Nothing in IARAG is modified. Every script here only touches `graphvisor_*` resources.
+Shared services from IARAG are used as they are, on docker network `n8n-net`: OCR, chunker, abstraction service, vectorizer, and the `ollama_high` Ollama (gemma4:31b on its own L40), through a GraphVisor n8n credential. Nothing in IARAG is modified. Every script here only touches `graphvisor_*` resources.
 
 ## Setup (once, on the server)
 
 ```bash
 cp services/.env.example services/.env   # fill in RabbitMQ management credentials/vhost, NEO4J_PASSWORD, OPENALEX_MAILTO
 ```
-The workflows reuse the existing n8n credentials "RabbitMQ Credentials" and "Ollama account"; nothing to create in n8n.
+The workflows reuse n8n's existing "RabbitMQ Credentials". For the LLM they use their own credential, because IARAG's "Ollama account" points at `ollama_low`:
+
+1. Put `ollama_high` on `n8n-net` so n8n and the worker can reach it by name: `docker network connect n8n-net ollama_high`. If the container is ever recreated, run this again.
+2. In n8n, **Credentials → Create → Ollama**: name `GraphVisor Ollama`, Base URL `http://ollama_high:11434`, then save. Its id is the last part of the URL, `…/credentials/<id>`.
+3. Put that id in `services/.env` as `N8N_OLLAMA_CREDENTIAL_ID`. `sync-to-n8n.sh` writes it into every LLM node.
 
 ### Neo4j (first time)
 
