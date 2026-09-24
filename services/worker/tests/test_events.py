@@ -61,3 +61,29 @@ def test_poller_repeats_the_current_stage_of_processing_documents(client, capsys
     assert progress["expected"] == 2 and progress["status"] == "processing"
     [beat] = [l for l in out if l["event"] == "document_stage"]
     assert (beat["doc_id"], beat["stage"], beat["heartbeat"]) == ("smoke:DOC1", "prepare", True)
+
+
+@pytest.mark.neo4j
+def test_finalize_steps_log_collection_stages(client, capsys, monkeypatch):
+    from tests import test_enrichment_flow
+    test_enrichment_flow.test_enrichment_end_to_end(client, monkeypatch)
+    stages = [l["stage"] for l in lines(capsys) if l["event"] == "collection_stage" and not l.get("heartbeat")]
+    assert stages == ["linking", "metadata", "citations", "map", "topics", "ready"]
+    [row] = neo4j_status()
+    assert row == {"status": "ready", "stage": "ready"}
+
+
+@pytest.mark.neo4j
+def test_poller_repeats_the_stage_of_finalizing_collections(client, capsys, monkeypatch):
+    from tests.test_concepts_flow import ingest_doc1
+    ingest_doc1(client)
+    client.get("/collections/smoke/concept-batches")
+    capsys.readouterr()
+    events.poll_collections()
+    beats = [l for l in lines(capsys) if l["event"] == "collection_stage"]
+    assert [(b["collection"], b["stage"], b["heartbeat"]) for b in beats] == [("smoke", "concept_construction", True)]
+
+
+def neo4j_status():
+    from app.shared import neo4j
+    return neo4j.read("MATCH (c:Collection {uid: 'smoke'}) RETURN c.status AS status, c.stage AS stage")

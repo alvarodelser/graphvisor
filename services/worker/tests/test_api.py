@@ -41,3 +41,15 @@ def test_api_serves_the_old_static_shapes(client, monkeypatch):
     assert len(np.frombuffer(concepts_bin, dtype="<f4")) == len(concepts) * 1024
     assert client.get("/api/collections/smoke/hypotheses").json() == []
     assert client.get("/api/collections/BAD!/corpus").status_code == 422
+
+
+def test_semantic_argument_search(client, monkeypatch):
+    test_enrichment_flow.test_enrichment_end_to_end(client, monkeypatch)
+    r = client.get("/api/collections/smoke/search/arguments", params={"q": "Rapamycin restores flux.", "k": 2})
+    assert r.status_code == 200, r.text
+    results = r.json()["results"]
+    # the fake embedder maps equal texts to equal vectors: the argument itself ranks first
+    assert results[0]["text"] == "Rapamycin restores flux."
+    assert results[0]["score"] > 0.99 and results[0]["arg_id"].startswith("a")
+    assert len(results) == 2 and results[0]["document_id"] == "DOC1"
+    assert client.get("/api/collections/smoke/search/arguments", params={"q": "x"}).status_code == 422

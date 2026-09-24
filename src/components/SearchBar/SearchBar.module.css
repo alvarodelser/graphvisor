@@ -1,0 +1,40 @@
+.root { position: relative; width: 340px; max-width: calc(100vw - 32px); pointer-events: auto; }
+.inputWrap {
+  display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 34px;
+  background: rgba(255, 255, 255, 0.96); border: 1px solid rgba(7, 59, 76, 0.18);
+  border-radius: 17px; box-shadow: 0 2px 10px rgba(7, 59, 76, 0.08);
+}
+.inputWrap:focus-within { border-color: #073b4c; }
+.icon { width: 14px; height: 14px; color: #6b7a86; flex-shrink: 0; }
+.input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font-size: 12px; color: #073b4c;
+}
+.input::-webkit-search-cancel-button { display: none; }
+.clear {
+  border: none; background: none; font-size: 16px; line-height: 1; color: #6b7a86; cursor: pointer; padding: 0 2px;
+}
+.dropdown {
+  position: absolute; top: 40px; left: 0; right: 0; z-index: 40; max-height: min(70vh, 520px); overflow-y: auto;
+  background: #fff; border: 1px solid rgba(7, 59, 76, 0.14); border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(7, 59, 76, 0.16); padding: 6px 0;
+}
+.section + .section { border-top: 1px solid #eef2f5; margin-top: 4px; padding-top: 4px; }
+.sectionHead { display: flex; align-items: center; gap: 8px; padding: 6px 12px 4px; }
+.sectionTitle { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #073b4c; }
+.kind { font-size: 10px; color: #9aa6ae; }
+.action {
+  margin-left: auto; border: none; background: none; cursor: pointer; font-size: 10px; font-weight: 700;
+  color: #b86e00; padding: 0;
+}
+.item {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; border: none; background: none;
+  padding: 6px 12px; cursor: pointer; font: inherit; color: inherit;
+}
+.item:hover, .item:focus-visible { background: #f3f6f8; outline: none; }
+.primary { font-size: 12px; color: #073b4c; line-height: 1.35; }
+.secondary { font-size: 10px; color: #7b8a94; }
+.score { display: block; width: 60px; height: 3px; border-radius: 2px; background: #eef2f5; overflow: hidden; margin-top: 2px; }
+.scoreFill { display: block; height: 100%; background: #10b981; }
+.empty { font-size: 11px; color: #9aa6ae; padding: 4px 12px 6px; }
+.note { font-size: 10px; color: #9aa6ae; padding: 2px 12px 4px; }

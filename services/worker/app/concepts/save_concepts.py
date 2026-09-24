@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.concepts.common import check_collection
-from app.shared import llm_json, neo4j
+from app.shared import events, llm_json, neo4j
 
 router = APIRouter()
 
@@ -54,4 +54,5 @@ def save_concepts(collection: str, body: ConceptsIn):
                           epistemic_strength: c.epistemic_strength, confidence: c.confidence})
         """,
         col=collection, concepts=concepts)
+    events.collection_stage(collection, "linking", concepts=len(concepts))
     return {"collection": collection, "valid": True, "concepts": len(concepts)}

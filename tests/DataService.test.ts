@@ -182,3 +182,13 @@ describe('RealDataService — API collection', () => {
     expect(best.concept).toBe('Neurodegeneration')
   })
 })
+
+describe('RealDataService.searchArguments', () => {
+  it('maps API argument ids to the graph ids and drops unknown ones', async () => {
+    const hits = await svc.searchArguments('aging neurons')
+    expect(hits).toEqual([{ docId: 'doc_1', blobId: 'doc_1_arg_0', text: 'Inclusion bodies correlate with aging neurons.',
+                            argumentType: 'causal', score: 0.91 }])
+    const { blobs } = await svc.getGraph([])
+    expect(blobs.map(b => b.id)).toContain(hits[0].blobId)
+  })
+})

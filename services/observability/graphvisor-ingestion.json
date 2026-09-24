@@ -61,7 +61,7 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 24,
+        "w": 12,
         "h": 5
       },
       "targets": [
@@ -170,6 +170,114 @@
     },
     {
       "id": 3,
+      "type": "state-timeline",
+      "title": "Collection finalize",
+      "datasource": {
+        "type": "loki",
+        "uid": "iarag-loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "iarag-loki"
+          },
+          "expr": "max by (collection) (max_over_time({service=\"graphvisor-worker\"} |= \"collection_stage\" | json | collection=~\"$collection\" | unwrap stage_code [$__interval]))",
+          "refId": "A",
+          "legendFormat": "{{collection}}",
+          "queryType": "range"
+        }
+      ],
+      "description": "graphvisor_finalize, one row per collection: concepts (LLM), linking, enrichment, topics, ready.",
+      "options": {
+        "mergeValues": true,
+        "showValue": "auto",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "concept construction",
+                  "color": "blue",
+                  "index": 0
+                },
+                "2": {
+                  "text": "concept validation",
+                  "color": "purple",
+                  "index": 1
+                },
+                "3": {
+                  "text": "linking",
+                  "color": "orange",
+                  "index": 2
+                },
+                "4": {
+                  "text": "metadata",
+                  "color": "yellow",
+                  "index": 3
+                },
+                "5": {
+                  "text": "citations",
+                  "color": "light-blue",
+                  "index": 4
+                },
+                "6": {
+                  "text": "map",
+                  "color": "light-orange",
+                  "index": 5
+                },
+                "7": {
+                  "text": "topics",
+                  "color": "red",
+                  "index": 6
+                },
+                "8": {
+                  "text": "ready",
+                  "color": "green",
+                  "index": 7
+                },
+                "9": {
+                  "text": "failed",
+                  "color": "dark-red",
+                  "index": 8
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
       "type": "row",
       "title": "Documents",
       "collapsed": false,
@@ -182,7 +290,7 @@
       "panels": []
     },
     {
-      "id": 4,
+      "id": 5,
       "type": "state-timeline",
       "title": "Document progress",
       "datasource": {
@@ -280,7 +388,7 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "type": "barchart",
       "title": "Time per stage (finished documents)",
       "datasource": {
@@ -473,7 +581,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 7,
       "type": "stat",
       "title": "Documents done / failed",
       "datasource": {
@@ -561,7 +669,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "type": "stat",
       "title": "Average seconds per document",
       "datasource": {
@@ -606,7 +714,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "type": "row",
       "title": "Model and queues",
       "collapsed": false,
@@ -619,7 +727,7 @@
       "panels": []
     },
     {
-      "id": 9,
+      "id": 10,
       "type": "stat",
       "title": "Pipeline model on GPU",
       "datasource": {
@@ -679,7 +787,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 11,
       "type": "timeseries",
       "title": "Worker steps per minute",
       "datasource": {
@@ -717,7 +825,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "type": "timeseries",
       "title": "Queue depth",
       "datasource": {
@@ -745,7 +853,7 @@
       "description": "From iarag-metrics, which polls every RabbitMQ queue. graphvisor_ingest_dlq holds failed documents."
     },
     {
-      "id": 12,
+      "id": 13,
       "type": "stat",
       "title": "graphvisor_ingest consumers",
       "datasource": {
@@ -799,7 +907,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "type": "timeseries",
       "title": "Shared services: duration per call (our documents)",
       "datasource": {
@@ -836,7 +944,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "type": "row",
       "title": "Errors and trace",
       "collapsed": false,
@@ -849,7 +957,7 @@
       "panels": []
     },
     {
-      "id": 15,
+      "id": 16,
       "type": "logs",
       "title": "Worker warnings and errors",
       "datasource": {
@@ -880,7 +988,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "type": "logs",
       "title": "n8n: GraphVisor workflows",
       "datasource": {
@@ -911,7 +1019,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 18,
       "type": "logs",
       "title": "Document trace ($doc_id)",
       "datasource": {

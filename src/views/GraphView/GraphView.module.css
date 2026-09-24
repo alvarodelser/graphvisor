@@ -87,3 +87,8 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+.search { position: absolute; top: 16px; left: 16px; z-index: 25; }
+@media (max-width: 640px) {
+  .search { left: 16px; right: 16px; }
+  .search > div { width: 100%; }
+}

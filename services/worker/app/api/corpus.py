@@ -48,7 +48,8 @@ def _float32(vectors: list) -> Response:
 def collections():
     return neo4j.read(
         "MATCH (c:Collection) RETURN c.name AS name, c.status AS status, c.expected AS expected, "
-        "c.done AS done, c.failed AS failed ORDER BY c.name")
+        "c.done AS done, c.failed AS failed, c.stage AS stage, toString(c.started_at) AS started_at, "
+        "toString(c.finished_at) AS finished_at ORDER BY c.name")
 
 
 @router.get("/collections/{collection}/corpus")

@@ -110,6 +110,8 @@ export function useGraphD3(
   const collapseRef = useRef(0)   // 0→1 collapse progress, driven by scroll past the lock
   const highlightFnRef = useRef<() => void>(() => {})
   const panToRef = useRef<(x: number, y: number) => void>(() => {})
+  // live simulation nodes by id, so callers (search) can find where an entity is
+  const simNodesByIdRef = useRef<Map<string, GraphNode>>(new Map())
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -140,6 +142,7 @@ export function useGraphD3(
     // member centroid) even when entity nodes are hidden. The Entity filter only
     // controls on-screen visibility, handled per-frame in renderFrame.
     const simNodes: GraphNode[] = model.entities.map(n => ({ ...n }))
+    simNodesByIdRef.current = new Map(simNodes.map(n => [n.id, n]))
     const simNodeIds = new Set(simNodes.map(n => n.id))
     const simEdges: GraphEdge[] = model.edges
       .filter(e => {
@@ -873,5 +876,9 @@ export function useGraphD3(
   const reheat = () => simRef.current?.alpha(0.5).restart()
   const freeze = () => simRef.current?.stop()
   const panTo = (x: number, y: number) => panToRef.current(x, y)
-  return { reheat, freeze, panTo }
+  const nodePosition = (id: string): { x: number; y: number } | null => {
+    const n = simNodesByIdRef.current.get(id)
+    return n && n.x != null && n.y != null ? { x: n.x, y: n.y } : null
+  }
+  return { reheat, freeze, panTo, nodePosition }
 }

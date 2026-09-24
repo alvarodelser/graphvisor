@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.concepts.common import check_collection
-from app.shared import llm_json
+from app.shared import events, llm_json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -38,4 +38,5 @@ def save_concept_candidates(collection: str, body: CandidatesIn):
     text, skipped = candidates_text(body.responses)
     if not text:
         raise HTTPException(422, "no concept in any constructor response")
+    events.collection_stage(collection, "concept_validation", skipped_responses=skipped)
     return {"collection": collection, "skipped_responses": skipped, "list_of_concepts": text}

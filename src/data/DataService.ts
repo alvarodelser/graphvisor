@@ -1,5 +1,5 @@
 import type { DocNode, GraphNode, GraphEdge, ArgumentDetail, ArgumentRelation, ArgumentBlob, EntityTriple, Hypothesis, ConceptDetail, ConceptArgument, ConceptDocStat, Topic } from '../types'
-import { loadDataset, resolveCollection, type ConceptGrounding } from './dataset'
+import { loadDataset, resolveCollection, searchArguments as apiSearchArguments, type ConceptGrounding } from './dataset'
 import { relationGroupOf } from '../graph/relations'
 
 export interface DataServiceInterface {
@@ -14,6 +14,16 @@ export interface DataServiceInterface {
   getDocEmbedding(docId: string): Promise<number[] | null>
   findSimilarConcepts(embedding: number[], limit?: number): Promise<{ concept: string; similarity: number }[]>
   getConceptsForDocuments(docIds: string[], confThreshold: number, cosThreshold: number): Promise<{ concept: string; score: number }[]>
+  searchArguments(query: string, k?: number, signal?: AbortSignal): Promise<ArgumentSearchResult[]>
+}
+
+/** A semantic argument match, located in GraphVisor's ids (doc_<i>, doc_<i>_arg_<j>). */
+export interface ArgumentSearchResult {
+  blobId: string
+  docId: string
+  text: string
+  argumentType: string | null
+  score: number
 }
 
 // ── Raw JSON types ────────────────────────────────────────────────────────────
@@ -97,6 +107,8 @@ function buildDocEmbeddings(docs: RawDoc[]): number[][] {
 let rawDocs: RawDoc[] = []
 let HYPOTHESES: Hypothesis[] = []
 let COLLECTION = ''
+// global argument id (a123) -> where it sits in GraphVisor's ids
+const ARG_LOCATION = new Map<string, { docId: string; blobId: string }>()
 
 export function currentCollection(): string {
   return COLLECTION
@@ -145,6 +157,10 @@ export async function ensureInitialized(): Promise<void> {
       const dataset = await loadDataset(await resolveCollection())
       COLLECTION = dataset.collection
       rawDocs = dataset.corpus as RawDoc[]
+      ARG_LOCATION.clear()
+      rawDocs.forEach((doc, i) => doc.data.forEach((arg, j) => {
+        if (arg.arg_id) ARG_LOCATION.set(arg.arg_id, { docId: makeDocId(i), blobId: `doc_${i}_arg_${j}` })
+      }))
       HYPOTHESES = dataset.hypotheses
 
       // 1. Load document embeddings (binary) — fall back to heuristic BoW vectors
@@ -411,6 +427,10 @@ function buildGraphData(): {
 // ── Service implementation ────────────────────────────────────────────────────
 
 export class RealDataService implements DataServiceInterface {
+  searchArguments(query: string, k = 20, signal?: AbortSignal): Promise<ArgumentSearchResult[]> {
+    return searchArgumentsIn(query, k, signal)
+  }
+
   async getDocuments(): Promise<DocNode[]> {
     await ensureInitialized()
     return CACHED_DOCS
@@ -659,6 +679,15 @@ export class RealDataService implements DataServiceInterface {
       .map(([concept, score]) => ({ concept, score }))
       .sort((a, b) => b.score - a.score)
   }
+}
+
+export async function searchArgumentsIn(query: string, k = 20, signal?: AbortSignal): Promise<ArgumentSearchResult[]> {
+  await ensureInitialized()
+  const hits = await apiSearchArguments(COLLECTION, query, k, signal)
+  return hits.flatMap(h => {
+    const at = ARG_LOCATION.get(h.arg_id)
+    return at ? [{ ...at, text: h.text, argumentType: h.argument_type, score: h.score }] : []
+  })
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

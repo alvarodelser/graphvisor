@@ -7,7 +7,7 @@ Python list) into the prompt."""
 from fastapi import APIRouter, HTTPException
 
 from app.concepts.common import check_collection
-from app.shared import neo4j
+from app.shared import events, neo4j
 
 router = APIRouter()
 
@@ -38,5 +38,6 @@ def concept_batches(collection: str):
     if not rows:
         raise HTTPException(422, f"collection {collection} has no in-graph arguments")
     out = batches(argument_lines([r["text"] for r in rows]))
+    events.collection_stage(collection, "concept_construction", batches=len(out), arguments=len(rows))
     return {"collection": collection, "arguments": len(rows),
             "batches": [{"list_of_args": b} for b in out]}

@@ -34,3 +34,8 @@ OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 
 CREATE VECTOR INDEX document_embedding IF NOT EXISTS
 FOR (n:Document) ON n.embedding
 OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 'cosine'}};
+
+// Semantic search over arguments (GraphVisor's search bars).
+CREATE VECTOR INDEX argument_embedding IF NOT EXISTS
+FOR (n:Argument) ON n.embedding
+OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 'cosine'}};

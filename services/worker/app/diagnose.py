@@ -20,7 +20,7 @@ router = APIRouter(tags=["diagnose"])
 
 REQUIRED_CONSTRAINTS = {"collection_uid", "document_uid", "chunk_uid", "argument_uid",
                         "entity_uid", "concept_uid", "topic_uid"}
-REQUIRED_VECTOR_INDEXES = {"concept_embedding", "document_embedding"}
+REQUIRED_VECTOR_INDEXES = {"concept_embedding", "document_embedding", "argument_embedding"}
 # A paper with a DOI, a title and many citations on both APIs.
 KNOWN_DOI = "10.1038/nature14539"
 KNOWN_TITLE = "Deep learning"

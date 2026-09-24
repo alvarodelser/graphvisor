@@ -74,6 +74,12 @@ export function apiFetch(input: RequestInfo | URL): Promise<Response> {
   if (url.endsWith('/topics')) return Promise.resolve(json(topics))
   if (url.endsWith('/concepts')) return Promise.resolve(json(concepts))
   if (url.endsWith('/hypotheses')) return Promise.resolve(json(hypotheses))
+  if (url.includes('/search/arguments')) {
+    return Promise.resolve(json({ query: 'q', results: [
+      { arg_id: 'a3', document_id: 'X', text: 'Inclusion bodies correlate with aging neurons.', argument_type: 'causal', score: 0.91 },
+      { arg_id: 'a999', document_id: 'Y', text: 'not in this corpus', argument_type: 'causal', score: 0.5 },
+    ] }))
+  }
   if (url.endsWith('/doc_embeddings.bin')) return Promise.resolve(new Response(vectors(corpus.length)))
   if (url.endsWith('/concept_embeddings.bin')) return Promise.resolve(new Response(vectors(concepts.length)))
   return Promise.resolve(new Response('not found', { status: 404 }))

@@ -158,6 +158,37 @@ def stage_seconds(times: dict, closed_at: int) -> dict:
     return out
 
 
+# ------------------------------------------------------------ per collection
+
+# Finalize stages of a collection (graphvisor_finalize), for the dashboard's
+# finalize timeline. While finalizing, the Collection's status is "finalizing".
+COLLECTION_STAGE_CODES = {
+    "concept_construction": 1,  # LLM, one call per batch of 15 arguments
+    "concept_validation": 2,    # LLM, one call over all candidates
+    "linking": 3,               # concept vectors + argument-concept links
+    "metadata": 4,              # title/year for documents missing them
+    "citations": 5,             # OpenAlex / Semantic Scholar
+    "map": 6,                   # document vectors + map positions
+    "topics": 7,                # clustering + LLM labels
+    "ready": 8,
+    "failed": 9,
+}
+
+
+def collection_stage(collection: str, name: str, **fields) -> None:
+    from app.shared import neo4j  # late import: neo4j doesn't depend on this module
+    code = COLLECTION_STAGE_CODES[name]
+    neo4j.write(
+        """
+        MATCH (c:Collection {uid: $c})
+        SET c.stage = $name, c.stage_code = $code,
+            c.status = CASE WHEN $name IN ['ready', 'failed'] THEN c.status ELSE 'finalizing' END
+        """,
+        c=collection, name=name, code=code)
+    emit("collection_stage", level="error" if name == "failed" else "info", collection=collection,
+         stage=name, stage_code=code, **fields)
+
+
 # ------------------------------------------------------------ pollers
 
 POLL_INTERVAL_S = int(os.environ.get("EVENTS_POLL_INTERVAL_S", "60"))
@@ -186,6 +217,9 @@ def poll_collections() -> None:
                         "RETURN d.collection AS collection, d.uid AS doc_id, d.stage AS stage, "
                         "d.stage_code AS stage_code"):
         emit("document_stage", heartbeat=True, **d)
+    for c in neo4j.read("MATCH (c:Collection {status: 'finalizing'}) WHERE c.stage_code IS NOT NULL "
+                        "RETURN c.uid AS collection, c.stage AS stage, c.stage_code AS stage_code"):
+        emit("collection_stage", heartbeat=True, **c)
 
 
 def poll_ollama() -> None:

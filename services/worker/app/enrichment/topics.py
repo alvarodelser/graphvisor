@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sklearn.decomposition import NMF
 
 from app.enrichment.common import check_collection
-from app.shared import neo4j
+from app.shared import events, neo4j
 
 router = APIRouter()
 
@@ -80,6 +80,7 @@ class LabelsIn(BaseModel):
 @router.post("/collections/{collection}/topics")
 def topics(collection: str):
     check_collection(collection)
+    events.collection_stage(collection, "topics")
     rows = neo4j.read(
         """
         MATCH (d:Document {collection: $c, status: 'done'})

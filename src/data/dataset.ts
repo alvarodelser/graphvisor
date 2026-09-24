@@ -15,10 +15,13 @@ export interface ConceptGrounding {
 
 export interface CollectionInfo {
   name: string
-  status: 'processing' | 'ready' | 'failed'
+  status: 'processing' | 'finalizing' | 'ready' | 'failed'
+  stage?: string | null   // finalize stage while finalizing
   expected: number
   done: number
   failed: number
+  started_at?: string | null
+  finished_at?: string | null
 }
 
 export interface Dataset {
@@ -35,6 +38,21 @@ async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`)
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
   return res.json() as Promise<T>
+}
+
+export interface ArgumentHit {
+  arg_id: string
+  document_id: string
+  text: string
+  argument_type: string | null
+  score: number        // cosine score in [0, 1]: (1 + cos) / 2
+}
+
+export async function searchArguments(collection: string, q: string, k = 20, signal?: AbortSignal): Promise<ArgumentHit[]> {
+  const params = new URLSearchParams({ q, k: String(k) })
+  const res = await fetch(`${API_BASE}/collections/${encodeURIComponent(collection)}/search/arguments?${params}`, { signal })
+  if (!res.ok) throw new Error(`argument search failed: ${res.status}`)
+  return (await res.json()).results as ArgumentHit[]
 }
 
 export function listCollections(): Promise<CollectionInfo[]> {

@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { ControlPanel } from '../../components/ControlPanel/ControlPanel'
 import { CorpusViewSwitcher } from './CorpusViewSwitcher'
+import { CorpusSearch } from './CorpusSearch'
 import { MapView } from './MapView'
 import { TopicsView } from './TopicsView'
 import { TimelineView } from './TimelineView'
@@ -161,6 +162,7 @@ export function CorpusView() {
     <div className={styles.view}>
       <div className={styles.canvas}>
         <CorpusViewSwitcher mode={corpusViewMode} onChange={setCorpusViewMode} />
+        <CorpusSearch docs={docs} />
 
         {corpusViewMode === 'map' && <MapView docs={filteredDocs} selectedIds={selectedIds} showConceptLabels={showConceptLabels} />}
         {corpusViewMode === 'topics' && <TopicsView docs={filteredDocs} selectedIds={selectedIds} />}

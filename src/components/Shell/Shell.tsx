@@ -1,5 +1,6 @@
-import { useRef, useEffect, type ReactNode } from 'react'
+import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
+import { dataService } from '../../data/DataService'
 import { StatusBar } from '../StatusBar/StatusBar'
 import styles from './Shell.module.css'
 
@@ -25,8 +26,15 @@ export function Shell({ children }: Props) {
   } = useStore()
   const viewIndex = VIEW_ORDER.indexOf(activeView)
 
+  // Collections ingested by the automated pipeline have no hypotheses: then
+  // Explore opens straight from the document selection instead of waiting for
+  // a hypothesis to be picked in Discover.
+  const [noHypotheses, setNoHypotheses] = useState(false)
+  useEffect(() => { dataService.getHypotheses().then(h => setNoHypotheses(h.length === 0)) }, [])
+
   const hasCorpusSelection = selectedDocumentIds.length > 0
   const hasHypothesisSelection = selectedHypothesisIds.length > 0
+  const canExplore = hasHypothesisSelection || (noHypotheses && hasCorpusSelection)
   const hasDetailTarget =
     selectedNodeId !== null ||
     selectedArgumentId !== null ||
@@ -35,16 +43,16 @@ export function Shell({ children }: Props) {
 
   const showCTA =
     (activeView === 'corpus' && hasCorpusSelection) ||
-    (activeView === 'discover' && hasHypothesisSelection) ||
+    (activeView === 'discover' && canExplore) ||
     (activeView === 'graph' && hasDetailTarget)
 
   const ctaLabel =
-    activeView === 'corpus' ? 'Go to Discover' :
+    activeView === 'corpus' ? (noHypotheses ? 'Go to Explore' : 'Go to Discover') :
     activeView === 'discover' ? 'Go to Explore' :
     'Go to Detail'
 
   const handleCTA = () => {
-    if (activeView === 'corpus') setActiveView('discover')
+    if (activeView === 'corpus') setActiveView(noHypotheses ? 'graph' : 'discover')
     else if (activeView === 'discover') setActiveView('graph')
     else setActiveView('detail')
   }
@@ -91,21 +99,21 @@ export function Shell({ children }: Props) {
                 className={[
                   styles.tab,
                   activeView === v ? styles.active : '',
-                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection) ? styles.dimmed : '',
+                  (v === 'detail' && !hasDetailTarget) || (v === 'graph' && !canExplore) || (v === 'discover' && !hasCorpusSelection) ? styles.dimmed : '',
                 ].join(' ')}
                 onClick={() => {
                   if (v === 'detail' && !hasDetailTarget) return
-                  if (v === 'graph' && !hasHypothesisSelection) return
+                  if (v === 'graph' && !canExplore) return
                   if (v === 'discover' && !hasCorpusSelection) return
                   setActiveView(v)
                 }}
-                disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !hasHypothesisSelection) || (v === 'discover' && !hasCorpusSelection)}
+                disabled={(v === 'detail' && !hasDetailTarget) || (v === 'graph' && !canExplore) || (v === 'discover' && !hasCorpusSelection)}
               >
                 <span ref={el => { labelRefs.current[i] = el }}>{VIEW_LABELS[v]}</span>
                 {v === 'discover' && discoveredHypothesisCount > 0 && (
                   <span className={styles.badge}>{discoveredHypothesisCount}</span>
                 )}
-                {v === 'graph' && hasHypothesisSelection && (
+                {v === 'graph' && canExplore && (
                   <span className={styles.badge}>{scopedArgumentCount}</span>
                 )}
                 {v === 'detail' && hasDetailTarget && (

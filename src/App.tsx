@@ -1,3 +1,4 @@
+import { CollectionGate } from './components/CollectionGate/CollectionGate'
 import { Shell } from './components/Shell/Shell'
 import { CorpusView } from './views/CorpusView/CorpusView'
 import { GraphView } from './views/GraphView/GraphView'
@@ -6,11 +7,13 @@ import { DiscoverView } from './views/DiscoverView/DiscoverView'
 
 export function App() {
   return (
-    <Shell>
-      <CorpusView />
-      <DiscoverView />
-      <GraphView />
-      <DetailView />
-    </Shell>
+    <CollectionGate>
+      <Shell>
+        <CorpusView />
+        <DiscoverView />
+        <GraphView />
+        <DetailView />
+      </Shell>
+    </CollectionGate>
   )
 }

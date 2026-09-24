@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter
 
 from app.enrichment.common import best_match, check_collection
-from app.shared import neo4j, openalex, semanticscholar
+from app.shared import events, neo4j, openalex, semanticscholar
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ def lookup(title: str, doi: str | None) -> tuple[int | None, str | None]:
 @router.post("/collections/{collection}/citations")
 def citations(collection: str):
     check_collection(collection)
+    events.collection_stage(collection, "citations")
     docs = neo4j.read("MATCH (d:Document {collection: $c, status: 'done'}) WHERE d.citations IS NULL "
                       "RETURN d.uid AS uid, d.title AS title, d.doi AS doi ORDER BY d.id", c=collection)
     found, missing = 0, []

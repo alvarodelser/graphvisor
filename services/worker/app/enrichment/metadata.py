@@ -8,7 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.enrichment.common import best_match, check_collection
-from app.shared import llm_json, neo4j, openalex
+from app.shared import events, llm_json, neo4j, openalex
 from app.shared.models import DocRef
 
 router = APIRouter()
@@ -32,6 +32,7 @@ class MetadataIn(DocRef):
 @router.post("/collections/{collection}/metadata")
 def metadata(collection: str):
     check_collection(collection)
+    events.collection_stage(collection, "metadata")
     docs = neo4j.read(
         """
         MATCH (d:Document {collection: $c, status: 'done'})

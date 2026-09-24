@@ -7,6 +7,7 @@ import { GraphMiniMap } from './GraphMiniMap'
 import type { ZoomState } from './GraphMiniMap'
 import { NodeFloatingCard } from './NodeFloatingCard'
 import { GraphFilterContent, GraphLegendContent } from './GraphControls'
+import { GraphSearch } from './GraphSearch'
 import type { GraphNode, GraphEdge, ArgumentBlob } from '../../types'
 import type { LodMode } from './lod'
 import styles from './GraphView.module.css'
@@ -57,7 +58,7 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
     setSelectedRelation(null)
   }
 
-  const { reheat, freeze, panTo } = useGraphD3(svgRef, nodes, edges, {
+  const { reheat, freeze, panTo, nodePosition } = useGraphD3(svgRef, nodes, edges, {
     filters,
     blobs,
     showBlobs,
@@ -120,6 +121,24 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
 
   const handlePanTo = useCallback((gx: number, gy: number) => { panTo(gx, gy) }, [panTo])
 
+  // Search results focus exactly like a click in the graph: pan there, open the card.
+  const focusEntity = (node: GraphNode) => {
+    const at = nodePosition(node.id)
+    if (at) panTo(at.x, at.y)
+    clearAll()
+    setSelectedNode(node.id)
+    setDisplayedItem({ type: 'node', node, x: 0, y: 0 })
+    setIsSticky(true)
+  }
+  const focusArgument = (blob: ArgumentBlob) => {
+    const at = blobCentroidsRef.current.get(blob.id)
+    if (at) panTo(at.x, at.y)
+    clearAll()
+    setSelectedArgumentId(blob.id)
+    setDisplayedItem({ type: 'blob', blob, x: 0, y: 0 })
+    setIsSticky(true)
+  }
+
   const highlightedBlobIds = useMemo((): Set<string> => {
     if (!isSticky || !displayedItem) return new Set()
     switch (displayedItem.type) {
@@ -142,6 +161,8 @@ export function GraphCanvasView({ nodes, edges, blobs, isActive, hoveredConceptI
   return (
     <>
       <svg ref={svgRef} className={styles.svg} />
+
+      <GraphSearch nodes={nodes} blobs={blobs} onPickEntity={focusEntity} onPickArgument={focusArgument} />
 
       {displayedItem && (
         <NodeFloatingCard

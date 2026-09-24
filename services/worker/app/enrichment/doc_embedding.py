@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 
 from app.enrichment.common import check_collection
-from app.shared import neo4j, vectorizer
+from app.shared import events, neo4j, vectorizer
 
 router = APIRouter()
 
@@ -18,6 +18,7 @@ def document_text(title: str | None, abstract: str | None, year) -> str:
 @router.post("/collections/{collection}/doc-embeddings")
 def doc_embedding(collection: str):
     check_collection(collection)
+    events.collection_stage(collection, "map")
     docs = neo4j.read("MATCH (d:Document {collection: $c, status: 'done'}) RETURN d.uid AS uid, "
                       "d.title AS title, d.abstract AS abstract, d.year AS year ORDER BY d.id", c=collection)
     vectors = vectorizer.embed_or_502([document_text(d["title"], d["abstract"], d["year"]) for d in docs])
