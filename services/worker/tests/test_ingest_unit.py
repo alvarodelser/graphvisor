@@ -55,7 +55,14 @@ def test_collect_arguments_merges_claims_and_arguments_and_skips_bad_responses()
         '```json\n{"Arguments": [{"text": "arg2"}, "stray"]}\n```',
         "[1, 2]",
     ]
-    assert collect_arguments(responses) == (["claim", "arg1", "arg2"], 2)
+    assert collect_arguments(responses) == (["claim", "arg1", "arg2"], 2, [0, 0, 2])
+
+
+def test_collect_arguments_keeps_the_chunk_each_argument_came_from():
+    from app.ingest.save_L1_arguments import L1Response
+    responses = [L1Response(chunk_index=4, raw='{"Arguments": [{"text": "x"}]}'),
+                 L1Response(chunk_index=1, raw='{"MajorClaim": [{"text": "y"}], "Arguments": [{"text": "z"}]}')]
+    assert collect_arguments(responses) == (["x", "y", "z"], 0, [4, 1, 1])
 
 
 def test_rank_sorts_by_cosine_descending():

@@ -43,14 +43,18 @@ def test_json_document_end_to_end(client):
                     "chunk_title": ["Abstract", "Introduction", "Results"]})
     body = r.json()
     assert body["needs_abstract"] is False
-    assert body["chunks"] == [{"input_text": "chunk one"}, {"input_text": "chunk two"}]
+    assert body["chunks"] == [{"input_text": "chunk one", "chunk_index": 0}, {"input_text": "chunk two", "chunk_index": 1}]
 
-    r = client.post("/documents/arguments", json={**ref, "responses": [L1, "garbage"]})
+    r = client.post("/documents/arguments", json={**ref, "responses": [
+        {"chunk_index": 1, "raw": L1}, {"chunk_index": 0, "raw": "garbage"}]})
     args = r.json()["argument_list"]
     assert r.json()["skipped_responses"] == 1
     assert sorted(a["TEXT"] for a in args) == sorted(
         ["Autophagy protects neurons.", "Atg7 loss causes inclusion bodies.", "Rapamycin restores flux."])
     assert [a["local_id"] for a in args] == [0, 1, 2]
+    sources = neo4j.read("MATCH (a:Argument {collection: 'smoke'})-[:FROM_CHUNK]->(c:Chunk) "
+                         "RETURN DISTINCT a.chunk_index AS i, c.text AS text")
+    assert sources == [{"i": 1, "text": "chunk two"}]
 
     kinds = ["causal", "background", "Mechanistic"]
     r = client.post("/documents/classification", json={**ref, "results": [

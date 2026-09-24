@@ -444,7 +444,7 @@
         "url": "={{ENV:WORKER_URL}}/documents/arguments",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, responses: $json.items.map(i => i.content) }) }}",
+        "jsonBody": "={{ JSON.stringify({ collection: $('Document').first().json.collection, id: $('Document').first().json.id, responses: $json.items.map(i => ({ chunk_index: i.chunk_index, raw: i.raw })) }) }}",
         "options": {
           "timeout": 600000
         }
@@ -1012,6 +1012,37 @@
       ],
       "notes": "Fire and forget: the ingest message is acked without waiting for finalize.",
       "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dc97cfc6-28b1-5197-af1d-28cc28783ed5",
+              "name": "chunk_index",
+              "value": "={{ $('One per chunk').item.json.chunk_index }}",
+              "type": "number"
+            },
+            {
+              "id": "dee282cd-3a06-53e7-8eee-bda9b633ebe2",
+              "name": "raw",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d09d227-d0c2-5ca8-ab89-b5cbe31c642d",
+      "name": "L1 result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3720,
+        160
+      ],
+      "notes": "Tags each answer with its chunk, so arguments keep their source passage.",
+      "notesInFlow": true
     }
   ],
   "connections": {
@@ -1247,7 +1278,7 @@
       "main": [
         [
           {
-            "node": "Collect L1",
+            "node": "L1 result",
             "type": "main",
             "index": 0
           }
@@ -1554,6 +1585,17 @@
           },
           {
             "node": "Collection complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L1 result": {
+      "main": [
+        [
+          {
+            "node": "Collect L1",
             "type": "main",
             "index": 0
           }

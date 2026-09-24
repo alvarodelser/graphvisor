@@ -66,4 +66,4 @@ def save_chunks(body: ChunksIn):
     return {"collection": body.collection, "id": body.id,
             "needs_abstract": abstract is None,
             "chunk_list": chunks, "chunk_title": titles,
-            "chunks": [{"input_text": c} for c in chunks]}
+            "chunks": [{"input_text": c, "chunk_index": i} for i, c in enumerate(chunks)]}

@@ -3,9 +3,11 @@ arguments by similarity to the abstract, as the old ranking_arguments() did.
 The rank becomes the argument's local id (the old arg_idx)."""
 
 import logging
+from typing import Union
 
 import numpy as np
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.shared import events, llm_json, neo4j, vectorizer
 from app.shared.documents import clear_arguments, require_document
@@ -15,16 +17,29 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+class L1Response(BaseModel):
+    chunk_index: int
+    raw: str
+
+
 class L1In(DocRef):
-    responses: list[str]
+    # one answer per chunk, tagged with the chunk it came from (plain strings,
+    # in chunk order, are accepted from workflows older than chunk provenance)
+    responses: list[Union[L1Response, str]]
 
 
-def collect_arguments(responses: list[str]) -> tuple[list[str], int]:
+def collect_arguments(responses: list) -> tuple[list[str], int, list]:
     """MajorClaim + Arguments of every parsable response, in chunk order.
     Unparsable responses are skipped (logged), as in the old code; so are
-    items that aren't {"text": non-empty}. Returns (texts, skipped responses)."""
-    texts, skipped = [], 0
-    for raw in responses:
+    items that aren't {"text": non-empty}. Returns (texts, skipped responses,
+    chunk index of each text)."""
+    texts, skipped, sources = [], 0, []
+    for position, response in enumerate(responses):
+        if isinstance(response, L1Response):
+            raw, chunk = response.raw, response.chunk_index
+        else:
+            raw, chunk = response, position
+
         try:
             data = llm_json.loads(raw)
         except llm_json.LLMJSONError as exc:
@@ -39,7 +54,8 @@ def collect_arguments(responses: list[str]) -> tuple[list[str], int]:
                 text = item.get("text") if isinstance(item, dict) else None
                 if isinstance(text, str) and text.strip():
                     texts.append(text.strip())
-    return texts, skipped
+                    sources.append(chunk)
+    return texts, skipped, sources
 
 
 def rank(abstract_vec: list[float], arg_vecs: list[list[float]]) -> list[tuple[int, float]]:
@@ -53,7 +69,7 @@ def rank(abstract_vec: list[float], arg_vecs: list[list[float]]) -> list[tuple[i
 @router.post("/documents/arguments")
 def save_L1_arguments(body: L1In):
     doc = require_document(body.collection, body.id)
-    texts, skipped = collect_arguments(body.responses)
+    texts, skipped, sources = collect_arguments(body.responses)
 
     if texts and doc.get("abstract"):
         vecs = vectorizer.embed_or_502([doc["abstract"]], "query") + \
@@ -65,16 +81,19 @@ def save_L1_arguments(body: L1In):
     clear_arguments(body.collection, body.id)
     doc_uid = neo4j.uid(body.collection, body.id)
     neo4j.write("MATCH (d:Document {uid: $uid}) SET d.l1_at = timestamp()", uid=doc_uid)
-    rows = [{"local_id": rank_pos, "text": texts[i], "cos": cos}
+    rows = [{"local_id": rank_pos, "text": texts[i], "cos": cos, "chunk": sources[i]}
             for rank_pos, (i, cos) in enumerate(ranked)]
     neo4j.write(
         """
         MATCH (d:Document {uid: $doc_uid})
         UNWIND $rows AS row
-        CREATE (d)-[:HAS_ARGUMENT]->(:Argument {
+        CREATE (d)-[:HAS_ARGUMENT]->(a:Argument {
             uid: $doc_uid + ':' + row.local_id, collection: $c, document_id: $id,
-            local_id: row.local_id, full_argument: row.text,
+            local_id: row.local_id, full_argument: row.text, chunk_index: row.chunk,
             cosine_similarity: row.cos, in_graph: false})
+        WITH a, row
+        MATCH (ch:Chunk {uid: $doc_uid + ':' + row.chunk})
+        CREATE (a)-[:FROM_CHUNK]->(ch)
         """,
         doc_uid=doc_uid, c=body.collection, id=body.id, rows=rows)
     if rows:  # with no arguments the document goes straight to done
