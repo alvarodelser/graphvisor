@@ -38,11 +38,29 @@ def build_markdown(body: list[dict]) -> str:
     return "\n\n".join(lines)
 
 
+def reopen(collection: str, uid: str) -> None:
+    """A document loaded again (a redelivered or re-queued message) is processing
+    again: take it back out of the collection's done/failed count, so closing it
+    doesn't count it twice, and drop the previous run's stage times. Without this
+    a re-run stays "done" and is invisible on the dashboard."""
+    neo4j.write(
+        """
+        MATCH (c:Collection {uid: $c})-[:CONTAINS]->(d:Document {uid: $uid})
+        WITH c, d, coalesce(d.status, '') AS before
+        SET c.done = c.done - CASE WHEN before = 'done' THEN 1 ELSE 0 END,
+            c.failed = c.failed - CASE WHEN before = 'failed' THEN 1 ELSE 0 END,
+            d.failed_step = null, d.error = null
+        REMOVE d.chunked_at, d.abstract_at, d.l1_at, d.classified_at, d.l2_at
+        """,
+        c=collection, uid=uid)
+
+
 @router.post("/documents/load")
 def load(ref: DocRef):
     folder = settings().input_dir / ref.collection
     json_path, pdf_path = folder / f"{ref.id}.json", folder / f"{ref.id}.pdf"
     uid = neo4j.uid(ref.collection, ref.id)
+    reopen(ref.collection, uid)
 
     if json_path.is_file():
         doc = json.loads(json_path.read_text(encoding="utf-8"))
@@ -53,7 +71,7 @@ def load(ref: DocRef):
             """
             MATCH (c:Collection {uid: $c})
             MERGE (d:Document {uid: $uid})
-            SET d.collection = $c, d.id = $id, d.source = 'json', d.status = coalesce(d.status, 'processing'), d.loaded_at = timestamp(),
+            SET d.collection = $c, d.id = $id, d.source = 'json', d.status = 'processing', d.loaded_at = timestamp(),
                 d.title = $title, d.year = $year, d.doi = $doi,
                 d.abstract = $abstract, d.citations = $citations
             MERGE (c)-[:CONTAINS]->(d)
@@ -70,7 +88,7 @@ def load(ref: DocRef):
             """
             MATCH (c:Collection {uid: $c})
             MERGE (d:Document {uid: $uid})
-            SET d.collection = $c, d.id = $id, d.source = 'pdf', d.status = coalesce(d.status, 'processing'), d.loaded_at = timestamp()
+            SET d.collection = $c, d.id = $id, d.source = 'pdf', d.status = 'processing', d.loaded_at = timestamp()
             MERGE (c)-[:CONTAINS]->(d)
             """,
             c=ref.collection, uid=uid, id=ref.id)

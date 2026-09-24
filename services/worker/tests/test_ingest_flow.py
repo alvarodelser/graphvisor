@@ -103,3 +103,16 @@ def test_pdf_only_document_and_failure_completes_collection(client):
                                                "step": "L1_extraction", "error": "timeout"})
     assert r.json()["collection_complete"] is True
     assert (r.json()["done"], r.json()["failed"]) == (1, 1)
+
+
+def test_a_reloaded_document_is_processing_again_and_counted_once(client):
+    client.post("/collections/smoke/start")
+    ref = {"collection": "smoke", "id": "DOC1"}
+    client.post("/documents/load", json=ref)
+    assert client.post("/documents/done", json=ref).json()["done"] == 1
+    # The same message delivered again: the document runs a second time.
+    client.post("/documents/load", json=ref)
+    [row] = neo4j.read("MATCH (c:Collection {uid: 'smoke'})-[:CONTAINS]->(d:Document {uid: 'smoke:DOC1'}) "
+                       "RETURN d.status AS status, c.done AS done")
+    assert row == {"status": "processing", "done": 0}
+    assert client.post("/documents/done", json=ref).json()["done"] == 1
