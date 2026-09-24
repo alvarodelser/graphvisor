@@ -15,6 +15,7 @@ export interface DataServiceInterface {
   findSimilarConcepts(embedding: number[], limit?: number): Promise<{ concept: string; similarity: number }[]>
   getConceptsForDocuments(docIds: string[], confThreshold: number, cosThreshold: number): Promise<{ concept: string; score: number }[]>
   searchArguments(query: string, k?: number, signal?: AbortSignal): Promise<ArgumentSearchResult[]>
+  getDiscoverDefaults(): Promise<{ similarity: number; aggregate: number }>
 }
 
 /** A semantic argument match, located in GraphVisor's ids (doc_<i>, doc_<i>_arg_<j>). */
@@ -107,6 +108,7 @@ function buildDocEmbeddings(docs: RawDoc[]): number[][] {
 let rawDocs: RawDoc[] = []
 let HYPOTHESES: Hypothesis[] = []
 let COLLECTION = ''
+let DISCOVER_DEFAULTS = { similarity: 0.9, aggregate: 6 }
 // global argument id (a123) -> where it sits in GraphVisor's ids
 const ARG_LOCATION = new Map<string, { docId: string; blobId: string }>()
 
@@ -157,6 +159,7 @@ export async function ensureInitialized(): Promise<void> {
       const dataset = await loadDataset(await resolveCollection())
       COLLECTION = dataset.collection
       rawDocs = dataset.corpus as RawDoc[]
+      DISCOVER_DEFAULTS = discoverDefaults(rawDocs)
       ARG_LOCATION.clear()
       rawDocs.forEach((doc, i) => doc.data.forEach((arg, j) => {
         if (arg.arg_id) ARG_LOCATION.set(arg.arg_id, { docId: makeDocId(i), blobId: `doc_${i}_arg_${j}` })
@@ -427,6 +430,11 @@ function buildGraphData(): {
 // ── Service implementation ────────────────────────────────────────────────────
 
 export class RealDataService implements DataServiceInterface {
+  async getDiscoverDefaults(): Promise<{ similarity: number; aggregate: number }> {
+    await ensureInitialized()
+    return DISCOVER_DEFAULTS
+  }
+
   searchArguments(query: string, k = 20, signal?: AbortSignal): Promise<ArgumentSearchResult[]> {
     return searchArgumentsIn(query, k, signal)
   }
@@ -679,6 +687,19 @@ export class RealDataService implements DataServiceInterface {
       .map(([concept, score]) => ({ concept, score }))
       .sort((a, b) => b.score - a.score)
   }
+}
+
+// Discover keeps hypotheses whose concept is strongly linked to the selected
+// documents. The old defaults (link score >= 0.9, summed >= 6) were tuned on e5
+// scores; the collection's own BGE-M3 link scores run lower, so the similarity
+// default is the 25th percentile of each argument's best link (on the old corpus
+// that lands near the old 0.9), and one strong argument is enough.
+export function discoverDefaults(docs: RawDoc[]): { similarity: number; aggregate: number } {
+  const top = docs.flatMap(d => d.data.map(a => a.concept_level?.parent_concepts_cos?.[0]))
+    .filter((v): v is number => typeof v === 'number').sort((a, b) => a - b)
+  if (top.length === 0) return { similarity: 0.9, aggregate: 6 }
+  const q25 = top[Math.floor(top.length * 0.25)]
+  return { similarity: Math.floor(q25 * 20) / 20, aggregate: 1 }
 }
 
 export async function searchArgumentsIn(query: string, k = 20, signal?: AbortSignal): Promise<ArgumentSearchResult[]> {

@@ -170,8 +170,9 @@ COLLECTION_STAGE_CODES = {
     "citations": 5,             # OpenAlex / Semantic Scholar
     "map": 6,                   # document vectors + map positions
     "topics": 7,                # clustering + LLM labels
-    "ready": 8,
-    "failed": 9,
+    "hypotheses": 8,            # LLM, one call per concept per 200 linked arguments
+    "ready": 9,
+    "failed": 10,
 }
 
 

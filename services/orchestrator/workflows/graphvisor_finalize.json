@@ -809,7 +809,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7200,
+        9360,
         0
       ],
       "onError": "continueErrorOutput"
@@ -835,6 +835,282 @@
       ],
       "notes": "Every step's error output lands here; the collection is marked failed.",
       "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/hypothesis-seeds",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "c88a8aca-fe6d-56ec-a0ce-228586b24ec6",
+      "name": "Hypothesis seeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7200,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "30053cee-eb38-5321-9358-23bda902e790",
+              "leftValue": "={{ $json.seeds.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "10b0e45a-e003-5c6c-ba5d-e2eeecc9c0e7",
+      "name": "Any hypothesis seeds?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "seeds",
+        "options": {}
+      },
+      "id": "30cd9aca-d382-5a03-9ead-8bcfce360b68",
+      "name": "One per seed",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        7680,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1185aedd-51a7-5f55-ab4f-78ef4f14794c",
+              "name": "concept",
+              "value": "={{ $json.concept }}",
+              "type": "string"
+            },
+            {
+              "id": "88ad9cbc-8dc5-5ad0-93de-53b815248ab0",
+              "name": "batch",
+              "value": "={{ $json.batch }}",
+              "type": "number"
+            },
+            {
+              "id": "a524a7ad-95b0-551e-aa81-a6fe34cb96f5",
+              "name": "arg_list",
+              "value": "={{ $json.arg_list }}",
+              "type": "string"
+            },
+            {
+              "id": "278e5fcc-778b-5152-be63-eaf2b99627a4",
+              "name": "attempt",
+              "value": "={{ $json.attempt ?? 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "75487483-ce7c-51fe-b86c-3554dd421911",
+      "name": "Hypothesis items",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7920,
+        -200
+      ],
+      "notes": "Entry of the hypothesis loop: first pass from the split, retries from 'Retry invalid hypotheses'.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "{{ENV:OLLAMA_MODEL}}",
+          "mode": "list",
+          "cachedResultName": "{{ENV:OLLAMA_MODEL}}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{PROMPT:hypothesis_generation.user}}"
+            }
+          ]
+        },
+        "options": {
+          "num_ctx": 32768,
+          "system": "{{PROMPT:hypothesis_generation.system}}",
+          "think": false
+        }
+      },
+      "id": "9a6e1881-99cb-51f7-a740-02140306311a",
+      "name": "Hypothesis generation",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        8160,
+        -200
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "{{ENV:N8N_OLLAMA_CREDENTIAL_ID}}",
+          "name": "GraphVisor Ollama"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "One call per concept per 200 linked arguments (old hypothesis_generation.py).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6e138e0e-83ab-56d1-8f6b-2543508a7317",
+              "name": "concept",
+              "value": "={{ $('Hypothesis items').item.json.concept }}",
+              "type": "string"
+            },
+            {
+              "id": "cc11e6d5-0542-5d0d-8ed8-74b6fb860ddd",
+              "name": "batch",
+              "value": "={{ $('Hypothesis items').item.json.batch }}",
+              "type": "number"
+            },
+            {
+              "id": "bdc46529-5a26-5187-9213-a02f49c54c68",
+              "name": "attempt",
+              "value": "={{ $('Hypothesis items').item.json.attempt }}",
+              "type": "number"
+            },
+            {
+              "id": "9704b745-480b-5b21-b59e-4e2ff24cc14d",
+              "name": "raw",
+              "value": "={{ $json.content ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bac52ee7-a3c1-54de-96ed-8c7170f225cc",
+      "name": "Hypothesis result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        8400,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "65317512-82a4-5a69-99e8-984d7f26a9d8",
+      "name": "Collect hypotheses",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        8640,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $('Collection').first().json.collection }}/hypotheses",
+        "options": {
+          "timeout": 600000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ results: $json.items.map(i => ({ concept: i.concept, batch: i.batch, raw: i.raw })) }) }}"
+      },
+      "id": "81840b85-d6f3-58cc-ac84-645c748022dc",
+      "name": "Save hypotheses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8880,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d0a18640-51cc-5264-87d6-5b8b3a4e34d3",
+              "leftValue": "={{ $json.invalid.length > 0 && $('Collect hypotheses').last().json.items[0].attempt < 3 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5ea2bb13-69ef-509a-8d08-fa99a5a579f7",
+      "name": "Retry hypotheses?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        9120,
+        0
+      ],
+      "notes": "Unparsable answers are asked again, up to 3 attempts; then the collection goes ready without them.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const invalid = new Set($json.invalid.map(i => i.concept + '|' + i.batch));\nconst attempt = $('Collect hypotheses').last().json.items[0].attempt + 1;\nreturn $('Hypothesis seeds').first().json.seeds\n  .filter(s => invalid.has(s.concept + '|' + s.batch))\n  .map(s => ({ json: { ...s, attempt } }));"
+      },
+      "id": "b308da92-31a4-5d0f-b9fa-d9caed884ee8",
+      "name": "Retry invalid hypotheses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9120,
+        200
+      ]
     }
   ],
   "connections": {
@@ -1295,7 +1571,7 @@
       "main": [
         [
           {
-            "node": "Ready",
+            "node": "Hypothesis seeds",
             "type": "main",
             "index": 0
           }
@@ -1315,6 +1591,144 @@
         [
           {
             "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hypothesis seeds": {
+      "main": [
+        [
+          {
+            "node": "Any hypothesis seeds?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any hypothesis seeds?": {
+      "main": [
+        [
+          {
+            "node": "One per seed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per seed": {
+      "main": [
+        [
+          {
+            "node": "Hypothesis items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hypothesis items": {
+      "main": [
+        [
+          {
+            "node": "Hypothesis generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hypothesis generation": {
+      "main": [
+        [
+          {
+            "node": "Hypothesis result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hypothesis result": {
+      "main": [
+        [
+          {
+            "node": "Collect hypotheses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect hypotheses": {
+      "main": [
+        [
+          {
+            "node": "Save hypotheses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save hypotheses": {
+      "main": [
+        [
+          {
+            "node": "Retry hypotheses?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry hypotheses?": {
+      "main": [
+        [
+          {
+            "node": "Retry invalid hypotheses",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry invalid hypotheses": {
+      "main": [
+        [
+          {
+            "node": "Hypothesis items",
             "type": "main",
             "index": 0
           }

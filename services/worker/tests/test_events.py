@@ -68,7 +68,7 @@ def test_finalize_steps_log_collection_stages(client, capsys, monkeypatch):
     from tests import test_enrichment_flow
     test_enrichment_flow.test_enrichment_end_to_end(client, monkeypatch)
     stages = [l["stage"] for l in lines(capsys) if l["event"] == "collection_stage" and not l.get("heartbeat")]
-    assert stages == ["linking", "metadata", "citations", "map", "topics", "ready"]
+    assert stages == ["linking", "metadata", "citations", "map", "topics", "ready"]  # hypotheses: tests/test_hypotheses.py
     [row] = neo4j_status()
     assert row == {"status": "ready", "stage": "ready"}
 

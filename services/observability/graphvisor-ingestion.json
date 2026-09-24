@@ -194,7 +194,7 @@
           "queryType": "range"
         }
       ],
-      "description": "graphvisor_finalize, one row per collection: concepts (LLM), linking, enrichment, topics, ready.",
+      "description": "graphvisor_finalize, one row per collection: concepts (LLM), linking, enrichment, topics, hypotheses (LLM), ready.",
       "options": {
         "mergeValues": true,
         "showValue": "auto",
@@ -260,14 +260,19 @@
                   "index": 6
                 },
                 "8": {
-                  "text": "ready",
-                  "color": "green",
+                  "text": "hypotheses",
+                  "color": "dark-purple",
                   "index": 7
                 },
                 "9": {
+                  "text": "ready",
+                  "color": "green",
+                  "index": 8
+                },
+                "10": {
                   "text": "failed",
                   "color": "dark-red",
-                  "index": 8
+                  "index": 9
                 }
               }
             }

@@ -64,6 +64,14 @@ export function DiscoverView() {
 
   const isActive = activeView === 'discover'
 
+  // Filter defaults calibrated on this collection's concept-link scores.
+  useEffect(() => {
+    dataService.getDiscoverDefaults?.().then(d => {
+      setConceptSimilarityThreshold(d.similarity)
+      setConceptAggregateThreshold(d.aggregate)
+    })
+  }, [setConceptSimilarityThreshold, setConceptAggregateThreshold])
+
   useEffect(() => {
     dataService.getHypotheses().then(h => {
       setAllHypotheses(h)

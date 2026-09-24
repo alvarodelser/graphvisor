@@ -15,12 +15,12 @@ def test_user_prompt_placeholders_become_n8n_expressions():
 
 def test_real_old_prompts_convert_cleanly():
     for name in ("L1_extraction", "argument_classification", "L2_entities",
-                 "concept_constructor", "concept_validation"):
+                 "concept_constructor", "concept_validation", "hypothesis_generation"):
         text = (render.HERE / "prompts" / f"{name}.user.txt").read_text()
         out = render.user_prompt_to_n8n(text)
         # Python's own formatter agrees on the literal parts.
         fields = {f: "{{ $json.%s }}" % f for f in
-                  ("input_text", "TEXT", "ARG_ID", "FULL_ARGUMENT", "list_of_args", "list_of_concepts")}
+                  ("input_text", "TEXT", "ARG_ID", "FULL_ARGUMENT", "list_of_args", "list_of_concepts", "arg_list")}
         assert out == text.format(**fields)
 
 

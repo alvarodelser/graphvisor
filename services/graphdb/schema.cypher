@@ -39,3 +39,6 @@ OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 
 CREATE VECTOR INDEX argument_embedding IF NOT EXISTS
 FOR (n:Argument) ON n.embedding
 OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 'cosine'}};
+
+CREATE CONSTRAINT hypothesis_uid IF NOT EXISTS FOR (n:Hypothesis) REQUIRE n.uid IS UNIQUE;
+CREATE INDEX hypothesis_collection IF NOT EXISTS FOR (n:Hypothesis) ON (n.collection);

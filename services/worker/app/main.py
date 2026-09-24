@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from app import api, concepts, diagnose, enrichment, ingest
+from app import api, concepts, diagnose, enrichment, hypotheses, ingest
 from app.shared import events, neo4j, vectorizer
 
 events.setup_logging()
@@ -23,6 +23,7 @@ app.add_middleware(events.StepEventsMiddleware)
 app.include_router(ingest.router)
 app.include_router(concepts.router)
 app.include_router(enrichment.router)
+app.include_router(hypotheses.router)
 app.include_router(api.router)
 app.include_router(diagnose.router)
 

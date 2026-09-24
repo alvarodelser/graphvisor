@@ -88,9 +88,13 @@ A failure marks the document `failed` (with the step and the error) and puts the
 2. **Citations:** the worker asks OpenAlex (by DOI, else by title), with Semantic Scholar as the fallback. This step is best effort.
 3. **Document vectors** (title + abstract) and **map positions** (PCA) for documents and concepts, computed by the worker.
 4. **Topics:** the worker clusters the documents by concept; the LLM names each topic.
-5. **Worker** marks the collection `ready`.
 
-**Viewing:** GraphVisor asks the worker which collections are ready and loads the one in `?collection=<name>`, otherwise the first ready one alphabetically. When there are several collections, a picker in the status bar switches between them; collections still processing are listed but disabled.
+**Phase 4: hypotheses** (`graphvisor_finalize`, as in the old `hypothesis_generation.py`)
+1. **Worker** writes, for each concept, the arguments linked to it in batches of 200 (`ARGUMENT_ID` / `ARGUMENT` blocks, as in the old per-concept files).
+2. **LLM, hypothesis generation:** once per batch, it proposes hypotheses with research question, rationale, the evidence argument ids, and scores for novelty, plausibility, impact and creativity (0–1). Invalid answers are asked again, up to 3 times.
+3. **Worker** stores Hypothesis nodes, linked to their concept (`ABOUT`) and evidence arguments (`EVIDENCED_BY`), and marks the collection `ready`.
+
+**Viewing:** GraphVisor starts on a collection screen and opens a ready collection as `?collection=<name>`. Discover lists its hypotheses. Explore opens once a hypothesis is selected, or straight from the document selection when a collection has none. Search bars: corpus view (titles by words, arguments by meaning), Explore (entities by words, arguments by meaning).
 
 ## Diagnose
 

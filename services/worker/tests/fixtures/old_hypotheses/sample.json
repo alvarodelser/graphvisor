@@ -1,0 +1,120 @@
+{
+    "hypotheses": [
+        {
+            "hypothesis": "Proteome redox state tunes the RecA–Pol V axis: oxidation-resistant proteomes bias RecA* toward strand exchange while disfavoring Pol V recruitment, thereby suppressing SOS mutagenesis without impairing repair. Enhancing intracellular antioxidant pools or importing Deinococcus-derived antioxidant small molecules into E. coli will reduce UmuD′2C-dependent mutagenesis after DNA damage while preserving recombination and survival by redox-modulating RecA/SSB/β-clamp interfaces required for Pol V action.",
+            "research_question": "Does augmenting proteome antioxidant capacity in E. coli decrease Pol V-dependent mutagenesis after UV or nalidixic acid without reducing recombination or survival, and is this mediated by altered redox states of RecA/SSB/β clamp that impair UmuD′2C recruitment to RecA*?",
+            "rationale": "Pol V requires RecA* and accessory factors for activity, and SOS mutagenesis is tightly coupled to these interfaces. Radiation survival correlates with proteome, not genome, protection; protein oxidation alone increases mutation rates, implying a proteome-driven switch. Therefore, redox-resistant proteomes should bias RecA* function away from mutagenic TLS toward recombination.",
+            "evidence": [
+                "a4052",
+                "a4808",
+                "a4806",
+                "a4784",
+                "a4771",
+                "a3130",
+                "a3133",
+                "a3160",
+                "a3166",
+                "a3162",
+                "a4853",
+                "a4837"
+            ],
+            "scores": {
+                "novelty": 0.85,
+                "plausibility": 0.75,
+                "impact": 0.85,
+                "creativity": 0.85
+            }
+        },
+        {
+            "hypothesis": "A PriA-dependent recombination–MMR ‘editing’ module sets the interspecies recombination barrier: transient reduction of PriA activity during conjugation limits MutH-dependent editing synthesis, allowing SOS-elevated RecA/RuvAB to drive recombination across divergence and increase horizontal gene transfer in MutS/L-proficient cells.",
+            "research_question": "Does short-lived inhibition or depletion of PriA at the onset of E. coli–Salmonella conjugation raise recombinant yield in MutS+ backgrounds by reducing MutH-dependent recombination-associated DNA synthesis, thereby diminishing MMR rejection while maintaining SOS-stimulated RecA/RuvAB-mediated strand exchange?",
+            "rationale": "MutH editing of recombination intermediates requires PriA/RecF-dependent DNA synthesis, and MMR remains a strong barrier even during strong SOS. If PriA-dependent synthesis is throttled, MMR editing windows shrink, allowing RecA and RuvAB—upregulated and activated under strong SOS—to carry recombination through divergent tracts.",
+            "evidence": [
+                "a5160",
+                "a5158",
+                "a5156",
+                "a5124",
+                "a5123",
+                "a3611",
+                "a3604",
+                "a3597",
+                "a5128",
+                "a5130",
+                "a5115",
+                "a5120"
+            ],
+            "scores": {
+                "novelty": 0.75,
+                "plausibility": 0.8,
+                "impact": 0.8,
+                "creativity": 0.75
+            }
+        },
+        {
+            "hypothesis": "σS stabilization biases RecA* toward coprotease over strand exchange, forming a mutagenesis-centric state (MAC): by elevating σS (e.g., via rssB loss), cells prolong early RecA-catalyzed synapsis on heterologous DNA, increasing LexA and UmuD cleavage and boosting Pol II/Pol IV-driven stationary-phase mutagenesis without proportionally increasing recombination.",
+            "research_question": "In aging E. coli colonies, does stabilization of σS (e.g., rssB inactivation) increase LexA and UmuD cleavage and PolB/DinB-dependent mutations while reducing the rate of RecA-mediated strand exchange on divergent substrates, thereby shifting stress responses toward MAC mutagenesis rather than recombination?",
+            "rationale": "MAC requires RecA and PolB and is positively controlled by σS, whose levels are set by RssB/ClpPX. RecA engaged in strand exchange loses coprotease activity; slowing synapsis on divergent DNA prolongs RecA* coprotease function, amplifying SOS-like cleavage events that fuel mutagenesis under σS control.",
+            "evidence": [
+                "a4792",
+                "a4787",
+                "a4764",
+                "a3531",
+                "a3542",
+                "a4777",
+                "a5127",
+                "a3602",
+                "a3616"
+            ],
+            "scores": {
+                "novelty": 0.8,
+                "plausibility": 0.7,
+                "impact": 0.75,
+                "creativity": 0.8
+            }
+        },
+        {
+            "hypothesis": "During strong SOS, MMR retargets to seed recombination-driven structural variation: recognition of chemically modified bases and heteroduplexes by MutS/MutL triggers nicking (LPMR) that nucleates RecA loading and RecF/RecBC-dependent duplications and SCE-like events near lesion clusters, shifting spectra toward tandem duplications while reducing point mutations.",
+            "research_question": "Do SOS-induced E. coli that overexpress MutS/MutL show increased rates of tandem duplications and sister-chromatid exchange-like events but fewer base substitutions, and are these shifts dependent on RecF/RecBC and LPMR-mediated nicking at chemically modified sites?",
+            "rationale": "MMR recognizes both mismatches and some chemical lesions and introduces nicks during long-patch repair; SOS elevates recombination functions (RecF/RecBC pathways) that drive duplications. Thus, MMR activity during SOS can seed recombination hotspots, biasing outcomes toward structural variation.",
+            "evidence": [
+                "a3369",
+                "a3364",
+                "a3940",
+                "a3509",
+                "a4617",
+                "a3707",
+                "a3704",
+                "a4239",
+                "a3616",
+                "a3641"
+            ],
+            "scores": {
+                "novelty": 0.8,
+                "plausibility": 0.75,
+                "impact": 0.8,
+                "creativity": 0.8
+            }
+        },
+        {
+            "hypothesis": "Locking RecA into rapid strand-exchange engagement suppresses SOS mutagenesis while preserving recombination: enhancing the kinetic commitment of RecA* to strand exchange (via overexpression of recombination accelerators or small molecules that promote synapsis) reduces its coprotease window for LexA/UmuD cleavage and Pol V activation, lowering mutagenesis without compromising DNA repair.",
+            "research_question": "Do interventions that accelerate RecA-mediated homology search and synapsis in E. coli (e.g., expression of recombination-promoting cofactors or small molecules) reduce LexA/UmuD cleavage and Pol V-dependent mutagenesis after DNA damage while maintaining or enhancing recombination efficiency?",
+            "rationale": "RecA* engaged in strand exchange loses coprotease activity; efficient intraspecies recombination correlates with weak SOS induction, whereas RecA concentration controls both recombination and CI cleavage. Driving RecA faster into strand exchange should shorten the coprotease-active window that enables SOS mutagenesis.",
+            "evidence": [
+                "a5127",
+                "a5128",
+                "a5130",
+                "a3614",
+                "a5120",
+                "a4806",
+                "a4784",
+                "a4052"
+            ],
+            "scores": {
+                "novelty": 0.8,
+                "plausibility": 0.75,
+                "impact": 0.85,
+                "creativity": 0.8
+            }
+        }
+    ]
+}

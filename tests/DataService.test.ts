@@ -192,3 +192,12 @@ describe('RealDataService.searchArguments', () => {
     expect(blobs.map(b => b.id)).toContain(hits[0].blobId)
   })
 })
+
+describe('discoverDefaults', () => {
+  it('uses the 25th percentile of top link scores, floored to 0.05', async () => {
+    const { discoverDefaults } = await import('../src/data/DataService')
+    const doc = (scores: number[]) => ({ source: 's', data: scores.map(s => ({ concept_level: { parent_concepts_cos: [s] } })) })
+    expect(discoverDefaults([doc([0.70, 0.78, 0.80, 0.86, 0.90]) as never])).toEqual({ similarity: 0.75, aggregate: 1 })
+    expect(discoverDefaults([])).toEqual({ similarity: 0.9, aggregate: 6 })
+  })
+})

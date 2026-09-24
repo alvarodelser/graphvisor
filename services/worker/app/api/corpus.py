@@ -134,6 +134,19 @@ def concept_embeddings(collection: str = CollectionPath):
 
 @router.get("/collections/{collection}/hypotheses")
 def hypotheses(collection: str = CollectionPath):
-    """Hypothesis generation is out of scope for the automated pipeline."""
+    """Grouped by concept, as the old pipeline's hypothesis files were merged:
+    {concept: [{hypothesis, research_question, rationale, evidence, scores}]}.
+    GraphVisor's loader (src/data/dataset.ts) reads this shape."""
     _require_ready(collection)
-    return []
+    rows = neo4j.read(
+        "MATCH (h:Hypothesis {collection: $c}) RETURN h {.*} AS h ORDER BY h.concept, h.uid", c=collection)
+    grouped: dict[str, list] = {}
+    for r in rows:
+        h = r["h"]
+        grouped.setdefault(h["concept"], []).append({
+            "hypothesis": h["hypothesis"], "research_question": h.get("research_question"),
+            "rationale": h.get("rationale"), "evidence": h.get("evidence") or [],
+            "scores": {k: h.get(k) if h.get(k) is not None else 0.5
+                       for k in ("novelty", "plausibility", "impact", "creativity")},
+        })
+    return grouped

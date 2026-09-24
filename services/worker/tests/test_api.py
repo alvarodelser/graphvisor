@@ -39,7 +39,7 @@ def test_api_serves_the_old_static_shapes(client, monkeypatch):
     assert len(np.frombuffer(docs_bin, dtype="<f4")) == 2 * 1024
     concepts_bin = client.get("/api/collections/smoke/concept_embeddings.bin").content
     assert len(np.frombuffer(concepts_bin, dtype="<f4")) == len(concepts) * 1024
-    assert client.get("/api/collections/smoke/hypotheses").json() == []
+    assert client.get("/api/collections/smoke/hypotheses").json() == {}
     assert client.get("/api/collections/BAD!/corpus").status_code == 422
 
 
