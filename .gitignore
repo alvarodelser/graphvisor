@@ -15,10 +15,11 @@ input/sci_corpus/*.pdf
 !services/.env.example
 
 # Corpus data: GraphVisor reads collections from the worker API (services/worker).
-# Everything in src/data is ignored except the two modules that load it.
+# Everything in src/data is ignored except the modules that load it.
 src/data/*
 !src/data/DataService.ts
 !src/data/dataset.ts
+!src/data/api.ts
 
 # Design specs and plans stay local.
 docs/superpowers/
