@@ -45,8 +45,9 @@ curl -s localhost:8090/health
 # 3. RabbitMQ: create the graphvisor_* queues (idempotent, never deletes)
 services/messaging/sync-to-rabbit.sh
 
-# 4. n8n: back up, then create/update the graphvisor_* workflows with prompts inlined
-services/orchestrator/sync-to-n8n.sh
+# 4. n8n: unpublish ours, back up, create/update the graphvisor_* workflows with prompts
+#    inlined, and publish again what was published (needs N8N_API_KEY; see below)
+services/orchestrator/sync-to-n8n.sh              # --publish / --no-publish to choose
 
 # 5. Check everything end to end (see Diagnose)
 services/diagnose.sh
@@ -54,7 +55,15 @@ services/diagnose.sh
 # 6. Grafana: create/update the GraphVisor dashboard (see Monitoring)
 services/observability/sync-to-grafana.sh
 ```
-Then, in the n8n UI, **publish `graphvisor_ingest` and `graphvisor_finalize`**. The import leaves them unpublished, and until `graphvisor_ingest` is published, messages wait in the queue. Re-run the matching step after changing a schema, the worker code, the queues, or a workflow or prompt.
+**Publishing.** With `N8N_API_KEY` in `services/.env` (n8n → Settings → n8n API → Create an API key), the sync unpublishes and republishes by itself, and so does:
+```bash
+services/orchestrator/workflows.sh status       # published or not, and graphvisor_ingest's consumers
+services/orchestrator/workflows.sh unpublish    # pause ingestion; checks the queue has 0 consumers
+services/orchestrator/workflows.sh publish      # finalize, then ingest; checks exactly 1 consumer
+```
+They use n8n's API, not its CLI, because only the running n8n can stop a queue listener. If a consumer is left after unpublishing, n8n lost track of a listener, and only `docker restart n8n` removes it (check first that IARAG isn't mid-run). The sync never imports while the queue has a consumer, because importing over a published workflow is what leaves such listeners behind.
+
+Without the key, publish them by hand in the n8n UI: **publish `graphvisor_ingest` and `graphvisor_finalize`**. The import leaves them unpublished, and until `graphvisor_ingest` is published, messages wait in the queue. Re-run the matching step after changing a schema, the worker code, the queues, or a workflow or prompt.
 
 ## Pipeline, step by step
 

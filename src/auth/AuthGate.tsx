@@ -72,7 +72,6 @@ function LoginForm() {
         <label className={styles.field}>
           <span>Access code</span>
           <input value={code} onChange={e => setCode(e.target.value)} placeholder="GV-XXXX-XXXX-XXXX" autoComplete="off" required />
-          <small>You got it from the people running GraphVisor. It decides which collections you can see.</small>
         </label>
       )}
       {error && <p className={styles.error} role="alert">{error}</p>}

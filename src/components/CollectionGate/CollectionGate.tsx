@@ -9,15 +9,28 @@ const POLL_MS = 30_000
 
 type State =
   | { kind: 'loading' }
-  | { kind: 'open' }
+  | { kind: 'open'; collection: string }
   | { kind: 'choose'; collections: CollectionInfo[]; requested: string | null }
   | { kind: 'error'; message: string }
 
-// GraphVisor starts on this collection screen. The app opens only for a ready
-// collection named in ?collection= (a card below, or the status-bar picker).
+// With several collections GraphVisor starts on this screen; the app opens for a
+// ready collection named in ?collection= (a card below, or the status bar). A
+// person with just one collection, and it ready, goes straight into it.
 export function decide(collections: CollectionInfo[], requested: string | null): State {
-  if (requested && collections.some(c => c.name === requested && c.status === 'ready')) return { kind: 'open' }
+  if (requested && collections.some(c => c.name === requested && c.status === 'ready')) {
+    return { kind: 'open', collection: requested }
+  }
+  if (!requested && collections.length === 1 && collections[0].status === 'ready') {
+    return { kind: 'open', collection: collections[0].name }
+  }
   return { kind: 'choose', collections, requested }
+}
+
+// Back to this screen (the status bar's "All collections").
+export function chooseCollection() {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('collection')
+  window.location.assign(url.toString())
 }
 
 function openCollection(name: string) {
@@ -83,6 +96,12 @@ export function CollectionGate({ children }: { children: ReactNode }) {
         .then(cs => {
           if (cancelled) return
           const next = decide(cs, requested)
+          // The data layer reads the collection from the URL.
+          if (next.kind === 'open' && !requested) {
+            const url = new URL(window.location.href)
+            url.searchParams.set('collection', next.collection)
+            window.history.replaceState(null, '', url.toString())
+          }
           setState(next)
           if (next.kind !== 'open') timer = setTimeout(check, POLL_MS)
         })

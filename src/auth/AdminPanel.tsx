@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { listCollections, type CollectionInfo } from '../data/dataset'
 import { adminApi, type AccessCode, type Person } from './adminApi'
+import { EvaluationsOverview } from './EvaluationsOverview'
 import styles from './AdminPanel.module.css'
 
-type Tab = 'codes' | 'people' | 'collections'
+type Tab = 'evaluations' | 'codes' | 'people' | 'collections'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'evaluations', label: 'Evaluations' },
+  { id: 'codes', label: 'Access codes' },
+  { id: 'people', label: 'People' },
+  { id: 'collections', label: 'Collections' },
+]
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—')
@@ -231,8 +239,10 @@ function CollectionsTab({ collections }: { collections: CollectionInfo[] }) {
   )
 }
 
+// Full screen over the app (which keeps its state underneath): evaluations
+// first, then access codes, people and per-collection settings.
 export function AdminPanel({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>('codes')
+  const [tab, setTab] = useState<Tab>('evaluations')
   const [collections, setCollections] = useState<CollectionInfo[]>([])
   useEffect(() => { listCollections().then(setCollections).catch(() => setCollections([])) }, [])
   useEffect(() => {
@@ -242,25 +252,25 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} role="dialog" aria-label="Admin" onClick={e => e.stopPropagation()}>
-        <div className={styles.head}>
-          <span className={styles.title}>Admin</span>
-          <nav className={styles.tabs}>
-            {(['codes', 'people', 'collections'] as const).map(t => (
-              <button key={t} className={tab === t ? styles.tabOn : styles.tab} onClick={() => setTab(t)}>
-                {t === 'codes' ? 'Access codes' : t === 'people' ? 'People' : 'Collections'}
-              </button>
-            ))}
-          </nav>
-          <button className={styles.close} onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <div className={styles.body}>
-          {tab === 'codes' && <CodesTab collections={collections.map(c => c.name)} />}
-          {tab === 'people' && <PeopleTab />}
-          {tab === 'collections' && <CollectionsTab collections={collections} />}
-        </div>
-      </div>
+    <div className={styles.page} role="dialog" aria-label="Admin">
+      <aside className={styles.side}>
+        <div className={styles.title}>GraphVisor admin</div>
+        <nav className={styles.nav}>
+          {TABS.map(t => (
+            <button key={t.id} className={tab === t.id ? styles.navOn : styles.navItem} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <button className={styles.back} onClick={onClose}>← Back to GraphVisor</button>
+      </aside>
+      <main className={styles.main}>
+        <h1 className={styles.h1}>{TABS.find(t => t.id === tab)!.label}</h1>
+        {tab === 'evaluations' && <EvaluationsOverview collections={collections} />}
+        {tab === 'codes' && <CodesTab collections={collections.map(c => c.name)} />}
+        {tab === 'people' && <PeopleTab />}
+        {tab === 'collections' && <CollectionsTab collections={collections} />}
+      </main>
     </div>
   )
 }

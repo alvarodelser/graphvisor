@@ -1,18 +1,47 @@
-.overlay {
-  position: fixed; inset: 0; z-index: 1000; background: rgba(7, 59, 76, 0.35);
-  display: flex; align-items: center; justify-content: center; padding: 16px;
+.page {
+  position: fixed; inset: 0; z-index: 1000; background: #f3f5f7; display: flex; overflow: hidden;
 }
-.panel {
-  width: 100%; max-width: 920px; max-height: calc(100vh - 32px); background: #fff; border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(7,59,76,0.2); display: flex; flex-direction: column; overflow: hidden;
+.side {
+  width: 220px; flex-shrink: 0; background: #073b4c; color: #fff; display: flex; flex-direction: column;
+  padding: 20px 14px; gap: 18px;
 }
-.head { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-bottom: 1px solid rgba(7,59,76,0.08); flex-wrap: wrap; }
-.title { font-size: 14px; font-weight: 800; color: #073b4c; }
-.tabs { display: flex; gap: 4px; flex: 1; }
-.tab, .tabOn { border: none; background: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; }
-.tabOn { background: rgba(7,59,76,0.08); color: #073b4c; }
-.close { border: none; background: none; font-size: 20px; line-height: 1; color: #6b7280; cursor: pointer; }
-.body { padding: 14px 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.title { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.navItem, .navOn {
+  text-align: left; border: none; border-radius: 7px; padding: 8px 10px; font-size: 13px; font-weight: 600;
+  cursor: pointer; background: none; color: rgba(255,255,255,0.7);
+}
+.navItem:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.navOn { background: rgba(255,255,255,0.14); color: #fff; }
+.back { border: 1px solid rgba(255,255,255,0.3); background: none; color: #fff; border-radius: 7px; padding: 7px 10px; font-size: 12px; cursor: pointer; }
+.back:hover { border-color: #fff; }
+.main { flex: 1; overflow-y: auto; padding: 24px 32px 48px; display: flex; flex-direction: column; gap: 14px; }
+.h1 { margin: 0; font-size: 20px; font-weight: 800; color: #073b4c; }
+.h2 { margin: 0; font-size: 15px; font-weight: 700; color: #073b4c; display: flex; align-items: baseline; gap: 10px; }
+.section { background: #fff; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 0 0 1px rgba(7,59,76,0.06); }
+.toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stack { display: flex; height: 20px; border-radius: 6px; overflow: hidden; font-size: 10px; font-weight: 700; color: #fff; }
+.seg { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; padding: 0 4px; min-width: 18px; }
+.v_promising, .v_faithful { background: #0f766e; }
+.v_unsure { background: #b45309; }
+.v_not_useful { background: #4b5563; }
+.v_wrong { background: #be123c; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: #374151; }
+.fact b { color: #073b4c; }
+.textCell { max-width: 520px; line-height: 1.45; }
+.badge { display: inline-block; font-size: 10px; font-weight: 600; color: #8b5cf6; background: rgba(139,92,246,0.08);
+  border: 1px solid rgba(139,92,246,0.2); border-radius: 10px; padding: 0 7px; margin-right: 4px; }
+.mono { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.comments { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151; }
+.who { font-weight: 700; color: #073b4c; }
+
+@media (max-width: 760px) {
+  .page { flex-direction: column; }
+  .side { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; gap: 8px; }
+  .nav { flex-direction: row; flex-wrap: wrap; flex: 1; }
+  .main { padding: 16px; }
+}
 .lead { margin: 0; font-size: 12px; color: #6b7280; line-height: 1.5; }
 .error { margin: 0; font-size: 12px; color: #b91c1c; }
 .newCode { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 10px; background: #f8fafc; border-radius: 10px; }

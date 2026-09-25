@@ -16,8 +16,13 @@ function at(search: string) {
 afterEach(() => { vi.unstubAllGlobals(); at('') })
 
 describe('decide', () => {
-  it('always asks to choose when no collection is named', () => {
-    expect(decide([info('a', 'ready')], null).kind).toBe('choose')
+  it('asks to choose when no collection is named and there are several', () => {
+    expect(decide([info('a', 'ready'), info('b', 'ready')], null).kind).toBe('choose')
+    expect(decide([info('a', 'ready'), info('b', 'processing')], null).kind).toBe('choose')
+  })
+  it('opens the only collection straight away, once it is ready', () => {
+    expect(decide([info('a', 'ready')], null)).toEqual({ kind: 'open', collection: 'a' })
+    expect(decide([info('a', 'processing')], null).kind).toBe('choose')
   })
   it('opens a named, ready collection', () => {
     expect(decide([info('a', 'ready')], 'a').kind).toBe('open')

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useRef, useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { StatusBar } from '../StatusBar/StatusBar'
@@ -112,9 +112,8 @@ export function Shell({ children }: Props) {
         <nav className={styles.tabs}>
           <div ref={indicatorRef} className={styles.indicator} />
           {(['corpus', 'discover', 'graph', 'detail'] as const).map((v, i, arr) => (
-            <>
+            <Fragment key={v}>
               <button
-                key={v}
                 ref={el => { tabRefs.current[i] = el }}
                 className={[
                   styles.tab,
@@ -140,8 +139,8 @@ export function Shell({ children }: Props) {
                   <span className={styles.badge}>●</span>
                 )}
               </button>
-              {i < arr.length - 1 && <span key={`sep-${v}`} className={styles.sep}>›</span>}
-            </>
+              {i < arr.length - 1 && <span className={styles.sep}>›</span>}
+            </Fragment>
           ))}
         </nav>
         {showCTA && (
