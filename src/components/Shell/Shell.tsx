@@ -2,6 +2,8 @@ import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { dataService } from '../../data/DataService'
 import { StatusBar } from '../StatusBar/StatusBar'
+import { useEvaluations } from '../../evaluation/useEvaluations'
+import { track } from '../../evaluation/evaluationApi'
 import styles from './Shell.module.css'
 
 const VIEW_ORDER = ['corpus', 'discover', 'graph', 'detail'] as const
@@ -31,6 +33,24 @@ export function Shell({ children }: Props) {
   // a hypothesis to be picked in Discover.
   const [noHypotheses, setNoHypotheses] = useState(false)
   useEffect(() => { dataService.getHypotheses().then(h => setNoHypotheses(h.length === 0)) }, [])
+
+  // The researcher's own ratings, once the collection is known.
+  useEffect(() => {
+    dataService.getDocuments().then(() => useEvaluations.getState().load()).catch(() => { /* rating stays off */ })
+  }, [])
+
+  // Implicit signals: which views and filter settings people actually use.
+  const filters = useStore(s => s.filters)
+  useEffect(() => { track('view_opened', activeView) }, [activeView])
+  const firstFilters = useRef(true)
+  useEffect(() => {
+    if (firstFilters.current) { firstFilters.current = false; return }
+    const t = setTimeout(() => track('filters_changed', null, {
+      min_confidence: filters.minConfidence,
+      node_types: Object.keys(filters.nodeTypes).filter(k => filters.nodeTypes[k as keyof typeof filters.nodeTypes]),
+    }), 1500)
+    return () => clearTimeout(t)
+  }, [filters])
 
   const hasCorpusSelection = selectedDocumentIds.length > 0
   const hasHypothesisSelection = selectedHypothesisIds.length > 0

@@ -1,6 +1,7 @@
 import styles from './NodeFloatingCard.module.css'
 import { RELATION_COLORS } from '../../utils/geometry'
 import type { HoverItem } from './useGraphD3'
+import { ArgumentVerdict } from '../../evaluation/ArgumentVerdict'
 
 const TYPE_BG: Record<string, string> = {
   Argument: '#073b4c', Entity: '#118ab2', Concept: '#74b9d6',
@@ -69,6 +70,7 @@ export function NodeFloatingCard({ item, sticky, onDismiss }: Props) {
         <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>
           {blob.source_document_title} · {blob.entityIds.length} entities
         </div>
+        {sticky && <ArgumentVerdict blob={blob} />}
       </div>
     )
   }

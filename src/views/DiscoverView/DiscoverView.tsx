@@ -5,6 +5,7 @@ import { DiscoverListItem } from './DiscoverListItem'
 import { ControlPanel } from '../../components/ControlPanel/ControlPanel'
 import type { Hypothesis } from '../../types'
 import styles from './DiscoverView.module.css'
+import { track } from '../../evaluation/evaluationApi'
 
 import type { CSSProperties } from 'react'
 
@@ -33,7 +34,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'novelty',                 label: 'Novelty' },
   { key: 'scientific_plausibility', label: 'Sci. Plausibility' },
   { key: 'potential_impact',        label: 'Impact' },
-  { key: 'commercial_potential',    label: 'Commercial' },
+  { key: 'commercial_potential',    label: 'Creativity' },
 ]
 
 function overallScore(h: Hypothesis) {
@@ -58,6 +59,8 @@ export function DiscoverView() {
   } = useStore()
 
   const exploreEvidenceOnly = () => {
+    track('evidence_explored', null, { hypotheses: selectedHypothesisIds.length,
+      ids: allHypotheses.filter(h => selectedHypothesisIds.includes(h.hypothesis)).map(h => h.id) })
     setPendingEvidenceOnly(true)
     setActiveView('graph')
   }
@@ -131,6 +134,7 @@ export function DiscoverView() {
         return entry
       })
       .join('\n\n')
+    track('hypotheses_copied', null, { count: hypothesesToCopy.length, ids: hypothesesToCopy.map(h => h.id) })
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)

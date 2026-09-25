@@ -1,0 +1,35 @@
+.gate {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: #f3f5f7; padding: 24px 16px;
+}
+.overlay {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(7, 59, 76, 0.35);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.panel {
+  width: 100%; max-width: 360px; background: #fff; border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(7,59,76,0.08), 0 12px 32px rgba(7,59,76,0.12);
+  padding: 28px 26px; display: flex; flex-direction: column; gap: 14px;
+}
+.brand { font-size: 13px; font-weight: 800; letter-spacing: 0.18em; color: #073b4c; }
+.heading { font-size: 16px; font-weight: 700; color: #073b4c; margin: 0; }
+.tabs { display: flex; gap: 4px; background: rgba(7,59,76,0.06); border-radius: 8px; padding: 3px; }
+.tab, .tabOn {
+  flex: 1; border: none; border-radius: 6px; padding: 7px 0; font-size: 12px; font-weight: 600;
+  cursor: pointer; background: transparent; color: #6b7280;
+}
+.tabOn { background: #fff; color: #073b4c; box-shadow: 0 1px 2px rgba(7,59,76,0.12); }
+.field { display: flex; flex-direction: column; gap: 5px; font-size: 11px; font-weight: 600; color: #374151; }
+.field input {
+  font: inherit; font-weight: 400; font-size: 13px; padding: 8px 10px; border-radius: 7px;
+  border: 1px solid rgba(7,59,76,0.2); color: #1f2937;
+}
+.field input:focus { outline: 2px solid rgba(244,161,36,0.6); border-color: #F4A124; }
+.field small { font-weight: 400; color: #9ca3af; line-height: 1.4; }
+.primary {
+  background: #073b4c; color: #fff; border: none; border-radius: 8px; padding: 10px 0;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.primary:disabled { opacity: 0.6; cursor: default; }
+.error { margin: 0; font-size: 12px; color: #b91c1c; }
+.hint { margin: 0; font-size: 11px; color: #6b7280; line-height: 1.5; }

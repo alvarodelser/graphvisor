@@ -73,9 +73,9 @@ Who does each step, and what it produces. **LLM** is gemma4:31b through n8n's Ol
 8. **LLM, classification:** once per argument, it gives the type (causal, evidence, …), confidence and reasoning. The worker keeps the 6 graph types.
 9. **LLM, L2:** once per kept argument, it gives subject–relation–object triples. An invalid answer is asked again, up to 3 times.
 10. **Worker** writes the graph: Entities, typed Entity→Entity relations, and Argument→Entity links.
-11. **Worker** marks the document done. After the last document, n8n starts finalize.
+11. **Worker** marks the document done. When the last document is done, n8n starts finalize.
 
-A failure marks the document `failed` (with the step and the error) and puts the message in `graphvisor_ingest_dlq`. The other documents continue.
+A failure marks the document `failed` (with the step and the error) and puts the message in `graphvisor_ingest_dlq`. The other documents continue. Finalize runs only when **every** document is done. If the last one closes with some failed, the collection becomes `incomplete` and waits for a retry (see *Failures and retries*).
 
 **Phase 2: concepts** (`graphvisor_finalize`, whole collection)
 1. **Worker** groups the graph arguments 15 at a time.
@@ -132,14 +132,56 @@ GraphVisor reuses IARAG's observability stack (`IARAG/services/observability`) a
 
 1. Put the documents in `input/<collection>/` (see `input/README.md`). For the PMC corpus: `python3 input/sci_corpus/fetch_corpus.py`.
 2. In n8n, open **graphvisor_start**, set `collection` in the *Collection* node, and execute it.
-3. Watch progress: `curl -s localhost:8090/api/collections`. It shows done and failed counts against expected; the status becomes `ready` when finalize ends.
-4. Failed documents are in `graphvisor_ingest_dlq`. Each message says which step failed and why, and the same information is on the `Document` node (`status: failed`, `failed_step`, `error`). Starting a collection again re-ingests it from scratch.
+3. Watch progress on the Grafana dashboard, or with `./collection.sh status <collection>`. The status becomes `ready` when finalize ends.
+4. Starting a collection again re-ingests it from scratch. To re-run only the documents that failed, use `collection.sh`.
+
+### Failures and retries
+
+```bash
+cd services
+./collection.sh status   sci_corpus                        # counts, each failed document with its step and error, queue consumers
+./collection.sh retry    sci_corpus                        # queue every failed document again
+./collection.sh retry    sci_corpus PMC10425213 PMC10443253   # or only these
+./collection.sh finalize sci_corpus                        # finalize without the documents that still fail
+```
+- **retry** works at any time, including mid-ingestion. The worker marks the documents `queued`, so they count neither as done nor as failed and finalize waits for them. The script then publishes them on `graphvisor_ingest` and removes their messages from the DLQ, keeping a backup in `/tmp`. When the last one is done, finalize starts by itself. On a `ready` collection, retrying re-runs finalize once they're done.
+- **finalize** is for documents that will never work, such as a broken PDF. It accepts the current failures and queues a finalize request behind whatever is still in the queue. A later retry takes the acceptance back.
+- **status** also checks that `graphvisor_ingest` has exactly **1** consumer. With 2 or more, a leftover n8n listener is running documents in parallel. Unpublish `graphvisor_ingest`, close the extra connection in the RabbitMQ UI, publish again, and check again after every `sync-to-n8n.sh`.
+- The script talks to the worker at `WORKER_HOST_URL` (default `http://127.0.0.1:8090`) and to RabbitMQ with the `RABBITMQ_*` settings in `services/.env`.
 
 ## GraphVisor
 
 GraphVisor reads `/graphvisor/api/*` (see *Viewing* above for which collection it shows).
 - **Development:** `npm run dev`. Vite proxies `/graphvisor/api` to the worker on `localhost:8090` (override with `GRAPHVISOR_WORKER`).
-- **Production:** whatever serves `dist/` must proxy `/graphvisor/api/` to `http://graphvisor-worker:8000/api/` (or `127.0.0.1:8090/api/`), or build with `VITE_GRAPHVISOR_API` set to the API's URL.
+- **Production:** whatever serves `dist/` must proxy `/graphvisor/api/` to `http://graphvisor-worker:8000/api/` (or `127.0.0.1:8090/api/`). The API must be on the same origin as the page, because the login is a same-site cookie. Only `/api/*` goes through that proxy; the pipeline endpoints (called by n8n on n8n-net) are not exposed.
+- **Local http:** the session cookie is `Secure`. Chrome and Firefox accept it on `http://localhost`; for Safari, or any other plain-http host, run the worker with `SESSION_COOKIE_SECURE=false`.
+
+### Accounts and access codes
+
+Every page needs a login. People create their own account on the login screen with an **access code**:
+- **Admin codes** give every collection, including future ones, plus the Admin panel.
+- **Evaluator codes** give the collections chosen for that code.
+
+A person can add more codes later from their menu. Accounts, codes, sessions and ratings live in Neo4j with no `collection` property, so starting a collection again keeps them. Passwords are stored only as Argon2id hashes, and codes only as hashes: a code is shown once, when it's created.
+
+The first admin code comes from the worker's CLI. After that, everything is in GraphVisor under *your name ▾ → Admin*:
+```bash
+docker exec graphvisor-worker python -m app.manage create-code --label "OEG admins" --role admin
+docker exec graphvisor-worker python -m app.manage create-code --label "Lab X" --role evaluator --collections sci_corpus
+docker exec graphvisor-worker python -m app.manage list-codes
+docker exec graphvisor-worker python -m app.manage disable-code <uid>
+docker exec graphvisor-worker python -m app.manage set-password <email>   # prints a temporary password
+```
+- **Access codes:** create, show once and copy; edit a code's collections (this applies to everyone who used it); regenerate (issues a new code for later sign-ups); disable (removes its access).
+- **People:** reset a password (they pick a new one at the next login); block (logs them out everywhere).
+- **Collections:** the *blind share*, meaning the fraction of hypotheses whose model scores each person sees only after rating (default 25%, fixed per person). Also *Download ratings* as JSON (also `GET /api/admin/evaluations?collection=`).
+
+### Ratings
+
+- **Discover:** each hypothesis gets a verdict (Promising / Unsure / Not useful). The person can then adjust the four scores, which start from the model's, and add a comment. Blind hypotheses start with empty scores and a blurred radar ("Rate to reveal").
+- **Explore:** clicking an argument opens its card, which asks whether it's faithful to the paper, with its source passage. *Faithful* offers a closer check in Detail. *Wrong* opens Detail and asks what's wrong: reasons, a ✓/✗ for each relation and entity, and comments.
+- Each person has one rating per item, and saving again updates it. The rating keeps a copy of the rated text.
+- Implicit signals go to Loki as `ui_event`: views, filter changes, search picks, copied hypotheses, "explore evidence". Ratings go to Loki as `evaluation`.
 
 ## Tests
 
@@ -150,4 +192,4 @@ uv venv -p 3.11 .venv && uv pip install -p .venv -r requirements-dev.txt
 NEO4J_URI=bolt://localhost:7688 NEO4J_PASSWORD=... .venv/bin/pytest   # + integration tests against graphdb
 .venv/bin/pytest ../orchestrator/test_render.py   # prompt rendering and sync guards
 ```
-The integration tests use the `smoke` collection name and delete it afterwards.
+The integration tests use the `smoke` collection name and `@smoke.test` accounts, and delete both afterwards.

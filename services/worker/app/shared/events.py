@@ -173,6 +173,7 @@ COLLECTION_STAGE_CODES = {
     "hypotheses": 8,            # LLM, one call per concept per 200 linked arguments
     "ready": 9,
     "failed": 10,
+    "incomplete": 11,           # every document closed, some failed: waits for a retry
 }
 
 
@@ -183,10 +184,12 @@ def collection_stage(collection: str, name: str, **fields) -> None:
         """
         MATCH (c:Collection {uid: $c})
         SET c.stage = $name, c.stage_code = $code,
-            c.status = CASE WHEN $name IN ['ready', 'failed'] THEN c.status ELSE 'finalizing' END
+            c.status = CASE WHEN $name IN ['ready', 'failed'] THEN c.status
+                            WHEN $name = 'incomplete' THEN 'incomplete' ELSE 'finalizing' END
         """,
         c=collection, name=name, code=code)
-    emit("collection_stage", level="error" if name == "failed" else "info", collection=collection,
+    emit("collection_stage", level="error" if name == "failed" else "warning" if name == "incomplete" else "info",
+         collection=collection,
          stage=name, stage_code=code, **fields)
 
 

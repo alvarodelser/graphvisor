@@ -8,9 +8,13 @@ topics refer to documents by that index."""
 import json
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import Response
 
+from app.auth import service as auth
+from app.auth.admin import blind_fraction
+from app.auth.deps import collection_user, current_user
+from app.evaluation.routes import is_blind
 from app.shared import neo4j
 from app.shared.models import COLLECTION_PATTERN
 
@@ -45,15 +49,16 @@ def _float32(vectors: list) -> Response:
 
 
 @router.get("/collections")
-def collections():
-    return neo4j.read(
+def collections(user: dict = Depends(current_user)):
+    rows = neo4j.read(
         "MATCH (c:Collection) RETURN c.name AS name, c.status AS status, c.expected AS expected, "
         "c.done AS done, c.failed AS failed, c.stage AS stage, toString(c.started_at) AS started_at, "
         "toString(c.finished_at) AS finished_at ORDER BY c.name")
+    return [r for r in rows if auth.can_access(user, r["name"])]
 
 
 @router.get("/collections/{collection}/corpus")
-def corpus(collection: str = CollectionPath):
+def corpus(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     _require_ready(collection)
     rows = neo4j.read(
         """
@@ -102,7 +107,7 @@ def corpus(collection: str = CollectionPath):
 
 
 @router.get("/collections/{collection}/topics")
-def topics(collection: str = CollectionPath):
+def topics(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     _require_ready(collection)
     index = {uid: i for i, uid in enumerate(_doc_uids(collection))}
     rows = neo4j.read("MATCH (t:Topic {collection: $c}) RETURN t.topic_id AS id, t.label AS label, "
@@ -113,13 +118,13 @@ def topics(collection: str = CollectionPath):
 
 
 @router.get("/collections/{collection}/concepts")
-def concepts(collection: str = CollectionPath):
+def concepts(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     _require_ready(collection)
     return [{k: c[k] for k in ("concept", "pca_x", "pca_y", "radius")} for c in _concepts(collection)]
 
 
 @router.get("/collections/{collection}/doc_embeddings.bin")
-def doc_embeddings(collection: str = CollectionPath):
+def doc_embeddings(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     _require_ready(collection)
     rows = neo4j.read("MATCH (d:Document {collection: $c, status: 'done'}) RETURN d.embedding AS v "
                       "ORDER BY d.id", c=collection)
@@ -127,23 +132,26 @@ def doc_embeddings(collection: str = CollectionPath):
 
 
 @router.get("/collections/{collection}/concept_embeddings.bin")
-def concept_embeddings(collection: str = CollectionPath):
+def concept_embeddings(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     _require_ready(collection)
     return _float32([c["v"] for c in _concepts(collection)])
 
 
 @router.get("/collections/{collection}/hypotheses")
-def hypotheses(collection: str = CollectionPath):
+def hypotheses(collection: str = CollectionPath, user: dict = Depends(collection_user)):
     """Grouped by concept, as the old pipeline's hypothesis files were merged:
-    {concept: [{hypothesis, research_question, rationale, evidence, scores}]}.
-    GraphVisor's loader (src/data/dataset.ts) reads this shape."""
+    {concept: [{hypothesis, research_question, rationale, evidence, scores}]},
+    plus each hypothesis' id and whether it is blind for this user (its scores
+    stay hidden in the UI until they rate it). GraphVisor's loader (src/data/dataset.ts) reads this shape."""
     _require_ready(collection)
+    fraction = blind_fraction(collection)
     rows = neo4j.read(
         "MATCH (h:Hypothesis {collection: $c}) RETURN h {.*} AS h ORDER BY h.concept, h.uid", c=collection)
     grouped: dict[str, list] = {}
     for r in rows:
         h = r["h"]
         grouped.setdefault(h["concept"], []).append({
+            "id": h["uid"], "blind": is_blind(user["uid"], h["uid"], fraction),
             "hypothesis": h["hypothesis"], "research_question": h.get("research_question"),
             "rationale": h.get("rationale"), "evidence": h.get("evidence") or [],
             "scores": {k: h.get(k) if h.get(k) is not None else 0.5

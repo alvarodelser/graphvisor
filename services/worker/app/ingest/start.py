@@ -44,7 +44,7 @@ def start(collection: str):
         """
         MERGE (c:Collection {uid: $c})
         SET c.name = $c, c.collection = $c, c.status = 'processing',
-            c.expected = $n, c.done = 0, c.failed = 0, c.arg_counter = 0,
+            c.expected = $n, c.done = 0, c.failed = 0, c.arg_counter = 0, c.accept_failures = false,
             c.started_at = datetime()
         """,
         c=collection, n=len(docs))

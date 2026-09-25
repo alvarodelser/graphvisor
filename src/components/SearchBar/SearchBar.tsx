@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { track } from '../../evaluation/evaluationApi'
 import styles from './SearchBar.module.css'
 
 export interface SearchItem {
@@ -67,7 +68,7 @@ export function SearchBar({ placeholder, query, onQueryChange, sections, minChar
       {open && active && (
         <div className={styles.dropdown} role="listbox">
           {sections.map(s => (
-            <Section key={s.title} section={s} onPicked={() => setOpen(false)} />
+            <Section key={s.title} section={s} query={query} onPicked={() => setOpen(false)} />
           ))}
         </div>
       )}
@@ -75,17 +76,20 @@ export function SearchBar({ placeholder, query, onQueryChange, sections, minChar
   )
 }
 
-function Section({ section, onPicked }: { section: SearchSection; onPicked: () => void }) {
+function Section({ section, query, onPicked }: { section: SearchSection; query: string; onPicked: () => void }) {
   let body: ReactNode
   if (section.error) body = <div className={styles.empty}>{section.error}</div>
   else if (section.loading && section.items.length === 0) body = <div className={styles.empty}>Searching…</div>
   else if (section.items.length === 0) body = <div className={styles.empty}>No matches</div>
-  else body = section.items.map(item => (
+  else body = section.items.map((item, rank) => (
     <button
       key={item.key}
       className={styles.item}
       role="option"
-      onClick={() => { item.onPick(); onPicked() }}
+      onClick={() => {
+        track('search_result_picked', item.key, { query, section: section.title, kind: section.kind, rank })
+        item.onPick(); onPicked()
+      }}
     >
       <span className={styles.primary}>{item.primary}</span>
       {item.secondary && <span className={styles.secondary}>{item.secondary}</span>}

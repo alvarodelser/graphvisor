@@ -1043,6 +1043,59 @@
       ],
       "notes": "Tags each answer with its chunk, so arguments keep their source passage.",
       "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef796ac9-d84e-5d9c-82f9-b7699a1edbe7",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "finalize",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "615eeea7-d795-517a-a9f9-b308215a9b99",
+      "name": "Finalize request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        -250
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ENV:WORKER_URL}}/collections/{{ $json.collection }}/finalize-request",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "f59569a6-4c10-5fa4-b02d-fd572a5b0df9",
+      "name": "Finalize check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        -250
+      ]
     }
   ],
   "connections": {
@@ -1050,7 +1103,7 @@
       "main": [
         [
           {
-            "node": "Document",
+            "node": "Finalize request?",
             "type": "main",
             "index": 0
           }
@@ -1596,6 +1649,35 @@
         [
           {
             "node": "Collect L1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize request?": {
+      "main": [
+        [
+          {
+            "node": "Finalize check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize check": {
+      "main": [
+        [
+          {
+            "node": "Collection complete?",
             "type": "main",
             "index": 0
           }

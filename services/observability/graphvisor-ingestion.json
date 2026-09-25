@@ -273,6 +273,11 @@
                   "text": "failed",
                   "color": "dark-red",
                   "index": 9
+                },
+                "11": {
+                  "text": "incomplete",
+                  "color": "orange",
+                  "index": 10
                 }
               }
             }

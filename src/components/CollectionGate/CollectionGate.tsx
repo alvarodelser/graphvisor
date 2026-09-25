@@ -1,5 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { API_BASE, listCollections, type CollectionInfo } from '../../data/dataset'
+import { useAuth } from '../../auth/useAuth'
+import { authApi } from '../../auth/authApi'
+import { RedeemForm } from '../../auth/UserMenu'
 import styles from './CollectionGate.module.css'
 
 const POLL_MS = 30_000
@@ -42,10 +45,16 @@ function CollectionCard({ c }: { c: CollectionInfo }) {
       <div className={styles.counts}>
         {c.done} of {c.expected} documents{c.failed ? ` · ${c.failed} failed` : ''}
       </div>
+      {c.status === 'incomplete' && (
+        <div className={styles.counts}>
+          Waiting: {c.failed} document{c.failed === 1 ? '' : 's'} failed. Concepts and hypotheses are built once they’re
+          retried or set aside (services/collection.sh).
+        </div>
+      )}
       {c.status === 'finalizing' && c.stage && (
         <div className={styles.counts}>Building concepts and topics: {c.stage.replace(/_/g, ' ')}</div>
       )}
-      {!ready && c.status !== 'failed' && (
+      {!ready && c.status !== 'failed' && c.status !== 'incomplete' && (
         <div className={styles.bar} aria-label={`${progress}% processed`}>
           <div className={styles.barFill} style={{ width: `${progress}%` }} />
         </div>
@@ -99,6 +108,12 @@ export function CollectionGate({ children }: { children: ReactNode }) {
     )
   }
   const { collections, requested } = state
+  return <Chooser collections={collections} requested={requested} />
+}
+
+function Chooser({ collections, requested }: { collections: CollectionInfo[]; requested: string | null }) {
+  const { user, setUser } = useAuth()
+  const admin = user?.role === 'admin'
   const missing = requested && !collections.some(c => c.name === requested)
   return (
     <div className={styles.gate}>
@@ -108,14 +123,25 @@ export function CollectionGate({ children }: { children: ReactNode }) {
           {missing ? `There is no collection “${requested}”.` : `“${requested}” isn’t ready yet.`}
         </p>
       )}
-      {collections.length === 0 ? (
+      {collections.length === 0 && admin && (
         <p className={styles.lead}>Nothing has been ingested yet. Start a collection with graphvisor_start in n8n.</p>
-      ) : (
+      )}
+      {collections.length === 0 && !admin && (
+        <p className={styles.lead}>Your access code doesn’t open any collection yet. If you were given another code, add it here.</p>
+      )}
+      {collections.length > 0 && (
         <div className={styles.grid}>
           {collections.map(c => <CollectionCard key={c.name} c={c} />)}
         </div>
       )}
+      {!admin && collections.length === 0 && <div className={styles.redeem}><RedeemForm onDone={() => window.location.reload()} /></div>}
       <p className={styles.hint}>Collections still processing open once they’re ready. This list refreshes every 30 seconds.</p>
+      {user && (
+        <p className={styles.hint}>
+          Logged in as {user.name} ·{' '}
+          <button className={styles.linkBtn} onClick={() => authApi.logout().finally(() => { setUser(null); window.location.reload() })}>Log out</button>
+        </p>
+      )}
     </div>
   )
 }

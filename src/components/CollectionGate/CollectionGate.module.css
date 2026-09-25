@@ -30,7 +30,10 @@
 .ready { background: rgba(16, 185, 129, 0.14); color: #047857; }
 .processing, .finalizing { background: rgba(244, 161, 36, 0.16); color: #8a5300; }
 .failed { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+.incomplete { background: rgba(234, 88, 12, 0.14); color: #9a3412; }
 .counts { font-size: 12px; opacity: 0.8; }
 .when { font-size: 11px; opacity: 0.55; }
 .bar { height: 4px; border-radius: 2px; background: #eef2f5; overflow: hidden; }
 .barFill { height: 100%; background: #F4A124; }
+.redeem { width: 100%; max-width: 420px; }
+.linkBtn { background: none; border: none; padding: 0; font: inherit; color: #073b4c; text-decoration: underline; cursor: pointer; }

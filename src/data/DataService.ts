@@ -538,7 +538,7 @@ export class RealDataService implements DataServiceInterface {
         group: relationGroupOf(rel.relation),
       }))
 
-      return { argument: syntheticNode, relations, sources, entityGraph }
+      return { argument: syntheticNode, arg_id: rawArg.arg_id, relations, sources, entityGraph }
     }
 
     // Entity node path

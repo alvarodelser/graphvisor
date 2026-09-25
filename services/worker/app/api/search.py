@@ -3,9 +3,10 @@ The query is embedded with the same BGE-M3 vectorizer as the arguments and
 matched through the argument_embedding vector index. (Lexical searches, on
 titles and entity names, run in the browser on data it already has.)"""
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 
 from app.api.corpus import _require_ready
+from app.auth.deps import collection_user
 from app.shared import neo4j, vectorizer
 from app.shared.models import COLLECTION_PATTERN
 
@@ -20,7 +21,7 @@ MAX_CANDIDATES = 2000
 @router.get("/collections/{collection}/search/arguments")
 def search_arguments(collection: str = Path(pattern=COLLECTION_PATTERN),
                      q: str = Query(min_length=2, max_length=500),
-                     k: int = Query(20, ge=1, le=100)):
+                     k: int = Query(20, ge=1, le=100), user: dict = Depends(collection_user)):
     _require_ready(collection)
     [vector] = vectorizer.embed_or_502([q.strip()], "query")
     rows = neo4j.read(

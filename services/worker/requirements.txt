@@ -6,3 +6,4 @@ httpx==0.28.*
 jsonschema==4.*
 numpy==2.*
 scikit-learn==1.*
+argon2-cffi==23.*

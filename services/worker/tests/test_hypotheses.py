@@ -86,5 +86,7 @@ def test_hypotheses_end_to_end(client, monkeypatch):
     client.post("/collections/smoke/ready")
     api = client.get("/api/collections/smoke/hypotheses").json()
     assert list(api) == [seeds[0]["concept"]]
-    assert api[seeds[0]["concept"]][0] == {"hypothesis": "H1", "research_question": "Q1", "rationale": "R1",
+    first = api[seeds[0]["concept"]][0]
+    assert first.pop("id").startswith("smoke") and isinstance(first.pop("blind"), bool)
+    assert first == {"hypothesis": "H1", "research_question": "Q1", "rationale": "R1",
         "evidence": arg_ids[:2], "scores": {"novelty": 0.8, "plausibility": 0.7, "impact": 0.9, "creativity": 0.6}}

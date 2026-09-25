@@ -1,5 +1,9 @@
 """Close a document (done or failed) and report whether the whole collection
-is finished, which is n8n's cue to run graphvisor_finalize."""
+is finished, which is n8n's cue to run graphvisor_finalize.
+
+Finalize runs only when every document is done. When the last one closes with
+some failed, the collection becomes `incomplete` and waits: the failed ones are
+retried, or accepted as lost (services/collection.sh, app/ingest/retry.py)."""
 
 from fastapi import APIRouter
 
@@ -29,17 +33,28 @@ def _close(ref: DocRef, status: str, step: str = None, error: str = None) -> dic
                                    WHEN $status <> 'done' AND before = 'done' THEN -1 ELSE 0 END,
             c.failed = c.failed + CASE WHEN $status = 'failed' AND before <> 'failed' THEN 1
                                        WHEN $status <> 'failed' AND before = 'failed' THEN -1 ELSE 0 END
-        RETURN c.done AS done, c.failed AS failed, c.expected AS expected
+        RETURN c.done AS done, c.failed AS failed, c.expected AS expected,
+               coalesce(c.accept_failures, false) AS accept_failures
         """,
         c=ref.collection, uid=neo4j.uid(ref.collection, ref.id), id=ref.id,
         status=status, step=step, error=error)[0]
-    out = {"collection": ref.collection, "id": ref.id, **row,
-           "collection_complete": row["done"] + row["failed"] >= row["expected"]}
+    closed, complete = completion(row)
+    out = {"collection": ref.collection, "id": ref.id, "done": row["done"], "failed": row["failed"],
+           "expected": row["expected"], "collection_complete": complete}
     _emit_document_event(ref, status, step, error)
     events.stage(ref.collection, ref.id, status, failed_step=step)
+    if closed and not complete:
+        events.collection_stage(ref.collection, "incomplete", failed=row["failed"])
     if status == "failed":
         out.update(step=step, error=error)  # the DLQ message is this response
     return out
+
+
+def completion(row: dict) -> tuple[bool, bool]:
+    """(every document closed, ready to finalize). Queued and processing
+    documents count as neither done nor failed, so a retry holds finalize back."""
+    closed = row["done"] + row["failed"] >= row["expected"]
+    return closed, closed and (row["failed"] == 0 or row["accept_failures"])
 
 
 def _emit_document_event(ref: DocRef, status: str, step: str | None, error: str | None) -> None:

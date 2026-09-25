@@ -42,3 +42,14 @@ OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 
 
 CREATE CONSTRAINT hypothesis_uid IF NOT EXISTS FOR (n:Hypothesis) REQUIRE n.uid IS UNIQUE;
 CREATE INDEX hypothesis_collection IF NOT EXISTS FOR (n:Hypothesis) ON (n.collection);
+
+// Accounts and ratings (app/auth, app/evaluation). No `collection` property on
+// these nodes, so re-ingesting a collection never deletes them.
+CREATE CONSTRAINT user_uid IF NOT EXISTS FOR (n:User) REQUIRE n.uid IS UNIQUE;
+CREATE CONSTRAINT user_email IF NOT EXISTS FOR (n:User) REQUIRE n.email IS UNIQUE;
+CREATE CONSTRAINT access_code_uid IF NOT EXISTS FOR (n:AccessCode) REQUIRE n.uid IS UNIQUE;
+CREATE CONSTRAINT access_code_hash IF NOT EXISTS FOR (n:AccessCode) REQUIRE n.code_hash IS UNIQUE;
+CREATE CONSTRAINT session_token IF NOT EXISTS FOR (n:Session) REQUIRE n.token_hash IS UNIQUE;
+CREATE CONSTRAINT evaluation_uid IF NOT EXISTS FOR (n:Evaluation) REQUIRE n.uid IS UNIQUE;
+CREATE CONSTRAINT collection_settings_name IF NOT EXISTS FOR (n:CollectionSettings) REQUIRE n.name IS UNIQUE;
+CREATE INDEX evaluation_lookup IF NOT EXISTS FOR (n:Evaluation) ON (n.collection_name, n.user_uid);

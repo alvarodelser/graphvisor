@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     citation_max_retries: int = 5        # per request, on 429 / transport errors
     citation_match_threshold: float = 0.85  # min title similarity to accept a match
 
+    # Accounts (app/auth): the session cookie is scoped to GraphVisor's path.
+    session_cookie: str = "gv_session"
+    session_cookie_path: str = "/graphvisor"
+    session_cookie_secure: bool = True
+    session_days: int = 14
+    login_max_failures: int = 5
+    login_lock_minutes: int = 10
+    default_blind_fraction: float = 0.25
+
     @property
     def schema_path(self) -> Path:
         return self.input_dir / "document.schema.json"

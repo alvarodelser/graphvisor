@@ -89,7 +89,7 @@ def test_json_document_end_to_end(client):
     assert r.json()["done"] == 1
 
 
-def test_pdf_only_document_and_failure_completes_collection(client):
+def test_pdf_only_document_and_a_failure_leave_the_collection_incomplete(client):
     client.post("/collections/smoke/start")
     ref = {"collection": "smoke", "id": "DOC2"}
     assert client.post("/documents/load", json=ref).json()["kind"] == "pdf"
@@ -105,8 +105,55 @@ def test_pdf_only_document_and_failure_completes_collection(client):
     client.post("/documents/done", json=ref)
     r = client.post("/documents/failed", json={"collection": "smoke", "id": "DOC1",
                                                "step": "L1_extraction", "error": "timeout"})
-    assert r.json()["collection_complete"] is True
+    # Every document closed, one failed: no finalize, the collection waits for a retry.
+    assert r.json()["collection_complete"] is False
     assert (r.json()["done"], r.json()["failed"]) == (1, 1)
+    assert neo4j.read("MATCH (c:Collection {uid: 'smoke'}) RETURN c.status AS s")[0]["s"] == "incomplete"
+
+
+def _two_docs_one_failed(client):
+    client.post("/collections/smoke/start")
+    for doc in ("DOC1", "DOC2"):
+        client.post("/documents/load", json={"collection": "smoke", "id": doc})
+    client.post("/documents/done", json={"collection": "smoke", "id": "DOC2"})
+    client.post("/documents/failed", json={"collection": "smoke", "id": "DOC1", "step": "L1 extraction",
+                                           "error": "The connection was aborted"})
+
+
+def test_retry_holds_finalize_until_the_retried_documents_are_done(client):
+    _two_docs_one_failed(client)
+    f = client.get("/collections/smoke/failures").json()
+    assert f["status"] == "incomplete" and f["documents"] == {"done": 1, "failed": 1}
+    assert f["failures"] == [{"id": "DOC1", "source": "json", "step": "L1 extraction",
+                              "error": "The connection was aborted"}]
+
+    r = client.post("/collections/smoke/retry", json={"ids": ["DOC1", "DOC2", "NOPE"]}).json()
+    assert r["messages"] == [{"collection": "smoke", "id": "DOC1"}]
+    assert r["not_failed"] == ["DOC2", "NOPE"]
+    f = client.get("/collections/smoke/failures").json()
+    assert (f["status"], f["failed"], f["documents"]) == ("processing", 0, {"done": 1, "queued": 1})
+    # nothing finalizes while it's queued
+    assert client.post("/collections/smoke/finalize-request").json()["collection_complete"] is False
+
+    ref = {"collection": "smoke", "id": "DOC1"}
+    client.post("/documents/load", json=ref)
+    r = client.post("/documents/done", json=ref).json()
+    assert (r["done"], r["failed"], r["collection_complete"]) == (2, 0, True)
+
+
+def test_finalize_without_the_failures_once_accepted(client):
+    _two_docs_one_failed(client)
+    r = client.post("/collections/smoke/finalize-request").json()
+    assert r["collection_complete"] is False and "retry them or accept" in r["reason"]
+    assert client.post("/collections/smoke/accept-failures").json()["accepted_failures"] == 1
+    assert client.post("/collections/smoke/finalize-request").json()["collection_complete"] is True
+
+    # a later retry takes the acceptance back
+    client.post("/collections/smoke/retry", json={})
+    client.post("/documents/failed", json={"collection": "smoke", "id": "DOC1", "step": "L1 extraction"})
+    assert client.post("/collections/smoke/finalize-request").json()["collection_complete"] is False
+    assert client.post("/collections/nope/retry", json={}).status_code == 404
+    assert client.post("/collections/smoke/retry", json={"ids": ["../x"]}).status_code == 422
 
 
 def test_a_reloaded_document_is_processing_again_and_counted_once(client):

@@ -16,14 +16,14 @@ const LABELS: Record<string, string> = {
   novelty: 'Nov',
   scientific_plausibility: 'Sci',
   potential_impact: 'Imp',
-  commercial_potential: 'Com',
+  commercial_potential: 'Cre',
 }
 
 const LABELS_FULL: Record<string, string> = {
   novelty: 'Novelty',
   scientific_plausibility: 'Plausibility',
   potential_impact: 'Impact',
-  commercial_potential: 'Commercial',
+  commercial_potential: 'Creativity',
 }
 
 // Reserve horizontal room for the side names (which expand on hover) and sit the

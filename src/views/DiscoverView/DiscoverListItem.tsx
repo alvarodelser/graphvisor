@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import type { Hypothesis } from '../../types'
 import { useStore } from '../../store/useStore'
 import { HypothesisRadarChart } from './HypothesisRadarChart'
+import { BlindRadar, HypothesisRating, UnratedDot } from '../../evaluation/HypothesisRating'
+import { track } from '../../evaluation/evaluationApi'
 import styles from './DiscoverListItem.module.css'
 
 interface DiscoverListItemProps {
@@ -24,6 +26,7 @@ export function DiscoverListItem({ hypothesis, highlightDimension, showConcept =
 
   const handleClick = (e: React.MouseEvent) => {
     if (window.getSelection()?.toString()) return
+    if (!isSelected) track('hypothesis_selected', hypothesis.id)
     selectHypothesis(hypothesis.hypothesis, e.shiftKey)
   }
 
@@ -46,7 +49,7 @@ export function DiscoverListItem({ hypothesis, highlightDimension, showConcept =
             {hypothesis.concept}
           </span>
         )}
-        <div className={styles.title}>{hypothesis.hypothesis}</div>
+        <div className={styles.title}><UnratedDot hypothesis={hypothesis} />{hypothesis.hypothesis}</div>
         {showResearchQuestion && hypothesis.research_question && (
           <div style={{
             fontSize: 10,
@@ -63,8 +66,11 @@ export function DiscoverListItem({ hypothesis, highlightDimension, showConcept =
             {hypothesis.research_question}
           </div>
         )}
+        <HypothesisRating hypothesis={hypothesis} />
       </div>
-      <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} alwaysExpanded={isMobile} />
+      <BlindRadar hypothesis={hypothesis}>
+        <HypothesisRadarChart scores={hypothesis.scores} highlightDimension={highlightDimension} alwaysExpanded={isMobile} />
+      </BlindRadar>
     </div>
   )
 }

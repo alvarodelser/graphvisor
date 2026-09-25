@@ -5,6 +5,7 @@ import { DetailMiniMap } from './DetailMiniMap'
 import { ConceptMiniMap } from './ConceptMiniMap'
 import { ArgumentMiniGraph } from './ArgumentMiniGraph'
 import { RelationList } from './RelationList'
+import { ArgumentReview } from '../../evaluation/ArgumentReview'
 import { RELATION_COLORS } from '../../utils/geometry'
 import type { DocHoverInfo } from './DetailMiniMap'
 import type { PanelInfo } from './ArgumentMiniGraph'
@@ -515,6 +516,8 @@ export function DetailView() {
             )}
           </div>
         </div>
+
+        <ArgumentReview detail={detail} />
 
         {/* Relations table */}
         <div className={styles.listWrapper}>

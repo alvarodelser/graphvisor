@@ -1,10 +1,11 @@
 import type { Hypothesis } from '../types'
+import { API_BASE, api } from './api'
 
 // GraphVisor reads a collection from the ingestion worker's read API
 // (services/worker/app/api). The API serves the same shapes the static files
 // used to have: corpus JSON, topics, concept groundings and float32 embeddings.
 // In development, vite.config.ts proxies this path to the local worker.
-export const API_BASE: string = import.meta.env.VITE_GRAPHVISOR_API ?? '/graphvisor/api'
+export { API_BASE }
 
 export interface ConceptGrounding {
   concept: string
@@ -15,7 +16,7 @@ export interface ConceptGrounding {
 
 export interface CollectionInfo {
   name: string
-  status: 'processing' | 'finalizing' | 'ready' | 'failed'
+  status: 'processing' | 'finalizing' | 'incomplete' | 'ready' | 'failed'
   stage?: string | null   // finalize stage while finalizing
   expected: number
   done: number
@@ -34,10 +35,8 @@ export interface Dataset {
   conceptEmbeddingsUrl: string
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`)
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
-  return res.json() as Promise<T>
+function getJson<T>(path: string): Promise<T> {
+  return api<T>(path)
 }
 
 export interface ArgumentHit {
@@ -50,9 +49,9 @@ export interface ArgumentHit {
 
 export async function searchArguments(collection: string, q: string, k = 20, signal?: AbortSignal): Promise<ArgumentHit[]> {
   const params = new URLSearchParams({ q, k: String(k) })
-  const res = await fetch(`${API_BASE}/collections/${encodeURIComponent(collection)}/search/arguments?${params}`, { signal })
-  if (!res.ok) throw new Error(`argument search failed: ${res.status}`)
-  return (await res.json()).results as ArgumentHit[]
+  const res = await api<{ results: ArgumentHit[] }>(
+    `/collections/${encodeURIComponent(collection)}/search/arguments?${params}`, { signal })
+  return res.results
 }
 
 export function listCollections(): Promise<CollectionInfo[]> {
@@ -88,6 +87,8 @@ export async function loadDataset(collection: string): Promise<Dataset> {
 }
 
 type RawHypothesisItem = {
+  id?: string
+  blind?: boolean
   hypothesis: string
   evidence?: string | number | (string | number)[]
   rationale?: string
@@ -133,6 +134,8 @@ function normalizeHypotheses(raw: unknown): Hypothesis[] {
   const grouped = raw as Record<string, RawHypothesisItem[]>
   return Object.entries(grouped).flatMap(([concept, items]) =>
     items.map(item => ({
+      id: item.id,
+      blind: item.blind ?? false,
       hypothesis: item.hypothesis,
       concept,
       evidence: normalizeEvidence(item.evidence),

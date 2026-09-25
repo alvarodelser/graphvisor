@@ -82,6 +82,7 @@ export interface EntityTriple {
 
 export interface ArgumentDetail {
   argument: GraphNode
+  arg_id?: string        // global argument id, for arguments (e.g. "a2648")
   relations: ArgumentRelation[]
   sources: DocNode[]
   argumentBlobs?: ArgumentBlob[]
@@ -138,6 +139,8 @@ export interface SelectedRelation {
 }
 
 export interface Hypothesis {
+  id?: string          // the API's hypothesis uid (needed to rate it)
+  blind?: boolean      // for this user: model scores hidden until they rate it
   hypothesis: string
   concept: string
   evidence: string[]
